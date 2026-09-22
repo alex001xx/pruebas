@@ -30,6 +30,11 @@ local NoFallDamageEnabled, NoFallConn = false, nil
 local AntiAFKConn = nil
 local TargetName = nil
 local TargetDropdown, GameTargetDropdown, TargetInfoParagraph = nil, nil, nil
+local AimbotEnabled, AimbotRange, AimbotPartName = false, 200, "Head"
+local AimbotConn = nil
+local KillAuraEnabled, KillAuraRange = false, 15
+local KillAuraConn = nil
+local TeamCheckEnabled = false
 local Lighting = game:GetService("Lighting")
 local OriginalLight = {ClockTime=Lighting.ClockTime, Brightness=Lighting.Brightness, Ambient=Lighting.Ambient, OutdoorAmbient=Lighting.OutdoorAmbient, FogEnd=Lighting.FogEnd, GlobalShadows=Lighting.GlobalShadows, ExposureCompensation=Lighting.ExposureCompensation}
 local GameSettings = UserSettings().GameSettings
@@ -536,7 +541,7 @@ local function TPAllToMe()
     WindUI:Notify({Title="TP All", Content="Teleportados "..count.." jugadores a ti", Duration=3})
 end
 
--- 🎯 FUNCIONES DE TARGET (objetivo/jugador)
+-- 🎯 FUNCIONES DE TARGET
 local function ValidTarget()
     if not TargetName or TargetName=="" or TargetName=="No hay jugadores" then return nil end
     return Players:FindFirstChild(TargetName)
@@ -590,7 +595,71 @@ local function RefreshTargetDropdowns()
     WindUI:Notify({Title="Listas", Content="Jugadores recargados", Duration=2})
 end
 
--- 💾 CONFIGURACIÓN PERSISTENTE
+-- 🎯 AIMBOT + KILL AURA (universales)
+local function GetNearestTarget(range)
+    local nearest, best = nil, range
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer and p.Character then
+            local skip = TeamCheckEnabled and p.Team and LocalPlayer.Team and p.Team == LocalPlayer.Team
+            if not skip then
+                local hrp = p.Character:FindFirstChild("HumanoidRootPart")
+                if hrp and RootPart then
+                    local d = (RootPart.Position - hrp.Position).Magnitude
+                    if d < best then best = d; nearest = p end
+                end
+            end
+        end
+    end
+    return nearest
+end
+
+local function SetAimbot(s)
+    AimbotEnabled = s
+    if s then
+        if not AimbotConn then
+            AimbotConn = RunService.RenderStepped:Connect(function()
+                if not AimbotEnabled then return end
+                local t = GetNearestTarget(AimbotRange)
+                if t and t.Character then
+                    local part = t.Character:FindFirstChild(AimbotPartName)
+                        or t.Character:FindFirstChild("Head")
+                        or t.Character:FindFirstChild("UpperTorso")
+                        or t.Character:FindFirstChild("HumanoidRootPart")
+                    local cam = workspace.CurrentCamera
+                    if part and cam then
+                        cam.CFrame = CFrame.new(cam.CFrame.Position, part.Position)
+                    end
+                end
+            end)
+        end
+    else
+        if AimbotConn then AimbotConn:Disconnect(); AimbotConn = nil end
+    end
+end
+
+local function SetKillAura(s)
+    KillAuraEnabled = s
+    if s then
+        if not KillAuraConn then
+            KillAuraConn = RunService.Heartbeat:Connect(function()
+                if not KillAuraEnabled or not Character then return end
+                local tool = Character:FindFirstChildWhichIsA("Tool")
+                if not tool then return end
+                local t = GetNearestTarget(KillAuraRange)
+                if t and t.Character and t.Character:FindFirstChild("HumanoidRootPart") and RootPart then
+                    pcall(function()
+                        RootPart.CFrame = CFrame.new(RootPart.Position, t.Character.HumanoidRootPart.Position)
+                        tool:Activate()
+                    end)
+                end
+            end)
+        end
+    else
+        if KillAuraConn then KillAuraConn:Disconnect(); KillAuraConn = nil end
+    end
+end
+
+-- 💾 CONFIGURACIÓN PERSISTENTE (sigue funcionando en fondo aunque no haya pestaña)
 local ConfigFileName = "DENJI_ALEX_Config.json"
 local Saved = {}
 local function Get(key, def)
@@ -625,6 +694,9 @@ local function GuardarConfiguracion(silent)
         SitProtectorEnabled = SitProtectorEnabled,
         AutoClickerEnabled = AutoClickerEnabled, AutoClickerCPS = AutoClickerCPS,
         NoFallDamageEnabled = NoFallDamageEnabled,
+        AimbotEnabled = AimbotEnabled, AimbotRange = AimbotRange, AimbotPartName = AimbotPartName,
+        KillAuraEnabled = KillAuraEnabled, KillAuraRange = KillAuraRange,
+        TeamCheckEnabled = TeamCheckEnabled,
     }
     pcall(function()
         local Http = game:GetService("HttpService")
@@ -645,6 +717,9 @@ local function CargarConfiguracion()
         if Saved.FallSpeedCap then FallSpeedCap = Saved.FallSpeedCap end
         if Saved.SpamText then SpamText = Saved.SpamText end
         if Saved.AutoClickerCPS then AutoClickerCPS = Saved.AutoClickerCPS end
+        if Saved.AimbotRange then AimbotRange = Saved.AimbotRange end
+        if Saved.KillAuraRange then KillAuraRange = Saved.KillAuraRange end
+        if Saved.AimbotPartName then AimbotPartName = Saved.AimbotPartName end
         WindUI:Notify({Title="Configuración", Content="Cargada correctamente", Duration=3})
     end)
 end
@@ -693,6 +768,9 @@ local function AplicarConfiguracion()
         if Saved.AutoClickerEnabled then SetAutoClicker(true) end
         if Saved.NoFallDamageEnabled then SetNoFallDamage(true) end
         if Saved.AntiAFKEnabled then SetAntiAFK(true) end
+        if Saved.AimbotEnabled then SetAimbot(true) end
+        if Saved.KillAuraEnabled then SetKillAura(true) end
+        if Saved.TeamCheckEnabled~=nil then TeamCheckEnabled = Saved.TeamCheckEnabled end
         if Saved.FreezePositionEnabled and RootPart then pcall(function() RootPart.Anchored=true end); FreezePositionEnabled=true end
         if Saved.NoFrictionEnabled~=nil then NoFrictionEnabled=Saved.NoFrictionEnabled end
         if Saved.NoPushEnabled~=nil then NoPushEnabled=Saved.NoPushEnabled end
@@ -817,15 +895,15 @@ ScriptsSection:Space({Size=10})
 ScriptsSection:Toggle({Title="Escudo", Desc="Sit siempre + Anti-abrazo", Def=Get("SitProtectorEnabled", false), Callback=SetSitProtector})
 MisScriptsTab:Space({Size=12})
 
--- 4. TERGET (objetivo/jugador)
-local TergetTab = Window:Tab({Title="Terget", Icon="target"})
-TergetTab:Section({Title="Jugador Objetivo", TextSize=20}); TergetTab:Space({Size=6})
-TargetDropdown = TergetTab:Dropdown({Title="Seleccionar Target", Values=GetPlayerNames(false), Value=1, Callback=function(s) TargetName=s end})
-TergetTab:Space({Size=8})
-TargetInfoParagraph = TergetTab:Paragraph({Title="Info del Target", Desc="Ninguno", Image="user", ImageSize=14})
-TergetTab:Space({Size=8})
-TergetTab:Section({Title="Acciones sobre el Target", TextSize=18}); TergetTab:Space({Size=6})
-local TAct = TergetTab:Section({Title="", Box=true, BoxBorder=true, Opened=true})
+-- 4. TARGET (ícono confirmado map-pin para que aparezca)
+local TargetTab = Window:Tab({Title="Target", Icon="map-pin"})
+TargetTab:Section({Title="Jugador Objetivo", TextSize=20}); TargetTab:Space({Size=6})
+TargetDropdown = TargetTab:Dropdown({Title="Seleccionar Target", Values=GetPlayerNames(false), Value=1, Callback=function(s) TargetName=s end})
+TargetTab:Space({Size=8})
+TargetInfoParagraph = TargetTab:Paragraph({Title="Info del Target", Desc="Ninguno", Image="user", ImageSize=14})
+TargetTab:Space({Size=8})
+TargetTab:Section({Title="Acciones sobre el Target", TextSize=18}); TargetTab:Space({Size=6})
+local TAct = TargetTab:Section({Title="", Box=true, BoxBorder=true, Opened=true})
 local TA1 = TAct:Group({})
 TA1:Button({Title="Focus (Cámara)", Icon="eye", Justify="Center", Callback=FocusTarget}); TA1:Space({Size=8})
 TA1:Button({Title="Detener Focus", Icon="eye-off", Justify="Center", Callback=StopFocus})
@@ -845,14 +923,13 @@ TAct:Button({Title="Copiar UserID del Target", Icon="clipboard", Justify="Center
     if t then setclipboard(tostring(t.UserId)); WindUI:Notify({Title="Copiado", Content="UserID de "..t.Name, Duration=2})
     else WindUI:Notify({Title="Error", Content="Selecciona un target", Duration=2}) end
 end})
-TergetTab:Space({Size=8})
-TergetTab:Button({Title="Recargar Lista de Jugadores", Icon="refresh-cw", Justify="Center", Callback=RefreshTargetDropdowns})
-TergetTab:Space({Size=12})
+TargetTab:Space({Size=8})
+TargetTab:Button({Title="Recargar Lista de Jugadores", Icon="refresh-cw", Justify="Center", Callback=RefreshTargetDropdowns})
+TargetTab:Space({Size=12})
 
--- 5. GAME (FUNCIONES UNIVERSALES)
+-- 5. GAME
 local GameTab = Window:Tab({Title="Game", Icon="gamepad-2"})
 GameTab:Section({Title="Funciones Universales", TextSize=20}); GameTab:Space({Size=6})
-
 GameTab:Section({Title="🎯 Target (Jugador)", TextSize=18}); GameTab:Space({Size=6})
 local GTgt = GameTab:Section({Title="", Box=true, BoxBorder=true, Opened=true})
 GameTargetDropdown = GTgt:Dropdown({Title="Seleccionar Target", Values=GetPlayerNames(false), Value=1, Callback=function(s) TargetName=s end})
@@ -865,7 +942,6 @@ local GT2 = GTgt:Group({})
 GT2:Button({Title="Traer (Bring)", Icon="arrow-down", Justify="Center", Callback=BringTarget}); GT2:Space({Size=8})
 GT2:Button({Title="TP All a Mí", Icon="users", Justify="Center", Callback=TPAllToMe})
 GameTab:Space({Size=10})
-
 GameTab:Section({Title="🚀 Movimiento", TextSize=18}); GameTab:Space({Size=6})
 local GMov = GameTab:Section({Title="", Box=true, BoxBorder=true, Opened=true})
 GMov:Toggle({Title="Fly (Volar)", Def=Get("FlyEnabled", false), Callback=function(s) if s then StartFly() else StopFly() end end}); GMov:Space({Size=6})
@@ -880,7 +956,6 @@ GMov:Slider({Title="WalkSpeed", Step=1, Value={Min=16,Max=250,Default=Get("WalkS
 GMov:Slider({Title="JumpPower", Step=1, Value={Min=50,Max=350,Default=Get("JumpPower",50)}, Callback=function(v) if Humanoid then Humanoid.JumpPower=v end end}); GMov:Space({Size=6})
 GMov:Slider({Title="Gravedad", Step=0.1, Value={Min=0,Max=2,Default=Get("GravityScale",1)}, Callback=function(v) if Humanoid then Humanoid.GravityScale=v end end})
 GameTab:Space({Size=10})
-
 GameTab:Section({Title="👁️ Visual", TextSize=18}); GameTab:Space({Size=6})
 local GVis = GameTab:Section({Title="", Box=true, BoxBorder=true, Opened=true})
 GVis:Toggle({Title="ESP Jugadores", Def=Get("ESPEnabled", false), Callback=SetESP}); GVis:Space({Size=6})
@@ -892,7 +967,6 @@ GVisB:Button({Title="Desbloquear Zoom", Icon="zoom-in", Justify="Center", Callba
 GVisB:Space({Size=8})
 GVisB:Button({Title="Eliminar Partículas", Icon="trash-2", Justify="Center", Callback=RemoveParticles})
 GameTab:Space({Size=10})
-
 GameTab:Section({Title="🛡️ Protección", TextSize=18}); GameTab:Space({Size=6})
 local GProt = GameTab:Section({Title="", Box=true, BoxBorder=true, Opened=true})
 GProt:Toggle({Title="God Mode (Local)", Def=Get("GodModeEnabled", false), Callback=function(s) GodModeEnabled=s end}); GProt:Space({Size=6})
@@ -903,7 +977,6 @@ GProt:Toggle({Title="No Fall Damage", Def=Get("NoFallDamageEnabled", false), Cal
 GProt:Toggle({Title="Auto-Respawn Instantáneo", Def=Get("InstantRespawnEnabled", false), Callback=function(s) InstantRespawnEnabled=s end}); GProt:Space({Size=6})
 GProt:Toggle({Title="Auto-Rejoin al Morir", Def=Get("AutoRejoinEnabled", false), Callback=function(s) AutoRejoinEnabled=s end})
 GameTab:Space({Size=10})
-
 GameTab:Section({Title="🔧 Utilidades", TextSize=18}); GameTab:Space({Size=6})
 local GUtil = GameTab:Section({Title="", Box=true, BoxBorder=true, Opened=true})
 GUtil:Toggle({Title="Auto-Clicker", Def=Get("AutoClickerEnabled", false), Callback=SetAutoClicker}); GUtil:Space({Size=6})
@@ -916,7 +989,6 @@ local GU2 = GUtil:Group({})
 GU2:Button({Title="Copiar JobID", Icon="clipboard", Justify="Center", Callback=function() setclipboard(tostring(game.JobId)); WindUI:Notify({Title="Copiado", Content="JobID copiado", Duration=2}) end}); GU2:Space({Size=8})
 GU2:Button({Title="Copiar Link del Juego", Icon="link", Justify="Center", Callback=function() setclipboard("https://www.roblox.com/games/"..tostring(game.PlaceId)); WindUI:Notify({Title="Copiado", Content="Link copiado", Duration=2}) end})
 GameTab:Space({Size=10})
-
 GameTab:Section({Title="📦 Scripts Universales", TextSize=18}); GameTab:Space({Size=6})
 local GScr = GameTab:Section({Title="", Box=true, BoxBorder=true, Opened=true})
 GScr:Button({Title="Infinite Yield (Admin Universal)", Desc="Ejecutar", Icon="play", Justify="Left", Callback=function()
@@ -1053,22 +1125,22 @@ local SR6=EscudosTab:Group({})
 SR6:Toggle({Title="No Empuje", Def=Get("NoPushEnabled", false), Callback=function(s) NoPushEnabled=s end}); SR6:Space({Size=8})
 SR6:Toggle({Title="No Retroceso", Def=Get("NoKnockbackEnabled", false), Callback=function(s) NoKnockbackEnabled=s end})
 
--- 8. CONFIGURACIÓN
-local ConfigTab = Window:Tab({Title="Configuración", Icon="settings"})
-ConfigTab:Section({Title="Ajustes del Menú", TextSize=20}); ConfigTab:Space({Size=6})
-local C1=ConfigTab:Group({})
-C1:Button({Title="Cerrar Menú", Icon="x", Justify="Center", Callback=function() Window:Close() end}); C1:Space({Size=8})
-C1:Button({Title="Reiniciar", Icon="refresh-cw", Justify="Center", Callback=function() if Character then Humanoid.Health=0 end end})
-ConfigTab:Space({Size=8})
-local C2=ConfigTab:Group({})
-C2:Button({Title="Copiar UserID", Icon="clipboard", Justify="Center", Callback=function() setclipboard(tostring(UserId)); WindUI:Notify({Title="Copiado", Content="UserID copiado", Duration=2}) end}); C2:Space({Size=8})
-C2:Button({Title="Copiar Username", Icon="clipboard", Justify="Center", Callback=function() setclipboard("@"..PlayerName); WindUI:Notify({Title="Copiado", Content="Username copiado", Duration=2}) end})
-ConfigTab:Space({Size=12})
-ConfigTab:Section({Title="Guardado (Auto-Guardado cada 10s)", TextSize=18}); ConfigTab:Space({Size=6})
-local CFGRow=ConfigTab:Group({})
-CFGRow:Button({Title="Guardar Configuración", Icon="save", Justify="Center", Callback=function() GuardarConfiguracion(false) end})
-CFGRow:Space({Size=8})
-CFGRow:Button({Title="Cargar Configuración", Icon="refresh-cw", Justify="Center", Callback=function() CargarConfiguracion(); AplicarConfiguracion(); WindUI:Notify({Title="Configuración", Content="Aplicada", Duration=2}) end})
+-- 8. KILL AURA Y AIMBOT (reemplaza a Configuración)
+local KATab = Window:Tab({Title="Kill Aura y Aimbot", Icon="sword"})
+KATab:Section({Title="🎯 Aimbot", TextSize=20}); KATab:Space({Size=6})
+local AimbotSec = KATab:Section({Title="", Box=true, BoxBorder=true, Opened=true})
+AimbotSec:Toggle({Title="Activar Aimbot", Def=Get("AimbotEnabled", false), Callback=SetAimbot}); AimbotSec:Space({Size=6})
+AimbotSec:Slider({Title="Distancia Máxima", Step=10, Value={Min=10,Max=1000,Default=Get("AimbotRange",200)}, Callback=function(v) AimbotRange=v end}); AimbotSec:Space({Size=6})
+AimbotSec:Dropdown({Title="Parte a Apuntar", Values={"Head","UpperTorso","Torso","HumanoidRootPart"}, Value=1, Callback=function(s) AimbotPartName=s end})
+AimbotSec:Space({Size=6})
+AimbotSec:Toggle({Title="Team Check (no apuntar aliados)", Def=Get("TeamCheckEnabled", false), Callback=function(s) TeamCheckEnabled=s end})
+KATab:Space({Size=10})
+KATab:Section({Title="⚔️ Kill Aura", TextSize=20}); KATab:Space({Size=6})
+local KASec = KATab:Section({Title="", Box=true, BoxBorder=true, Opened=true})
+KASec:Toggle({Title="Activar Kill Aura", Def=Get("KillAuraEnabled", false), Callback=SetKillAura}); KASec:Space({Size=6})
+KASec:Slider({Title="Rango de Ataque", Step=1, Value={Min=3,Max=100,Default=Get("KillAuraRange",15)}, Callback=function(v) KillAuraRange=v end}); KASec:Space({Size=8})
+KASec:Paragraph({Title="Nota", Desc="Equipa un arma/tool para que el Kill Aura funcione. Ataca automáticamente al jugador más cercano dentro del rango.", Image="info", ImageSize=14})
+KATab:Space({Size=12})
 
 -- 9. HERRAMIENTAS
 local H = Window:Tab({Title="Herramientas", Icon="wrench"})
@@ -1267,4 +1339,4 @@ end)
 
 AplicarConfiguracion()
 
-WindUI:Notify({Title="DENJI•ALEX", Content="v11: Pestaña Terget + Funciones en Game", Duration=4})
+WindUI:Notify({Title="DENJI•ALEX", Content="v12: Target fix + Kill Aura y Aimbot", Duration=4})
