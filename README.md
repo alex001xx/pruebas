@@ -6,45 +6,57 @@ local StarterGui = game:GetService("StarterGui")
 local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 local PlayerName, DisplayName, UserId = LocalPlayer.Name, LocalPlayer.DisplayName, LocalPlayer.UserId
-local AntiAFKEnabled, NoFrictionEnabled, NoPushEnabled, NoKnockbackEnabled = false, false, false, false
-local AntiFreezeEnabled, AntiCameraEnabled = false, false
-local FlyEnabled, FlySpeed = false, 60
-local FlyConn, FlyVel, FlyGyro, NoclipEnabled, NoclipConn = nil, nil, nil, false, nil
-local ESPEnabled, ESPConn, FullbrightEnabled, AutoRejoinEnabled = false, nil, false, false
-local AntiVoidEnabled, AntiRagdollEnabled, InfJumpEnabled, InfJumpConn = false, false, false, nil
-local FpsBoostEnabled = false
-local LastSafePos = Vector3.new(0,10,0)
-local SpawnCFrame = CFrame.new()
-local SpectateName, TPPlayerName, SpectateDropdown, TPPlayerDropdown, CoordsParagraph = nil, nil, nil, nil, nil
-local GodModeEnabled, ClickTPEnabled, AutoJumpEnabled, WalkOnWaterEnabled = false, false, false, false
-local FollowPlayerEnabled, SpinBotEnabled, FreezePositionEnabled, InstantRespawnEnabled = false, false, false, false
-local FallSpeedCap, SavedPosition, CoordsText, ClickTPConn, SpinConn = 200, nil, "", nil, nil
-local AutoWalkEnabled, AutoWalkConn = false, nil
-local TPWalkEnabled, TPWalkSpeed, TPWalkConn = false, 0.30, nil
-local ChatSpamEnabled, DanceSpamEnabled, RainbowEnabled, DrunkCamEnabled = false, false, false, false
-local PlayDeadEnabled, ChatEchoEnabled, BigHeadEnabled, ScreenShakeEnabled = false, false, false, false
-local SpamText, MorphName, MorphDropdown, RainbowConn = "Hola! :D", nil, nil, nil
-local EchoConns, EchoPlayerAddedConn, ChatSpamKill, DanceKill, OriginalHeadSize = {}, nil, false, false, nil
-local InvisibleEnabled = false
-local AutoClickerEnabled, AutoClickerCPS = false, 10
-local NoFallDamageEnabled, NoFallConn = false, nil
-local AntiAFKConn = nil
-local TargetName = nil
-local TargetDropdown, GameTargetDropdown, TargetInfoParagraph = nil, nil, nil
+AntiAFKEnabled, NoFrictionEnabled, NoPushEnabled, NoKnockbackEnabled = false, false, false, false
+FlyEnabled, FlySpeed = false, 60
+FlyConn, FlyVel, FlyGyro, NoclipEnabled, NoclipConn = nil, nil, nil, false, nil
+ESPEnabled, ESPConn, FullbrightEnabled, AutoRejoinEnabled = false, nil, false, false
+AntiVoidEnabled, AntiRagdollEnabled, InfJumpEnabled, InfJumpConn = false, false, false, nil
+FpsBoostEnabled = false
+LastSafePos = Vector3.new(0,10,0)
+SpawnCFrame = CFrame.new()
+SpectateName, TPPlayerName, SpectateDropdown, TPPlayerDropdown, CoordsParagraph = nil, nil, nil, nil, nil
+GodModeEnabled, ClickTPEnabled, AutoJumpEnabled, WalkOnWaterEnabled = false, false, false, false
+FollowPlayerEnabled, SpinBotEnabled, FreezePositionEnabled, InstantRespawnEnabled = false, false, false, false
+FallSpeedCap, SavedPosition, CoordsText, ClickTPConn, SpinConn = 200, nil, "", nil, nil
+AutoWalkEnabled, AutoWalkConn = false, nil
+TPWalkEnabled, TPWalkSpeed, TPWalkConn = false, 0.30, nil
+ChatSpamEnabled, DanceSpamEnabled, RainbowEnabled, DrunkCamEnabled = false, false, false, false
+PlayDeadEnabled, ChatEchoEnabled, BigHeadEnabled, ScreenShakeEnabled = false, false, false, false
+SpamText, MorphName, MorphDropdown, RainbowConn = "Hola! :D", nil, nil, nil
+EchoConns, EchoPlayerAddedConn, ChatSpamKill, DanceKill, OriginalHeadSize = {}, nil, false, false, nil
+InvisibleEnabled = false
+AutoClickerEnabled, AutoClickerCPS = false, 10
+NoFallDamageEnabled, NoFallConn = false, nil
+AntiAFKConn = nil
 local Lighting = game:GetService("Lighting")
 local OriginalLight = {ClockTime=Lighting.ClockTime, Brightness=Lighting.Brightness, Ambient=Lighting.Ambient, OutdoorAmbient=Lighting.OutdoorAmbient, FogEnd=Lighting.FogEnd, GlobalShadows=Lighting.GlobalShadows, ExposureCompensation=Lighting.ExposureCompensation}
 local GameSettings = UserSettings().GameSettings
 local OriginalQuality = Enum.SavedQualitySetting.Automatic
 pcall(function() OriginalQuality = GameSettings.SavedQualityLevel end)
 
+-- ⚔️ ATAQUE RÁPIDO
 local FlashAttackEnabled = false
 local FlashMultiplier = 5
 local FlashConn = nil
 
+-- 🛡️ SIT PROTECTOR (Escudo)
 local SitProtectorEnabled = false
 local SitConexiones = {}
 local SitEstadosOriginales = {}
 local SitGui = nil
+
+-- 🛡️ NUEVOS ESCUDOS REALES (antes no hacían nada)
+local AntiKickEnabled, AntiResetEnabled, AntiSitEnabled = false, false, false
+local AntiFlingEnabled, AntiFreezeEnabled, AntiReportEnabled = false, false, false
+local AntiKickHooked = false
+local OldNameCall = nil
+
+-- 🎯 MODULO TARGET (integrado a WindUI)
+local TargetToggles = {Fling=false, View=false, Focus=false, Bang=false, HeadSit=false, Stand=false, Backpack=false, Doggy=false, Drag=false}
+local TargetedPlayerName = nil
+local TargetWhitelist = {}
+local TargetLoopConn = nil
+TargetDropdown, TargetInfoParagraph, TargetAvatarImg, TargetNameInput = nil, nil, nil, nil
 
 local Character, Humanoid, RootPart
 local function UpdateChar()
@@ -74,6 +86,7 @@ local function TeleportToCoords(text)
     else WindUI:Notify({Title="Error", Content="Formato: X, Y, Z", Duration=3}) end
 end
 
+-- FLY
 local function EnsureFlyMovers()
     if not RootPart then return false end
     if not RootPart:FindFirstChild("WindFlyVel") then
@@ -129,6 +142,7 @@ local function SetInfJump(state)
         end) end
     else if InfJumpConn then InfJumpConn:Disconnect(); InfJumpConn=nil end end
 end
+-- TPWALK (bypass MoveDirection) integrado a WindUI
 local function SetTPWalk(s)
     TPWalkEnabled = s
     if s then
@@ -149,6 +163,7 @@ local function SetTPWalk(s)
     end
 end
 
+-- ⚔️ FUNCIÓN ATAQUE RÁPIDO
 local function SetFlashAttack(s)
     FlashAttackEnabled = s
     if s then
@@ -158,11 +173,15 @@ local function SetFlashAttack(s)
                 local tool = Character:FindFirstChildWhichIsA("Tool")
                 if not tool then return end
                 pcall(function()
-                    for _ = 1, FlashMultiplier do tool:Activate() end
+                    for _ = 1, FlashMultiplier do
+                        tool:Activate()
+                    end
                     for _, v in pairs(tool:GetDescendants()) do
                         if v:IsA("NumberValue") or v:IsA("IntValue") then
                             local name = v.Name:lower()
-                            if name:find("cooldown") or name:find("delay") or name:find("rate") or name:find("time") then v.Value = 0 end
+                            if name:find("cooldown") or name:find("delay") or name:find("rate") or name:find("time") then
+                                v.Value = 0
+                            end
                         end
                     end
                 end)
@@ -173,22 +192,27 @@ local function SetFlashAttack(s)
     end
 end
 
+-- 🛡️ FUNCIÓN SIT PROTECTOR (Escudo)
 local function GuardarEstadosOriginalesSit(Personaje)
     if not Personaje then return end
     local Hum = Personaje:FindFirstChildWhichIsA("Humanoid")
     if not Hum then return end
     SitEstadosOriginales = {
-        Sit = false, PlatformStand = false, AutoRotate = true,
+        Sit = false,
+        PlatformStand = false,
+        AutoRotate = true,
         Seated = Hum:GetStateEnabled(Enum.HumanoidStateType.Seated),
         FallingDown = Hum:GetStateEnabled(Enum.HumanoidStateType.FallingDown),
         Ragdoll = Hum:GetStateEnabled(Enum.HumanoidStateType.Ragdoll),
         PlatformStanding = Hum:GetStateEnabled(Enum.HumanoidStateType.PlatformStanding),
     }
 end
+
 local function RestaurarTodoNormalSit()
     local Pj = LocalPlayer.Character
     if not Pj then return end
     local Hum = Pj:FindFirstChildWhichIsA("Humanoid")
+    local Raiz = Pj:FindFirstChild("HumanoidRootPart")
     if not Hum then return end
     Hum.Sit = SitEstadosOriginales.Sit
     Hum.PlatformStand = SitEstadosOriginales.PlatformStand
@@ -198,49 +222,74 @@ local function RestaurarTodoNormalSit()
     Hum:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, SitEstadosOriginales.Ragdoll)
     Hum:SetStateEnabled(Enum.HumanoidStateType.PlatformStanding, SitEstadosOriginales.PlatformStanding)
 end
+
 local function CrearSitGui()
     if SitGui then return end
     local Gui = Instance.new("ScreenGui")
-    Gui.Name = "SitProtector"; Gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
-    Gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling; Gui.ResetOnSpawn = false
+    Gui.Name = "SitProtector"
+    Gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+    Gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    Gui.ResetOnSpawn = false
+
     local Marco = Instance.new("Frame")
-    Marco.Size = UDim2.new(0, 120, 0, 55); Marco.Position = UDim2.new(0.02, 0, 0.02, 0)
-    Marco.BackgroundColor3 = Color3.fromRGB(250, 235, 170); Marco.BorderColor3 = Color3.fromRGB(245, 210, 90)
-    Marco.BorderSizePixel = 2; Marco.Active = true; Marco.Draggable = true; Marco.Parent = Gui
+    Marco.Size = UDim2.new(0, 120, 0, 55)
+    Marco.Position = UDim2.new(0.02, 0, 0.02, 0)
+    Marco.BackgroundColor3 = Color3.fromRGB(250, 235, 170)
+    Marco.BorderColor3 = Color3.fromRGB(245, 210, 90)
+    Marco.BorderSizePixel = 2
+    Marco.Active = true
+    Marco.Draggable = true
+    Marco.Parent = Gui
+
     local Boton = Instance.new("TextButton")
-    Boton.Size = UDim2.new(0, 90, 0, 35); Boton.Position = UDim2.new(0.5, -45, 0.5, -17)
-    Boton.BackgroundColor3 = Color3.fromRGB(245, 210, 90); Boton.TextColor3 = Color3.fromRGB(70, 60, 40)
-    Boton.Font = Enum.Font.GothamBold; Boton.TextSize = 12; Boton.Text = "OFF"
-    Boton.AutoLocalize = false; Boton.Parent = Marco
+    Boton.Size = UDim2.new(0, 90, 0, 35)
+    Boton.Position = UDim2.new(0.5, -45, 0.5, -17)
+    Boton.BackgroundColor3 = Color3.fromRGB(245, 210, 90)
+    Boton.TextColor3 = Color3.fromRGB(70, 60, 40)
+    Boton.Font = Enum.Font.GothamBold
+    Boton.TextSize = 12
+    Boton.Text = "OFF"
+    Boton.AutoLocalize = false
+    Boton.Parent = Marco
+
     SitGui = {Gui=Gui, Marco=Marco, Boton=Boton}
 end
+
 local function SetSitProtector(s)
     if s and SitProtectorEnabled then return end
     SitProtectorEnabled = s
     CrearSitGui()
+
     if s then
         SitGui.Boton.Text = "ON"
         SitGui.Boton.BackgroundColor3 = Color3.fromRGB(170, 245, 180)
         GuardarEstadosOriginalesSit(LocalPlayer.Character)
+
         SitConexiones.Bucle = RunService.Heartbeat:Connect(function()
             local Pj = LocalPlayer.Character
             if not Pj then return end
             local Hum = Pj:FindFirstChildWhichIsA("Humanoid")
             local Raiz = Pj:FindFirstChild("HumanoidRootPart")
             if not Hum or not Raiz then return end
+
             Hum.Sit = true
             Hum:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
             Hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
             Hum:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
             Hum:SetStateEnabled(Enum.HumanoidStateType.PlatformStanding, false)
-            Hum.AutoRotate = true; Hum.PlatformStand = false
+            Hum.AutoRotate = true
+            Hum.PlatformStand = false
+
             if math.abs(Raiz.RotVelocity.Y) > 8 then
                 Raiz.RotVelocity = Vector3.new(0, math.sign(Raiz.RotVelocity.Y) * 8, 0)
             end
+
             for _, Pieza in Pj:GetChildren() do
                 if Pieza:IsA("Weld") or Pieza:IsA("WeldConstraint") or Pieza:IsA("Motor6D") then
                     if Pieza.Name ~= "RootJoint" and Pieza.Name ~= "Neck" and Pieza.Name ~= "Waist"
-                    and not Pieza:FindFirstAncestorWhichIsA("Tool") then Pieza:Destroy() end
+                    and not Pieza:FindFirstAncestorWhichIsA("Tool") then
+                        Pieza:Destroy()
+                    end
                 end
             end
         end)
@@ -249,13 +298,19 @@ local function SetSitProtector(s)
             SitGui.Boton.Text = "OFF"
             SitGui.Boton.BackgroundColor3 = Color3.fromRGB(245, 210, 90)
         end
-        if SitConexiones.Bucle then SitConexiones.Bucle:Disconnect(); SitConexiones.Bucle = nil end
+        if SitConexiones.Bucle then
+            SitConexiones.Bucle:Disconnect()
+            SitConexiones.Bucle = nil
+        end
         RestaurarTodoNormalSit()
     end
 end
+
 LocalPlayer.CharacterAdded:Connect(function()
     task.wait(0.2)
-    if SitGui and SitProtectorEnabled then SitGui.Gui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
+    if SitGui and SitProtectorEnabled then
+        SitGui.Gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+    end
 end)
 
 local function SetESP(state)
@@ -468,6 +523,7 @@ local function MorphAsPlayer()
     end)
 end
 
+-- 🖱️ AUTO-CLICKER UNIVERSAL
 local function SetAutoClicker(s)
     AutoClickerEnabled = s
     if s then
@@ -486,6 +542,7 @@ local function SetAutoClicker(s)
     end
 end
 
+-- 🛡️ NO FALL DAMAGE (universal)
 local function SetNoFallDamage(s)
     NoFallDamageEnabled = s
     if s then
@@ -508,6 +565,7 @@ LocalPlayer.CharacterAdded:Connect(function()
     end
 end)
 
+-- 💤 ANTI-AFK REAL (universal)
 local function SetAntiAFK(s)
     AntiAFKEnabled = s
     if s then
@@ -525,126 +583,135 @@ local function SetAntiAFK(s)
     end
 end
 
+-- 📌 TP ALL TO ME (universal, si tienes ownership de red)
 local function TPAllToMe()
     if not RootPart then return end
     local count = 0
     for _, p in ipairs(Players:GetPlayers()) do
         if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-            pcall(function() p.Character.HumanoidRootPart.CFrame = RootPart.CFrame * CFrame.new(math.random(-6,6), 0, math.random(-6,6)) end)
+            pcall(function()
+                p.Character.HumanoidRootPart.CFrame = RootPart.CFrame * CFrame.new(math.random(-6,6), 0, math.random(-6,6))
+            end)
             count = count + 1
         end
     end
     WindUI:Notify({Title="TP All", Content="Teleportados "..count.." jugadores a ti", Duration=3})
 end
 
--- 🎯 FUNCIONES DE TARGET (objetivo/jugador)
-local function ValidTarget()
-    if not TargetName or TargetName=="" or TargetName=="No hay jugadores" then return nil end
-    return Players:FindFirstChild(TargetName)
-end
-local function FocusTarget()
-    local t = ValidTarget()
-    if not t then WindUI:Notify({Title="Target", Content="Selecciona un jugador", Duration=2}); return end
-    if t.Character and t.Character:FindFirstChild("Humanoid") then
-        pcall(function() workspace.CurrentCamera.CameraSubject = t.Character.Humanoid end)
-        WindUI:Notify({Title="Focus", Content="Cámara en "..TargetName, Duration=2})
-    else WindUI:Notify({Title="Error", Content="Target no disponible", Duration=2}) end
-end
-local function StopFocus()
-    pcall(function() workspace.CurrentCamera.CameraSubject = Humanoid end)
-    WindUI:Notify({Title="Focus", Content="Detenido", Duration=2})
-end
-local function TPToTarget()
-    local t = ValidTarget()
-    if not t then WindUI:Notify({Title="TP", Content="Selecciona un jugador", Duration=2}); return end
-    if t.Character and t.Character:FindFirstChild("HumanoidRootPart") and RootPart then
-        RootPart.CFrame = t.Character.HumanoidRootPart.CFrame * CFrame.new(0,0,4)
-        WindUI:Notify({Title="TP", Content="A "..TargetName, Duration=2})
-    else WindUI:Notify({Title="Error", Content="Target no disponible", Duration=2}) end
-end
-local function BringTarget()
-    local t = ValidTarget()
-    if not t then WindUI:Notify({Title="Bring", Content="Selecciona un jugador", Duration=2}); return end
-    if t.Character and t.Character:FindFirstChild("HumanoidRootPart") and RootPart then
-        pcall(function() t.Character.HumanoidRootPart.CFrame = RootPart.CFrame * CFrame.new(0,0,3) end)
-        WindUI:Notify({Title="Bring", Content=TargetName.." traído a ti", Duration=2})
-    else WindUI:Notify({Title="Error", Content="Target no disponible", Duration=2}) end
-end
-local function FreezeTarget(anchor)
-    local t = ValidTarget()
-    if t and t.Character then
-        local hrp = t.Character:FindFirstChild("HumanoidRootPart")
-        if hrp then
-            pcall(function() hrp.Anchored = anchor end)
-            WindUI:Notify({Title="Target", Content=anchor and "Congelado" or "Descongelado", Duration=2})
-            return
+-- ============================================================
+-- 🛡️ NUEVOS ESCUDOS REALES (antes la pestaña no hacía NADA)
+-- ============================================================
+local function SetAntiKick(s)
+    AntiKickEnabled = s
+    if s and not AntiKickHooked then
+        local hooked = false
+        -- Intento 1: hook de namecall (bloquea Kick llamado por scripts locales)
+        pcall(function()
+            if getrawmetatable and newcclosure and setreadonly and getnamecallmethod then
+                local mt = getrawmetatable(game)
+                OldNameCall = mt.__namecall
+                setreadonly(mt, false)
+                mt.__namecall = newcclosure(function(self, ...)
+                    local method = getnamecallmethod()
+                    if AntiKickEnabled and method == "Kick" then
+                        return nil
+                    end
+                    return OldNameCall(self, ...)
+                end)
+                setreadonly(mt, true)
+                hooked = true
+            end
+        end)
+        -- Intento 2: hookfunction directo sobre el método Kick
+        if not hooked then
+            pcall(function()
+                if hookfunction and LocalPlayer and LocalPlayer.Kick then
+                    local replacement = (newcclosure and newcclosure(function() end)) or function() end
+                    hookfunction(LocalPlayer.Kick, replacement)
+                    hooked = true
+                end
+            end)
+        end
+        AntiKickHooked = hooked
+        if not hooked then
+            WindUI:Notify({Title="Anti-Kick", Content="Tu executor no soporta el hook. Solo sirve contra kicks locales.", Duration=5})
+        else
+            WindUI:Notify({Title="Anti-Kick", Content="Hook activado (bloquea kicks locales).", Duration=3})
         end
     end
-    WindUI:Notify({Title="Error", Content="Target no disponible", Duration=2})
-end
-local function RefreshTargetDropdowns()
-    pcall(function() if TargetDropdown then TargetDropdown:Refresh(GetPlayerNames(false)) end end)
-    pcall(function() if GameTargetDropdown then GameTargetDropdown:Refresh(GetPlayerNames(false)) end end)
-    pcall(function() if SpectateDropdown then SpectateDropdown:Refresh(GetPlayerNames(true)) end end)
-    pcall(function() if TPPlayerDropdown then TPPlayerDropdown:Refresh(GetPlayerNames(false)) end end)
-    pcall(function() if MorphDropdown then MorphDropdown:Refresh(GetPlayerNames(false)) end end)
-    WindUI:Notify({Title="Listas", Content="Jugadores recargados", Duration=2})
+    -- Si se desactiva, la flag simplemente deja de bloquear.
 end
 
--- 🎯 TARGET MODULE AVANZADO (modulo autonomo — SystemBroken, adaptacion universal)
-task.spawn(function()
-pcall(function()
-    local old = game:GetService("CoreGui"):FindFirstChild("TargetSection_Universal")
-    if old then old:Destroy() end
-    if _G.TargetUniversalConn then
-        for _, c in ipairs(_G.TargetUniversalConn) do pcall(function() c:Disconnect() end) end
+local function SetAntiReset(s)
+    AntiResetEnabled = s
+    if s then
+        pcall(function() StarterGui:SetCore("ResetButtonCallback", false) end)
+    else
+        pcall(function() StarterGui:SetCore("ResetButtonCallback", function()
+            if Humanoid then Humanoid.Health = 0 end
+        end) end)
     end
-    _G.TargetUniversalConn = {}
-end)
+end
 
-local T_Players = game:GetService("Players")
-local T_plr = T_Players.LocalPlayer
+local function SetAntiSit(s)
+    AntiSitEnabled = s
+    if not s and Humanoid then
+        pcall(function() Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, true) end)
+    end
+end
 
-local TargetModule = {}
-TargetModule.Enabled = true
-TargetModule.TargetedPlayer = nil
-TargetModule.Whitelist = {}
+local function SetAntiFling(s)
+    AntiFlingEnabled = s
+end
 
-local function T_safe(fn) local s, r = pcall(fn); return s and r or nil end
-local function T_GetPing()
-    return T_safe(function()
-        return (game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue())/1000
+local function SetAntiFreeze(s)
+    AntiFreezeEnabled = s
+end
+
+local function SetAntiReport(s)
+    AntiReportEnabled = s
+    pcall(function() StarterGui:SetCore("ReportAbusePageEnabled", not s) end)
+end
+
+-- ============================================================
+-- 🎯 FUNCIONES DEL MODULO TARGET (integradas)
+-- ============================================================
+local function TargetSafe(fn) local st, r = pcall(fn); return st and r or nil end
+
+local function TargetGetPing()
+    return TargetSafe(function()
+        return (game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue()) / 1000
     end) or 0.1
 end
-local function T_GetPlayer(str)
-    if not str or str == "" then return nil end
-    str = str:lower()
-    for _, v in ipairs(T_Players:GetPlayers()) do
-        if v.Name:lower():match(str) or v.DisplayName:lower():match(str) then return v end
-    end
-    return nil
-end
-local function T_GetRoot(p)
-    return T_safe(function()
-        local c = p.Character
+
+local function TargetGetRoot(p)
+    return TargetSafe(function()
+        local c = p and p.Character
         if c and c:FindFirstChild("HumanoidRootPart") then return c.HumanoidRootPart end
     end)
 end
-local function T_TeleportTo(target)
-    T_safe(function()
-        local r = T_GetRoot(T_plr); local t = T_GetRoot(target)
+
+local function TargetCurrent()
+    if not TargetedPlayerName then return nil end
+    return Players:FindFirstChild(TargetedPlayerName)
+end
+
+local function TargetTeleportTo(target)
+    TargetSafe(function()
+        local r = TargetGetRoot(LocalPlayer); local t = TargetGetRoot(target)
         if r and t then
             r.Velocity = Vector3.new(0,0,0)
             r.CFrame = CFrame.new(t.Position) + Vector3.new(0,2,0)
         end
     end)
 end
-local function T_PredictionTP(target)
-    T_safe(function()
-        local r = T_GetRoot(T_plr); local t = T_GetRoot(target)
+
+local function TargetPredictionTP(target)
+    TargetSafe(function()
+        local r = TargetGetRoot(LocalPlayer); local t = TargetGetRoot(target)
         if not r or not t then return end
         local pos, vel = t.Position, t.Velocity
-        local ping = T_GetPing()
+        local ping = TargetGetPing()
         r.CFrame = CFrame.new(
             pos.X + vel.X * ping * 3.5,
             pos.Y + vel.Y * ping * 2,
@@ -652,391 +719,207 @@ local function T_PredictionTP(target)
         )
     end)
 end
-local function T_Push(target)
-    T_safe(function()
-        local r = T_GetRoot(T_plr); local t = T_GetRoot(target)
+
+local function TargetPush(target)
+    TargetSafe(function()
+        local r = TargetGetRoot(LocalPlayer); local t = TargetGetRoot(target)
         if r and t then
             t.Velocity = (t.Position - r.Position).Unit * 100 + Vector3.new(0,50,0)
         end
     end)
 end
-local function T_PlayAnim(id, time, speed)
-    T_safe(function()
-        local c = T_plr.Character; if not c then return end
+
+local function TargetPlayAnim(id, time, speed)
+    TargetSafe(function()
+        local c = LocalPlayer.Character; if not c then return end
         local h = c:FindFirstChildOfClass("Humanoid"); if not h then return end
         local a = Instance.new("Animation"); a.AnimationId = "rbxassetid://"..id
-        local t = h:LoadAnimation(a); t:Play(); t.TimePosition = time; t:AdjustSpeed(speed)
+        local tr = h:LoadAnimation(a); tr:Play(); tr.TimePosition = time; tr:AdjustSpeed(speed)
     end)
 end
-local function T_StopAnim()
-    T_safe(function()
-        local c = T_plr.Character; if not c then return end
+
+local function TargetStopAnim()
+    TargetSafe(function()
+        local c = LocalPlayer.Character; if not c then return end
         local h = c:FindFirstChildOfClass("Humanoid"); if not h then return end
-        for _, t in ipairs(h:GetPlayingAnimationTracks()) do t:Stop() end
-    end)
-end
-local function T_Notify(title, msg, dur)
-    T_safe(function()
-        game:GetService("StarterGui"):SetCore("SendNotification", {
-            Title = title, Text = msg, Duration = dur or 4
-        })
+        for _, tr in ipairs(h:GetPlayingAnimationTracks()) do tr:Stop() end
     end)
 end
 
-local T_Toggles = {
-    Fling=false, View=false, Focus=false, Bang=false,
-    HeadSit=false, Stand=false, Backpack=false, Doggy=false, Drag=false
-}
-
-local function T_AddLed(btn, color)
-    local led = Instance.new("ImageLabel")
-    led.Name = "Led"; led.Parent = btn
-    led.BackgroundTransparency = 1
-    led.Size = UDim2.new(0,18,0,18)
-    led.Position = UDim2.new(1,-22,0.5,-9)
-    led.Image = "rbxassetid://3926305904"
-    led.ImageRectOffset = Vector2.new(424,4)
-    led.ImageRectSize = Vector2.new(36,36)
-    led.ImageColor3 = color or Color3.fromRGB(255,50,50)
-    return led
-end
-local function T_SetLed(btn, on)
-    if btn:FindFirstChild("Led") then
-        btn.Led.ImageColor3 = on and Color3.fromRGB(50,255,100) or Color3.fromRGB(255,50,50)
-    end
-end
-
-local Screen = Instance.new("ScreenGui")
-Screen.Name = "TargetSection_Universal"
-Screen.ResetOnSpawn = false
-Screen.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-T_safe(function() Screen.Parent = game:GetService("CoreGui") end)
-
-local Frame = Instance.new("Frame")
-Frame.Name = "MainFrame"; Frame.Parent = Screen
-Frame.BackgroundColor3 = Color3.fromRGB(20,20,25)
-Frame.BorderSizePixel = 0
-Frame.Position = UDim2.new(0.5,-210,0.5,-200)
-Frame.Size = UDim2.new(0,420,0,400)
-Frame.Active = true; Frame.Draggable = true
-
-local Corner = Instance.new("UICorner"); Corner.CornerRadius = UDim.new(0,8); Corner.Parent = Frame
-local Stroke = Instance.new("UIStroke"); Stroke.Color = Color3.fromRGB(0,200,255); Stroke.Thickness = 1.5; Stroke.Parent = Frame
-
-local Title = Instance.new("TextLabel")
-Title.Parent = Frame
-Title.BackgroundColor3 = Color3.fromRGB(0,150,200)
-Title.Size = UDim2.new(1,0,0,34)
-Title.Font = Enum.Font.GothamBold
-Title.Text = "  TARGET MODULE — UNIVERSAL"
-Title.TextColor3 = Color3.new(1,1,1)
-Title.TextSize = 14
-Title.TextXAlignment = Enum.TextXAlignment.Left
-local TC = Instance.new("UICorner"); TC.CornerRadius = UDim.new(0,8); TC.Parent = Title
-
-local CloseBtn = Instance.new("TextButton")
-CloseBtn.Parent = Title
-CloseBtn.BackgroundTransparency = 1
-CloseBtn.Position = UDim2.new(1,-34,0,2)
-CloseBtn.Size = UDim2.new(0,30,0,30)
-CloseBtn.Font = Enum.Font.GothamBold
-CloseBtn.Text = "X"; CloseBtn.TextColor3 = Color3.new(1,1,1); CloseBtn.TextSize = 16
-CloseBtn.MouseButton1Click:Connect(function() Screen.Enabled = false end)
-
-local Avatar = Instance.new("ImageLabel")
-Avatar.Parent = Frame
-Avatar.BackgroundColor3 = Color3.fromRGB(35,35,45)
-Avatar.Position = UDim2.new(0,14,0,46)
-Avatar.Size = UDim2.new(0,90,0,90)
-Avatar.Image = "rbxassetid://10818605405"
-local AC = Instance.new("UICorner"); AC.CornerRadius = UDim.new(0,6); AC.Parent = Avatar
-
-local NameInput = Instance.new("TextBox")
-NameInput.Parent = Frame
-NameInput.BackgroundColor3 = Color3.fromRGB(35,35,45)
-NameInput.Position = UDim2.new(0,116,0,46)
-NameInput.Size = UDim2.new(0,285,0,32)
-NameInput.Font = Enum.Font.Gotham
-NameInput.PlaceholderText = "  @nombre o display..."
-NameInput.Text = ""
-NameInput.TextColor3 = Color3.fromRGB(0,220,255)
-NameInput.TextSize = 13
-NameInput.ClearTextOnFocus = false
-local NIC = Instance.new("UICorner"); NIC.CornerRadius = UDim.new(0,6); NIC.Parent = NameInput
-
-local ClickToolBtn = Instance.new("ImageButton")
-ClickToolBtn.Parent = NameInput
-ClickToolBtn.BackgroundTransparency = 1
-ClickToolBtn.Position = UDim2.new(1,-32,0,1)
-ClickToolBtn.Size = UDim2.new(0,30,0,30)
-ClickToolBtn.Image = "rbxassetid://2716591855"
-
-local InfoLabel = Instance.new("TextLabel")
-InfoLabel.Parent = Frame
-InfoLabel.BackgroundTransparency = 1
-InfoLabel.Position = UDim2.new(0,116,0,84)
-InfoLabel.Size = UDim2.new(0,285,0,52)
-InfoLabel.Font = Enum.Font.Gotham
-InfoLabel.Text = "UserID: —\nDisplay: —\nAccountAge: —"
-InfoLabel.TextColor3 = Color3.fromRGB(180,220,255)
-InfoLabel.TextSize = 12
-InfoLabel.TextXAlignment = Enum.TextXAlignment.Left
-InfoLabel.TextYAlignment = Enum.TextYAlignment.Top
-
-local Scroll = Instance.new("ScrollingFrame")
-Scroll.Parent = Frame
-Scroll.BackgroundTransparency = 1
-Scroll.Position = UDim2.new(0,10,0,146)
-Scroll.Size = UDim2.new(1,-20,1,-156)
-Scroll.CanvasSize = UDim2.new(0,0,0,420)
-Scroll.ScrollBarThickness = 4
-Scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-
-local Layout = Instance.new("UIGridLayout")
-Layout.Parent = Scroll
-Layout.CellSize = UDim2.new(0.5,-6,0,34)
-Layout.CellPadding = UDim2.new(0,6,0,6)
-Layout.SortOrder = Enum.SortOrder.LayoutOrder
-
-local function T_MakeBtn(text, order, isToggle)
-    local b = Instance.new("TextButton")
-    b.Parent = Scroll
-    b.LayoutOrder = order
-    b.BackgroundColor3 = Color3.fromRGB(35,35,50)
-    b.Font = Enum.Font.GothamSemibold
-    b.Text = "  "..text
-    b.TextColor3 = Color3.fromRGB(0,220,255)
-    b.TextSize = 12
-    b.TextXAlignment = Enum.TextXAlignment.Left
-    local c = Instance.new("UICorner"); c.CornerRadius = UDim.new(0,6); c.Parent = b
-    local s = Instance.new("UIStroke"); s.Color = Color3.fromRGB(0,150,200); s.Thickness = 1; s.Parent = b
-    if isToggle then T_AddLed(b) end
-    return b
-end
-
-local T_Btn = {
-    Fling     = T_MakeBtn("Lanzar (Fling)", 1, true),
-    View      = T_MakeBtn("Ver (Camera)", 2, true),
-    Focus     = T_MakeBtn("Enfocar", 3, true),
-    Bang      = T_MakeBtn("Bang / Pegar", 4, true),
-    HeadSit   = T_MakeBtn("Sentar en cabeza", 5, true),
-    Stand     = T_MakeBtn("Pararse junto", 6, true),
-    Backpack  = T_MakeBtn("Mochila", 7, true),
-    Doggy     = T_MakeBtn("Posicion baja", 8, true),
-    Drag      = T_MakeBtn("Arrastrar", 9, true),
-    Push      = T_MakeBtn("Empujar (1x)", 10, false),
-    Teleport  = T_MakeBtn("TP al objetivo", 11, false),
-    Whitelist = T_MakeBtn("Lista Blanca", 12, false),
-}
-
-local function T_UpdateTarget(p)
-    T_safe(function()
-        if p and table.find(TargetModule.Whitelist, p.UserId) then
-            T_Notify("Target", p.Name.." esta en lista blanca", 4); p = nil
-        end
-    end)
-    if p then
-        TargetModule.TargetedPlayer = p.Name
-        NameInput.Text = p.Name
-        InfoLabel.Text = string.format("UserID: %d\nDisplay: %s\nAccountAge: %d dias",
-            p.UserId, p.DisplayName, p.AccountAge)
-        T_safe(function()
-            Avatar.Image = T_Players:GetUserThumbnailAsync(p.UserId,
-                Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size420x420)
-        end)
-    else
-        TargetModule.TargetedPlayer = nil
-        NameInput.Text = ""
-        InfoLabel.Text = "UserID: —\nDisplay: —\nAccountAge: —"
-        Avatar.Image = "rbxassetid://10818605405"
-        for k in pairs(T_Toggles) do T_Toggles[k] = false; T_SetLed(T_Btn[k], false) end
-    end
-end
-
-local function T_CurrentTarget()
-    if not TargetModule.TargetedPlayer then return nil end
-    return T_Players:FindFirstChild(TargetModule.TargetedPlayer)
-end
-
-ClickToolBtn.MouseButton1Click:Connect(function()
-    T_safe(function()
-        local tool = Instance.new("Tool")
-        tool.Name = "TargetSelector"; tool.RequiresHandle = false
-        tool.TextureId = "rbxassetid://2716591855"
-        tool.Activated:Connect(function()
-            local m = T_plr:GetMouse(); local hit = m.Target
-            if not hit then return end
-            local model = hit.Parent:IsA("Model") and hit.Parent
-                or (hit.Parent:IsA("Accessory") and hit.Parent.Parent)
-            if model then
-                local p = T_Players:GetPlayerFromCharacter(model)
-                if p then T_UpdateTarget(p) end
-            end
-        end)
-        tool.Parent = T_plr.Backpack
-        T_Notify("Target", "Herramienta equipada: haz clic en un jugador", 3)
-    end)
-end)
-
-NameInput.FocusLost:Connect(function()
-    T_UpdateTarget(T_GetPlayer(NameInput.Text))
-end)
-
-local function T_BreakVel()
-    return T_safe(function()
+local function TargetBreakVel()
+    return TargetSafe(function()
         local b = Instance.new("BodyAngularVelocity")
         b.Name = "BreakVel"; b.MaxTorque = Vector3.new(5e4,5e4,5e4); b.P = 1250
         return b
     end)
 end
-local function T_CleanBreakVel()
-    T_safe(function()
-        local r = T_GetRoot(T_plr)
+
+local function TargetCleanBreakVel()
+    TargetSafe(function()
+        local r = TargetGetRoot(LocalPlayer)
         if r and r:FindFirstChild("BreakVel") then r.BreakVel:Destroy() end
     end)
 end
-local function T_LoopToggle(key, fn)
-    task.spawn(function()
-        while T_Toggles[key] and task.wait() do
-            T_safe(fn)
+
+local function TargetCleanup()
+    TargetCleanBreakVel()
+    TargetStopAnim()
+    TargetSafe(function()
+        if Humanoid then workspace.CurrentCamera.CameraSubject = Humanoid end
+    end)
+end
+
+local function TargetAnyActive()
+    for _, v in pairs(TargetToggles) do if v then return true end end
+    return false
+end
+
+local function TargetEnsureLoop()
+    if TargetLoopConn then return end
+    TargetLoopConn = RunService.Heartbeat:Connect(function()
+        if not TargetAnyActive() then return end
+        local t = TargetCurrent()
+        if not t then return end
+        local r = TargetGetRoot(LocalPlayer)
+        if not r then return end
+        local tr = TargetGetRoot(t)
+        local char = t.Character
+
+        if TargetToggles.Fling then
+            TargetPredictionTP(t)
         end
-        T_CleanBreakVel(); T_StopAnim()
-        T_safe(function() game.Workspace.CurrentCamera.CameraSubject = T_plr.Character.Humanoid end)
-    end)
-end
-local function T_Toggle(key, btn, fn)
-    btn.MouseButton1Click:Connect(function()
-        if not T_CurrentTarget() then T_Notify("Target", "Selecciona un objetivo primero", 3); return end
-        T_Toggles[key] = not T_Toggles[key]
-        T_SetLed(btn, T_Toggles[key])
-        if T_Toggles[key] then T_LoopToggle(key, fn) end
+        if TargetToggles.View then
+            local h = char and char:FindFirstChildOfClass("Humanoid")
+            if h then workspace.CurrentCamera.CameraSubject = h end
+        end
+        if TargetToggles.Focus then
+            TargetTeleportTo(t); TargetPush(t)
+        end
+        if TargetToggles.Bang then
+            TargetPlayAnim(5918726674, 0, 1)
+            if not r:FindFirstChild("BreakVel") then local bv = TargetBreakVel(); if bv then bv.Parent = r end end
+            if tr then r.CFrame = tr.CFrame * CFrame.new(0,0,1.1); r.Velocity = Vector3.new() end
+        end
+        if TargetToggles.HeadSit then
+            local head = char and char:FindFirstChild("Head")
+            if head then
+                if not r:FindFirstChild("BreakVel") then local bv = TargetBreakVel(); if bv then bv.Parent = r end end
+                if Humanoid then Humanoid.Sit = true end
+                r.CFrame = head.CFrame * CFrame.new(0,2,0); r.Velocity = Vector3.new()
+            end
+        end
+        if TargetToggles.Stand then
+            TargetPlayAnim(13823324057, 4, 0)
+            if not r:FindFirstChild("BreakVel") then local bv = TargetBreakVel(); if bv then bv.Parent = r end end
+            if tr then r.CFrame = tr.CFrame * CFrame.new(-3,1,0); r.Velocity = Vector3.new() end
+        end
+        if TargetToggles.Backpack then
+            if not r:FindFirstChild("BreakVel") then local bv = TargetBreakVel(); if bv then bv.Parent = r end end
+            if Humanoid then Humanoid.Sit = true end
+            if tr then r.CFrame = tr.CFrame * CFrame.new(0,0,1.2) * CFrame.Angles(0,-3,0); r.Velocity = Vector3.new() end
+        end
+        if TargetToggles.Doggy then
+            TargetPlayAnim(13694096724, 3.4, 0)
+            local torso = char and (char:FindFirstChild("LowerTorso") or char:FindFirstChild("Torso"))
+            if torso then
+                if not r:FindFirstChild("BreakVel") then local bv = TargetBreakVel(); if bv then bv.Parent = r end end
+                r.CFrame = torso.CFrame * CFrame.new(0,0.23,0); r.Velocity = Vector3.new()
+            end
+        end
+        if TargetToggles.Drag then
+            TargetPlayAnim(10714360343, 0.5, 0)
+            local hand = char and (char:FindFirstChild("RightHand") or char:FindFirstChild("Right Arm"))
+            if hand then
+                if not r:FindFirstChild("BreakVel") then local bv = TargetBreakVel(); if bv then bv.Parent = r end end
+                r.CFrame = hand.CFrame * CFrame.new(0,-2.5,1) * CFrame.Angles(-2,-3,0)
+                r.Velocity = Vector3.new()
+            end
+        end
     end)
 end
 
-T_Toggle("Fling", T_Btn.Fling, function()
-    local t = T_CurrentTarget(); if t then T_PredictionTP(t) end
-end)
-T_Toggle("View", T_Btn.View, function()
-    local t = T_CurrentTarget()
-    if t and t.Character and t.Character:FindFirstChildOfClass("Humanoid") then
-        game.Workspace.CurrentCamera.CameraSubject = t.Character:FindFirstChildOfClass("Humanoid")
-    end
-end)
-T_Toggle("Focus", T_Btn.Focus, function()
-    local t = T_CurrentTarget(); if t then T_TeleportTo(t); T_Push(t) end
-end)
-T_Toggle("Bang", T_Btn.Bang, function()
-    T_PlayAnim(5918726674, 0, 1)
-    local r = T_GetRoot(T_plr); local t = T_CurrentTarget()
-    if not r or not t then return end
-    if not r:FindFirstChild("BreakVel") then T_BreakVel().Parent = r end
-    local tr = T_GetRoot(t)
-    if tr then r.CFrame = tr.CFrame * CFrame.new(0,0,1.1); r.Velocity = Vector3.new() end
-end)
-T_Toggle("HeadSit", T_Btn.HeadSit, function()
-    local r = T_GetRoot(T_plr); local t = T_CurrentTarget()
-    if not r or not t or not t.Character then return end
-    local head = t.Character:FindFirstChild("Head")
-    if not head then return end
-    if not r:FindFirstChild("BreakVel") then T_BreakVel().Parent = r end
-    T_plr.Character:FindFirstChildOfClass("Humanoid").Sit = true
-    r.CFrame = head.CFrame * CFrame.new(0,2,0); r.Velocity = Vector3.new()
-end)
-T_Toggle("Stand", T_Btn.Stand, function()
-    T_PlayAnim(13823324057, 4, 0)
-    local r = T_GetRoot(T_plr); local t = T_CurrentTarget(); local tr = T_GetRoot(t)
-    if not r or not tr then return end
-    if not r:FindFirstChild("BreakVel") then T_BreakVel().Parent = r end
-    r.CFrame = tr.CFrame * CFrame.new(-3,1,0); r.Velocity = Vector3.new()
-end)
-T_Toggle("Backpack", T_Btn.Backpack, function()
-    local r = T_GetRoot(T_plr); local t = T_CurrentTarget(); local tr = T_GetRoot(t)
-    if not r or not tr then return end
-    if not r:FindFirstChild("BreakVel") then T_BreakVel().Parent = r end
-    T_plr.Character:FindFirstChildOfClass("Humanoid").Sit = true
-    r.CFrame = tr.CFrame * CFrame.new(0,0,1.2) * CFrame.Angles(0,-3,0)
-    r.Velocity = Vector3.new()
-end)
-T_Toggle("Doggy", T_Btn.Doggy, function()
-    T_PlayAnim(13694096724, 3.4, 0)
-    local r = T_GetRoot(T_plr); local t = T_CurrentTarget()
-    if not r or not t or not t.Character then return end
-    local torso = t.Character:FindFirstChild("LowerTorso") or t.Character:FindFirstChild("Torso")
-    if not torso then return end
-    if not r:FindFirstChild("BreakVel") then T_BreakVel().Parent = r end
-    r.CFrame = torso.CFrame * CFrame.new(0,0.23,0); r.Velocity = Vector3.new()
-end)
-T_Toggle("Drag", T_Btn.Drag, function()
-    T_PlayAnim(10714360343, 0.5, 0)
-    local r = T_GetRoot(T_plr); local t = T_CurrentTarget()
-    if not r or not t or not t.Character then return end
-    local hand = t.Character:FindFirstChild("RightHand") or t.Character:FindFirstChild("Right Arm")
-    if not hand then return end
-    if not r:FindFirstChild("BreakVel") then T_BreakVel().Parent = r end
-    r.CFrame = hand.CFrame * CFrame.new(0,-2.5,1) * CFrame.Angles(-2,-3,0)
-    r.Velocity = Vector3.new()
-end)
-
-T_Btn.Push.MouseButton1Click:Connect(function()
-    local t = T_CurrentTarget(); if not t then T_Notify("Target","Sin objetivo",3); return end
-    local r = T_GetRoot(T_plr); if not r then return end
-    local cf = r.CFrame
-    T_PredictionTP(t)
-    task.wait(T_GetPing()+0.05)
-    T_Push(t)
-    r.CFrame = cf
-end)
-T_Btn.Teleport.MouseButton1Click:Connect(function()
-    local t = T_CurrentTarget(); if t then T_TeleportTo(t) end
-end)
-T_Btn.Whitelist.MouseButton1Click:Connect(function()
-    local t = T_CurrentTarget(); if not t then return end
-    local id = t.UserId
-    local idx = table.find(TargetModule.Whitelist, id)
-    if idx then
-        table.remove(TargetModule.Whitelist, idx)
-        T_Notify("Target", t.Name.." ELIMINADO de whitelist", 4)
+local function TargetToggle(key, s)
+    TargetToggles[key] = s
+    if s then
+        if not TargetCurrent() then
+            WindUI:Notify({Title="Target", Content="Selecciona un objetivo primero", Duration=3})
+        end
+        TargetEnsureLoop()
     else
-        table.insert(TargetModule.Whitelist, id)
-        T_Notify("Target", t.Name.." AGREGADO a whitelist", 4)
+        if not TargetAnyActive() then TargetCleanup() end
     end
-end)
-
-table.insert(_G.TargetUniversalConn, T_Players.PlayerRemoving:Connect(function(p)
-    if p.Name == TargetModule.TargetedPlayer then
-        T_UpdateTarget(nil)
-        T_Notify("Target", "El objetivo salio del servidor", 4)
-    end
-end))
-
-function TargetModule:Open()  Screen.Enabled = true  end
-function TargetModule:Close() Screen.Enabled = false end
-function TargetModule:ToggleGUI() Screen.Enabled = not Screen.Enabled end
-function TargetModule:SetTarget(name) T_UpdateTarget(T_GetPlayer(name)) end
-function TargetModule:GetTarget() return T_CurrentTarget() end
-function TargetModule:Destroy()
-    for _, c in ipairs(_G.TargetUniversalConn or {}) do pcall(function() c:Disconnect() end) end
-    Screen:Destroy()
 end
 
-table.insert(_G.TargetUniversalConn, game:GetService("UserInputService").InputBegan:Connect(function(input, gp)
-    if gp then return end
-    if input.KeyCode == Enum.KeyCode.RightControl then TargetModule:ToggleGUI() end
-end))
+local function TargetUpdateInfo(p)
+    if TargetInfoParagraph and TargetInfoParagraph.SetDesc then
+        if p then
+            TargetInfoParagraph:SetDesc(string.format("UserID: %d\nDisplay: %s\nAccountAge: %d días",
+                p.UserId, p.DisplayName, p.AccountAge))
+        else
+            TargetInfoParagraph:SetDesc("UserID: —\nDisplay: —\nAccountAge: —")
+        end
+    end
+    if p and TargetAvatarImg then
+        pcall(function()
+            local thumb = Players:GetUserThumbnailAsync(p.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size150x150)
+            if TargetAvatarImg.SetImage then TargetAvatarImg:SetImage(thumb) end
+        end)
+    end
+end
 
-_G.TargetModule = TargetModule
-getgenv().TargetModule = TargetModule
+local function TargetSelect(name)
+    if not name or name == "" or name == "No hay jugadores" or name == "Nadie (detener)" then
+        TargetedPlayerName = nil
+        for k in pairs(TargetToggles) do TargetToggles[k] = false end
+        TargetCleanup()
+        TargetUpdateInfo(nil)
+        WindUI:Notify({Title="Target", Content="Objetivo limpiado", Duration=2})
+        return
+    end
+    local p = Players:FindFirstChild(name)
+    if not p then
+        -- intentar por display/parcial
+        local low = name:lower()
+        for _, v in ipairs(Players:GetPlayers()) do
+            if v ~= LocalPlayer and (v.Name:lower():match(low) or v.DisplayName:lower():match(low)) then
+                p = v; break
+            end
+        end
+    end
+    if p then
+        if table.find(TargetWhitelist, p.UserId) then
+            WindUI:Notify({Title="Target", Content=p.Name.." está en lista blanca (no se puede objetivo)", Duration=3})
+            return
+        end
+        TargetedPlayerName = p.Name
+        TargetUpdateInfo(p)
+        WindUI:Notify({Title="Target", Content="Objetivo: "..p.Name, Duration=2})
+    else
+        WindUI:Notify({Title="Target", Content="Jugador no encontrado", Duration=2})
+    end
+end
 
-T_Notify("Target Module", "Modulo Target universal cargado. Tecla: RightControl", 5)
+Players.PlayerRemoving:Connect(function(p)
+    if p.Name == TargetedPlayerName then
+        TargetedPlayerName = nil
+        for k in pairs(TargetToggles) do TargetToggles[k] = false end
+        TargetCleanup()
+        TargetUpdateInfo(nil)
+        WindUI:Notify({Title="Target", Content="El objetivo salió del servidor", Duration=3})
+    end
 end)
 
--- iniciar el Target Module oculto (se abre desde la pestaña Terget o con RightControl)
-task.spawn(function()
-    task.wait(0.5)
-    pcall(function() if _G.TargetModule then _G.TargetModule:Close() end end)
-end)
+-- API pública por compatibilidad
+_G.TargetModule = {
+    SetTarget = function(n) TargetSelect(n) end,
+    GetTarget = function() return TargetCurrent() end,
+    Whitelist = TargetWhitelist,
+}
+getgenv().TargetModule = _G.TargetModule
 
--- 💾 CONFIGURACIÓN PERSISTENTE (guardado solo al cambiar, no cada 10s)
+-- ============================================================
+-- 💾 CONFIGURACIÓN PERSISTENTE (guardado al cambiar, NO cada 10s)
+-- ============================================================
 local ConfigFileName = "DENJI_ALEX_Config.json"
 local Saved = {}
 local function Get(key, def)
@@ -1046,38 +929,94 @@ end
 
 local function GuardarConfiguracion(silent)
     local Config = {
-        FlashAttackEnabled = FlashAttackEnabled, FlashMultiplier = FlashMultiplier,
-        TPWalkEnabled = TPWalkEnabled, TPWalkSpeed = TPWalkSpeed,
-        NoFrictionEnabled = NoFrictionEnabled, InvisibleEnabled = InvisibleEnabled,
-        FlyEnabled = FlyEnabled, FlySpeed = FlySpeed,
-        NoclipEnabled = NoclipEnabled, InfJumpEnabled = InfJumpEnabled,
+        FlashAttackEnabled = FlashAttackEnabled,
+        FlashMultiplier = FlashMultiplier,
+        TPWalkEnabled = TPWalkEnabled,
+        TPWalkSpeed = TPWalkSpeed,
+        NoFrictionEnabled = NoFrictionEnabled,
+        InvisibleEnabled = InvisibleEnabled,
+        FlyEnabled = FlyEnabled,
+        FlySpeed = FlySpeed,
+        NoclipEnabled = NoclipEnabled,
+        InfJumpEnabled = InfJumpEnabled,
         WalkSpeed = Humanoid and Humanoid.WalkSpeed or 16,
         JumpPower = Humanoid and Humanoid.JumpPower or 50,
         GravityScale = Humanoid and Humanoid.GravityScale or 1,
         AutoWalkEnabled = AutoWalkEnabled,
-        FullbrightEnabled = FullbrightEnabled, ESPEnabled = ESPEnabled, FpsBoostEnabled = FpsBoostEnabled,
+        FullbrightEnabled = FullbrightEnabled,
+        ESPEnabled = ESPEnabled,
+        FpsBoostEnabled = FpsBoostEnabled,
         FOV = (function() local ok,v=pcall(function() return workspace.CurrentCamera.FieldOfView end); return ok and v or 70 end)(),
         ClockTime = Lighting.ClockTime,
         AnimationSpeed = Humanoid and Humanoid.AnimationSpeed or 1,
         BodyScale = Humanoid and Humanoid.BodyHeightScale or 1,
-        AutoRejoinEnabled = AutoRejoinEnabled, AntiVoidEnabled = AntiVoidEnabled, AntiRagdollEnabled = AntiRagdollEnabled,
-        GodModeEnabled = GodModeEnabled, InstantRespawnEnabled = InstantRespawnEnabled, FollowPlayerEnabled = FollowPlayerEnabled,
-        ClickTPEnabled = ClickTPEnabled, AutoJumpEnabled = AutoJumpEnabled, WalkOnWaterEnabled = WalkOnWaterEnabled,
-        SpinBotEnabled = SpinBotEnabled, FreezePositionEnabled = FreezePositionEnabled, FallSpeedCap = FallSpeedCap,
-        ChatSpamEnabled = ChatSpamEnabled, DanceSpamEnabled = DanceSpamEnabled, RainbowEnabled = RainbowEnabled,
-        DrunkCamEnabled = DrunkCamEnabled, PlayDeadEnabled = PlayDeadEnabled, ChatEchoEnabled = ChatEchoEnabled,
-        BigHeadEnabled = BigHeadEnabled, ScreenShakeEnabled = ScreenShakeEnabled, SpamText = SpamText,
-        AntiAFKEnabled = AntiAFKEnabled, NoPushEnabled = NoPushEnabled, NoKnockbackEnabled = NoKnockbackEnabled,
+        AutoRejoinEnabled = AutoRejoinEnabled,
+        AntiVoidEnabled = AntiVoidEnabled,
+        AntiRagdollEnabled = AntiRagdollEnabled,
+        GodModeEnabled = GodModeEnabled,
+        InstantRespawnEnabled = InstantRespawnEnabled,
+        FollowPlayerEnabled = FollowPlayerEnabled,
+        ClickTPEnabled = ClickTPEnabled,
+        AutoJumpEnabled = AutoJumpEnabled,
+        WalkOnWaterEnabled = WalkOnWaterEnabled,
+        SpinBotEnabled = SpinBotEnabled,
+        FreezePositionEnabled = FreezePositionEnabled,
+        FallSpeedCap = FallSpeedCap,
+        ChatSpamEnabled = ChatSpamEnabled,
+        DanceSpamEnabled = DanceSpamEnabled,
+        RainbowEnabled = RainbowEnabled,
+        DrunkCamEnabled = DrunkCamEnabled,
+        PlayDeadEnabled = PlayDeadEnabled,
+        ChatEchoEnabled = ChatEchoEnabled,
+        BigHeadEnabled = BigHeadEnabled,
+        ScreenShakeEnabled = ScreenShakeEnabled,
+        SpamText = SpamText,
+        AntiAFKEnabled = AntiAFKEnabled,
+        NoPushEnabled = NoPushEnabled,
+        NoKnockbackEnabled = NoKnockbackEnabled,
         SitProtectorEnabled = SitProtectorEnabled,
-        AutoClickerEnabled = AutoClickerEnabled, AutoClickerCPS = AutoClickerCPS,
+        AutoClickerEnabled = AutoClickerEnabled,
+        AutoClickerCPS = AutoClickerCPS,
         NoFallDamageEnabled = NoFallDamageEnabled,
-        AntiFreezeEnabled = AntiFreezeEnabled, AntiCameraEnabled = AntiCameraEnabled,
+        -- Nuevos escudos
+        AntiKickEnabled = AntiKickEnabled,
+        AntiResetEnabled = AntiResetEnabled,
+        AntiSitEnabled = AntiSitEnabled,
+        AntiFlingEnabled = AntiFlingEnabled,
+        AntiFreezeEnabled = AntiFreezeEnabled,
+        AntiReportEnabled = AntiReportEnabled,
     }
     pcall(function()
         local Http = game:GetService("HttpService")
         writefile(ConfigFileName, Http:JSONEncode(Config))
-        if not silent then WindUI:Notify({Title="Configuración", Content="Guardada correctamente", Duration=3}) end
+        if not silent then
+            WindUI:Notify({Title="Configuración", Content="Guardada correctamente", Duration=3})
+        end
     end)
+end
+
+-- Auto-save inteligente: SOLO guarda cuando algo cambió (debounce 2s),
+-- más un guardado de seguridad al cerrar el juego. NO guarda cada 10s.
+local Dirty = false
+local function MarkDirty() Dirty = true end
+task.spawn(function()
+    while task.wait(2) do
+        if Dirty then
+            Dirty = false
+            GuardarConfiguracion(true)
+        end
+    end
+end)
+pcall(function()
+    game:BindToClose(function() GuardarConfiguracion(true) end)
+end)
+
+-- Wrapper para toggles/sliders: ejecuta callback y marca para guardar
+local function AS(fn)
+    return function(...)
+        if fn then fn(...) end
+        MarkDirty()
+    end
 end
 
 local function CargarConfiguracion()
@@ -1152,8 +1091,13 @@ local function AplicarConfiguracion()
         if Saved.FollowPlayerEnabled~=nil then FollowPlayerEnabled=Saved.FollowPlayerEnabled end
         if Saved.AutoJumpEnabled~=nil then AutoJumpEnabled=Saved.AutoJumpEnabled end
         if Saved.WalkOnWaterEnabled~=nil then WalkOnWaterEnabled=Saved.WalkOnWaterEnabled end
+        -- Nuevos escudos
+        if Saved.AntiKickEnabled then SetAntiKick(true) end
+        if Saved.AntiResetEnabled then SetAntiReset(true) end
+        if Saved.AntiReportEnabled then SetAntiReport(true) end
+        if Saved.AntiSitEnabled~=nil then AntiSitEnabled=Saved.AntiSitEnabled end
+        if Saved.AntiFlingEnabled~=nil then AntiFlingEnabled=Saved.AntiFlingEnabled end
         if Saved.AntiFreezeEnabled~=nil then AntiFreezeEnabled=Saved.AntiFreezeEnabled end
-        if Saved.AntiCameraEnabled~=nil then AntiCameraEnabled=Saved.AntiCameraEnabled end
     end)
 end
 
@@ -1197,38 +1141,40 @@ end)
 -- 2. MAIN
 local MainTab = Window:Tab({Title="Main", Icon="home"})
 MainTab:Section({Title="Funciones Principales", TextSize=20}); MainTab:Space({Size=6})
+
 MainTab:Section({Title="⚔️ Ataque Rápido", TextSize=18}); MainTab:Space({Size=6})
 local FlashRow = MainTab:Group({})
-FlashRow:Toggle({Title="Activar Ataque Rápido", Def=Get("FlashAttackEnabled", false), Callback=SetFlashAttack})
+FlashRow:Toggle({Title="Activar Ataque Rápido", Def=Get("FlashAttackEnabled", false), Callback=AS(SetFlashAttack)})
 FlashRow:Space({Size=8})
-FlashRow:Slider({Title="Multiplicador", Step=1, Value={Min=1,Max=30,Default=Get("FlashMultiplier", 5)}, Callback=function(v) FlashMultiplier = v end})
+FlashRow:Slider({Title="Multiplicador", Step=1, Value={Min=1,Max=30,Default=Get("FlashMultiplier", 5)}, Callback=AS(function(v) FlashMultiplier = v end)})
 MainTab:Space({Size=12})
+
 local MainRow1 = MainTab:Group({})
 MainRow1:Button({Title="Teleport a Ti", Icon="map-pin", Justify="Center", Callback=function() local m=LocalPlayer:GetMouse(); if RootPart then RootPart.CFrame=CFrame.new(m.Hit.Position+Vector3.new(0,3,0)) end end})
 MainRow1:Space({Size=8})
-MainRow1:Toggle({Title="TPWalk (Bypass)", Def=Get("TPWalkEnabled", false), Callback=SetTPWalk})
+MainRow1:Toggle({Title="TPWalk (Bypass)", Def=Get("TPWalkEnabled", false), Callback=AS(SetTPWalk)})
 MainTab:Space({Size=8})
-MainTab:Slider({Title="Velocidad TPWalk", Step=0.05, Value={Min=0.01, Max=20, Default=Get("TPWalkSpeed", 0.30)}, Callback=function(v) TPWalkSpeed = v end})
+MainTab:Slider({Title="Velocidad TPWalk", Step=0.05, Value={Min=0.01, Max=20, Default=Get("TPWalkSpeed", 0.30)}, Callback=AS(function(v) TPWalkSpeed = v end)})
 MainTab:Space({Size=8})
 local MainRow2 = MainTab:Group({})
-MainRow2:Toggle({Title="Salto Alto", Def=false, Callback=function(s) if Humanoid then Humanoid.JumpPower=s and 120 or 50 end end})
+MainRow2:Toggle({Title="Salto Alto", Def=false, Callback=AS(function(s) if Humanoid then Humanoid.JumpPower=s and 120 or 50 end end)})
 MainRow2:Space({Size=8})
-MainRow2:Toggle({Title="Salto Infinito", Def=Get("InfJumpEnabled", false), Callback=function(s) SetInfJump(s) end})
+MainRow2:Toggle({Title="Salto Infinito", Def=Get("InfJumpEnabled", false), Callback=AS(function(s) SetInfJump(s) end)})
 MainTab:Space({Size=8})
 local MainRow3 = MainTab:Group({})
-MainRow3:Toggle({Title="Sin Fricción", Def=Get("NoFrictionEnabled", false), Callback=function(s) NoFrictionEnabled=s end})
+MainRow3:Toggle({Title="Sin Fricción", Def=Get("NoFrictionEnabled", false), Callback=AS(function(s) NoFrictionEnabled=s end)})
 MainRow3:Space({Size=8})
-MainRow3:Toggle({Title="Sin Gravedad", Def=false, Callback=function(s) if Humanoid then Humanoid.GravityScale=s and 0 or 1 end end})
+MainRow3:Toggle({Title="Sin Gravedad", Def=false, Callback=AS(function(s) if Humanoid then Humanoid.GravityScale=s and 0 or 1 end end)})
 MainTab:Space({Size=8})
 local MainRow4 = MainTab:Group({})
-MainRow4:Toggle({Title="Invisible", Def=Get("InvisibleEnabled", false), Callback=function(s) InvisibleEnabled=s; if Character then for _,v in pairs(Character:GetDescendants()) do if v:IsA("BasePart") then v.LocalTransparencyModifier=s and 1 or 0 end end end end})
+MainRow4:Toggle({Title="Invisible", Def=Get("InvisibleEnabled", false), Callback=AS(function(s) InvisibleEnabled=s; if Character then for _,v in pairs(Character:GetDescendants()) do if v:IsA("BasePart") then v.LocalTransparencyModifier=s and 1 or 0 end end end end)})
 MainTab:Space({Size=12})
 MainTab:Section({Title="Ajustes de Movimiento", TextSize=18}); MainTab:Space({Size=6})
 local MainSliders = MainTab:Section({Title="Sliders Rápidos", Box=true, BoxBorder=true, Opened=true})
-MainSliders:Slider({Title="WalkSpeed", Step=1, Value={Min=16,Max=250,Default=Get("WalkSpeed", 16)}, Callback=function(v) if Humanoid then Humanoid.WalkSpeed=v end end}); MainSliders:Space({Size=6})
-MainSliders:Slider({Title="JumpPower", Step=1, Value={Min=50,Max=350,Default=Get("JumpPower", 50)}, Callback=function(v) if Humanoid then Humanoid.JumpPower=v end end}); MainSliders:Space({Size=6})
-MainSliders:Slider({Title="Gravedad", Step=0.1, Value={Min=0,Max=2,Default=Get("GravityScale", 1)}, Callback=function(v) if Humanoid then Humanoid.GravityScale=v end end}); MainSliders:Space({Size=6})
-MainSliders:Toggle({Title="Auto-Caminar (Hacia Adelante)", Def=Get("AutoWalkEnabled", false), Callback=SetAutoWalk})
+MainSliders:Slider({Title="WalkSpeed", Step=1, Value={Min=16,Max=250,Default=Get("WalkSpeed", 16)}, Callback=AS(function(v) if Humanoid then Humanoid.WalkSpeed=v end end)}); MainSliders:Space({Size=6})
+MainSliders:Slider({Title="JumpPower", Step=1, Value={Min=50,Max=350,Default=Get("JumpPower", 50)}, Callback=AS(function(v) if Humanoid then Humanoid.JumpPower=v end end)}); MainSliders:Space({Size=6})
+MainSliders:Slider({Title="Gravedad", Step=0.1, Value={Min=0,Max=2,Default=Get("GravityScale", 1)}, Callback=AS(function(v) if Humanoid then Humanoid.GravityScale=v end end)}); MainSliders:Space({Size=6})
+MainSliders:Toggle({Title="Auto-Caminar (Hacia Adelante)", Def=Get("AutoWalkEnabled", false), Callback=AS(SetAutoWalk)})
 MainTab:Space({Size=12})
 MainTab:Section({Title="Acciones Rápidas", TextSize=18}); MainTab:Space({Size=6})
 local MainA1 = MainTab:Group({})
@@ -1244,15 +1190,22 @@ local MainA3 = MainTab:Group({})
 MainA3:Button({Title="Volver al Spawn", Icon="home", Justify="Center", Callback=function() if RootPart then RootPart.CFrame=SpawnCFrame; RootPart.Velocity=Vector3.new(0,0,0); WindUI:Notify({Title="Spawn", Content="Volviste al spawn", Duration=2}) end end})
 MainA3:Space({Size=8})
 MainA3:Button({Title="Reiniciar Personaje", Icon="refresh-cw", Justify="Center", Callback=function() if Character and Humanoid then Humanoid.Health=0 end end})
+
 MainTab:Space({Size=12})
 MainTab:Section({Title="📦 Scripts Externos", TextSize=18}); MainTab:Space({Size=6})
 local ExtScripts = MainTab:Section({Title="", Box=true, BoxBorder=true, Opened=true})
 ExtScripts:Button({Title="Hitbox Boys", Desc="Ejecutar script", Icon="play", Justify="Left", Callback=function()
-    pcall(function() loadstring(game:HttpGet("https://pastebin.com/raw/4vL0qwVd"))(); WindUI:Notify({Title="Hitbox Boys", Content="Script ejecutado", Duration=3}) end)
+    pcall(function()
+        loadstring(game:HttpGet("https://pastebin.com/raw/4vL0qwVd"))()
+        WindUI:Notify({Title="Hitbox Boys", Content="Script ejecutado", Duration=3})
+    end)
 end})
 ExtScripts:Space({Size=10})
 ExtScripts:Button({Title="Hitbox Girls", Desc="Ejecutar script", Icon="play", Justify="Left", Callback=function()
-    pcall(function() loadstring(game:HttpGet("https://pastebin.com/raw/x9ivUUsh"))(); WindUI:Notify({Title="Hitbox Girls", Content="Script ejecutado", Duration=3}) end)
+    pcall(function()
+        loadstring(game:HttpGet("https://pastebin.com/raw/x9ivUUsh"))()
+        WindUI:Notify({Title="Hitbox Girls", Content="Script ejecutado", Duration=3})
+    end)
 end})
 
 -- 3. MIS SCRIPTS
@@ -1260,128 +1213,176 @@ local MisScriptsTab = Window:Tab({Title="Mis Scripts", Icon="folder"})
 MisScriptsTab:Section({Title="Scripts Guardados", TextSize=20}); MisScriptsTab:Space({Size=6})
 local ScriptsSection = MisScriptsTab:Section({Title="", Box=true, BoxBorder=true, Opened=true})
 ScriptsSection:Button({Title="AY1Amikas", Desc="Ejecutar script", Icon="play", Justify="Left", Callback=function()
-    pcall(function() loadstring(game:HttpGet("https://raw.githubusercontent.com/alex001xx/AY1AniChoco/refs/heads/main/README.md"))(); WindUI:Notify({Title="AY1Amikas", Content="Script ejecutado", Duration=3}) end)
-end})
-ScriptsSection:Space({Size=10})
-ScriptsSection:Toggle({Title="Escudo", Desc="Sit siempre + Anti-abrazo", Def=Get("SitProtectorEnabled", false), Callback=SetSitProtector})
-MisScriptsTab:Space({Size=12})
-
--- 4. TERGET (objetivo/jugador)
-local TergetTab = Window:Tab({Title="Terget", Icon="target"})
-TergetTab:Section({Title="Jugador Objetivo", TextSize=20}); TergetTab:Space({Size=6})
-TargetDropdown = TergetTab:Dropdown({Title="Seleccionar Target", Values=GetPlayerNames(false), Value=1, Callback=function(s) TargetName=s end})
-TergetTab:Space({Size=8})
-TargetInfoParagraph = TergetTab:Paragraph({Title="Info del Target", Desc="Ninguno", Image="user", ImageSize=14})
-TergetTab:Space({Size=8})
-TergetTab:Section({Title="Acciones sobre el Target", TextSize=18}); TergetTab:Space({Size=6})
-local TAct = TergetTab:Section({Title="", Box=true, BoxBorder=true, Opened=true})
-local TA1 = TAct:Group({})
-TA1:Button({Title="Focus (Cámara)", Icon="eye", Justify="Center", Callback=FocusTarget}); TA1:Space({Size=8})
-TA1:Button({Title="Detener Focus", Icon="eye-off", Justify="Center", Callback=StopFocus})
-TAct:Space({Size=6})
-local TA2 = TAct:Group({})
-TA2:Button({Title="TP al Target", Icon="map-pin", Justify="Center", Callback=TPToTarget}); TA2:Space({Size=8})
-TA2:Button({Title="Traer Target (Bring)", Icon="arrow-down", Justify="Center", Callback=BringTarget})
-TAct:Space({Size=6})
-TAct:Toggle({Title="Seguir Target (Follow)", Def=false, Callback=function(s) if TargetName then TPPlayerName=TargetName end; FollowPlayerEnabled=s end})
-TAct:Space({Size=6})
-local TA3 = TAct:Group({})
-TA3:Button({Title="Congelar Target", Icon="lock", Justify="Center", Callback=function() FreezeTarget(true) end}); TA3:Space({Size=8})
-TA3:Button({Title="Descongelar Target", Icon="unlock", Justify="Center", Callback=function() FreezeTarget(false) end})
-TAct:Space({Size=6})
-TAct:Button({Title="Copiar UserID del Target", Icon="clipboard", Justify="Center", Callback=function()
-    local t = ValidTarget()
-    if t then setclipboard(tostring(t.UserId)); WindUI:Notify({Title="Copiado", Content="UserID de "..t.Name, Duration=2})
-    else WindUI:Notify({Title="Error", Content="Selecciona un target", Duration=2}) end
-end})
-TergetTab:Space({Size=8})
-TergetTab:Button({Title="Recargar Lista de Jugadores", Icon="refresh-cw", Justify="Center", Callback=RefreshTargetDropdowns})
-TergetTab:Space({Size=10})
-TergetTab:Section({Title="🎯 Target Module Avanzado", TextSize=18}); TergetTab:Space({Size=6})
-local TMod = TergetTab:Section({Title="", Box=true, BoxBorder=true, Opened=true})
-TMod:Toggle({Title="Abrir Target Module (GUI propia)", Def=false, Callback=function(s)
     pcall(function()
-        if _G.TargetModule then
-            if s then _G.TargetModule:Open() else _G.TargetModule:Close() end
-        else
-            WindUI:Notify({Title="Target Module", Content="Cargando... espera un momento", Duration=3})
-        end
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/alex001xx/AY1AniChoco/refs/heads/main/README.md"))()
+        WindUI:Notify({Title="AY1Amikas", Content="Script ejecutado", Duration=3})
     end)
 end})
-TMod:Space({Size=6})
-TMod:Paragraph({Title="Funciones del módulo", Desc="Lanzar (Fling), Ver (Cámara), Enfocar, Bang/Pegar, Sentar en cabeza, Pararse junto, Mochila, Posición baja, Arrastrar, Empujar, TP al objetivo, Lista Blanca.\n\nTecla rápida: RightControl", Image="info", ImageSize=14})
-TergetTab:Space({Size=12})
+ScriptsSection:Space({Size=10})
+ScriptsSection:Toggle({Title="Escudo", Desc="Sit siempre + Anti-abrazo", Def=Get("SitProtectorEnabled", false), Callback=AS(SetSitProtector)})
+MisScriptsTab:Space({Size=12})
+
+-- 4. TARGET (nuevo, integrado en WindUI)
+local TargetTab = Window:Tab({Title="Target", Icon="crosshair"})
+TargetTab:Section({Title="🎯 Seleccionar Objetivo", TextSize=20}); TargetTab:Space({Size=6})
+local TargetSel = TargetTab:Section({Title="", Box=true, BoxBorder=true, Opened=true})
+TargetAvatarImg = TargetSel:Image({Image="rbxassetid://10818605405", ImageSize=80})
+TargetSel:Space({Size=6})
+TargetDropdown = TargetSel:Dropdown({Title="Jugador Objetivo", Values=GetPlayerNames(false), Value=1, Callback=function(s) TargetSelect(s) end})
+TargetSel:Space({Size=6})
+pcall(function()
+    TargetSel:TextBox({Title="Nombre (o parte del display)", PlaceholderText="@nombre...", Callback=function(t) TargetNameInput = t end})
+end)
+TargetSel:Space({Size=6})
+local TargetBtnRow = TargetSel:Group({})
+TargetBtnRow:Button({Title="Seleccionar por Nombre", Icon="user-check", Justify="Center", Callback=function() TargetSelect(TargetNameInput or "") end})
+TargetBtnRow:Space({Size=8})
+TargetBtnRow:Button({Title="Herramienta de Clic", Icon="mouse-pointer", Justify="Center", Callback=function()
+    pcall(function()
+        local tool = Instance.new("Tool")
+        tool.Name = "TargetSelector"; tool.RequiresHandle = false
+        tool.TextureId = "rbxassetid://2716591855"
+        tool.Activated:Connect(function()
+            local m = LocalPlayer:GetMouse(); local hit = m and m.Target
+            if not hit then return end
+            local model = hit.Parent
+            if model and model:IsA("Accessory") then model = model.Parent end
+            if model and model:IsA("Model") then
+                local p = Players:GetPlayerFromCharacter(model)
+                if p then TargetSelect(p.Name) end
+            end
+        end)
+        tool.Parent = LocalPlayer.Backpack
+        WindUI:Notify({Title="Target", Content="Herramienta equipada: haz clic en un jugador", Duration=3})
+    end)
+end})
+TargetSel:Space({Size=6})
+TargetSel:Button({Title="Recargar Lista de Jugadores", Icon="refresh-cw", Justify="Center", Callback=function()
+    pcall(function() if TargetDropdown then TargetDropdown:Refresh(GetPlayerNames(false)) end end)
+    WindUI:Notify({Title="Target", Content="Lista recargada", Duration=2})
+end})
+TargetSel:Space({Size=6})
+TargetInfoParagraph = TargetSel:Paragraph({Title="Información del Objetivo", Desc="UserID: —\nDisplay: —\nAccountAge: —", Image="info", ImageSize=14})
+TargetTab:Space({Size=10})
+
+TargetTab:Section({Title="🔄 Toggles de Objetivo", TextSize=18}); TargetTab:Space({Size=6})
+local TargetTog = TargetTab:Section({Title="", Box=true, BoxBorder=true, Opened=true})
+TargetTog:Toggle({Title="Lanzar (Fling)", Def=false, Callback=AS(function(s) TargetToggle("Fling", s) end)}); TargetTog:Space({Size=6})
+TargetTog:Toggle({Title="Ver (Cámara)", Def=false, Callback=AS(function(s) TargetToggle("View", s) end)}); TargetTog:Space({Size=6})
+TargetTog:Toggle({Title="Enfocar (Focus)", Def=false, Callback=AS(function(s) TargetToggle("Focus", s) end)}); TargetTog:Space({Size=6})
+TargetTog:Toggle({Title="Bang / Pegar", Def=false, Callback=AS(function(s) TargetToggle("Bang", s) end)}); TargetTog:Space({Size=6})
+TargetTog:Toggle({Title="Sentar en Cabeza", Def=false, Callback=AS(function(s) TargetToggle("HeadSit", s) end)}); TargetTog:Space({Size=6})
+TargetTog:Toggle({Title="Pararse Junto (Stand)", Def=false, Callback=AS(function(s) TargetToggle("Stand", s) end)}); TargetTog:Space({Size=6})
+TargetTog:Toggle({Title="Mochila (Backpack)", Def=false, Callback=AS(function(s) TargetToggle("Backpack", s) end)}); TargetTog:Space({Size=6})
+TargetTog:Toggle({Title="Posición Baja (Doggy)", Def=false, Callback=AS(function(s) TargetToggle("Doggy", s) end)}); TargetTog:Space({Size=6})
+TargetTog:Toggle({Title="Arrastrar (Drag)", Def=false, Callback=AS(function(s) TargetToggle("Drag", s) end)})
+TargetTab:Space({Size=10})
+
+TargetTab:Section({Title="⚡ Acciones (una vez)", TextSize=18}); TargetTab:Space({Size=6})
+local TargetAct = TargetTab:Section({Title="", Box=true, BoxBorder=true, Opened=true})
+local TAR1 = TargetAct:Group({})
+TAR1:Button({Title="Empujar (1x)", Icon="arrow-up-right", Justify="Center", Callback=function()
+    local t = TargetCurrent(); if not t then WindUI:Notify({Title="Target", Content="Sin objetivo", Duration=2}); return end
+    local r = TargetGetRoot(LocalPlayer); if not r then return end
+    local cf = r.CFrame
+    TargetPredictionTP(t)
+    task.wait(TargetGetPing() + 0.05)
+    TargetPush(t)
+    r.CFrame = cf
+end})
+TAR1:Space({Size=8})
+TAR1:Button({Title="TP al Objetivo", Icon="map-pin", Justify="Center", Callback=function()
+    local t = TargetCurrent(); if t then TargetTeleportTo(t) else WindUI:Notify({Title="Target", Content="Sin objetivo", Duration=2}) end
+end})
+TargetAct:Space({Size=6})
+local TAR2 = TargetAct:Group({})
+TAR2:Button({Title="Lista Blanca (agregar/quitar)", Icon="shield-check", Justify="Center", Callback=function()
+    local t = TargetCurrent(); if not t then WindUI:Notify({Title="Target", Content="Sin objetivo", Duration=2}); return end
+    local id = t.UserId
+    local idx = table.find(TargetWhitelist, id)
+    if idx then
+        table.remove(TargetWhitelist, idx)
+        WindUI:Notify({Title="Target", Content=t.Name.." ELIMINADO de lista blanca", Duration=3})
+    else
+        table.insert(TargetWhitelist, id)
+        WindUI:Notify({Title="Target", Content=t.Name.." AGREGADO a lista blanca", Duration=3})
+    end
+end})
+TAR2:Space({Size=8})
+TAR2:Button({Title="Limpiar Objetivo", Icon="x", Justify="Center", Callback=function() TargetSelect(nil) end})
+TargetTab:Space({Size=12})
 
 -- 5. GAME (FUNCIONES UNIVERSALES)
 local GameTab = Window:Tab({Title="Game", Icon="gamepad-2"})
 GameTab:Section({Title="Funciones Universales", TextSize=20}); GameTab:Space({Size=6})
-GameTab:Section({Title="🎯 Target (Jugador)", TextSize=18}); GameTab:Space({Size=6})
-local GTgt = GameTab:Section({Title="", Box=true, BoxBorder=true, Opened=true})
-GameTargetDropdown = GTgt:Dropdown({Title="Seleccionar Target", Values=GetPlayerNames(false), Value=1, Callback=function(s) TargetName=s end})
-GTgt:Space({Size=6})
-local GT1 = GTgt:Group({})
-GT1:Button({Title="Focus", Icon="eye", Justify="Center", Callback=FocusTarget}); GT1:Space({Size=8})
-GT1:Button({Title="TP al Target", Icon="map-pin", Justify="Center", Callback=TPToTarget})
-GTgt:Space({Size=6})
-local GT2 = GTgt:Group({})
-GT2:Button({Title="Traer (Bring)", Icon="arrow-down", Justify="Center", Callback=BringTarget}); GT2:Space({Size=8})
-GT2:Button({Title="TP All a Mí", Icon="users", Justify="Center", Callback=TPAllToMe})
-GameTab:Space({Size=10})
+
 GameTab:Section({Title="🚀 Movimiento", TextSize=18}); GameTab:Space({Size=6})
 local GMov = GameTab:Section({Title="", Box=true, BoxBorder=true, Opened=true})
-GMov:Toggle({Title="Fly (Volar)", Def=Get("FlyEnabled", false), Callback=function(s) if s then StartFly() else StopFly() end end}); GMov:Space({Size=6})
-GMov:Toggle({Title="Noclip", Def=Get("NoclipEnabled", false), Callback=SetNoclip}); GMov:Space({Size=6})
-GMov:Toggle({Title="Salto Infinito", Def=Get("InfJumpEnabled", false), Callback=SetInfJump}); GMov:Space({Size=6})
-GMov:Toggle({Title="Click TP (Clic Der.)", Def=Get("ClickTPEnabled", false), Callback=SetClickTP}); GMov:Space({Size=6})
-GMov:Toggle({Title="Auto-Jump (Bunny Hop)", Def=Get("AutoJumpEnabled", false), Callback=function(s) AutoJumpEnabled=s end}); GMov:Space({Size=6})
-GMov:Toggle({Title="Walk on Water", Def=Get("WalkOnWaterEnabled", false), Callback=function(s) WalkOnWaterEnabled=s end}); GMov:Space({Size=6})
-GMov:Toggle({Title="Spin Bot", Def=Get("SpinBotEnabled", false), Callback=SetSpinBot}); GMov:Space({Size=6})
-GMov:Toggle({Title="Freeze Position", Def=Get("FreezePositionEnabled", false), Callback=SetFreeze}); GMov:Space({Size=6})
-GMov:Slider({Title="WalkSpeed", Step=1, Value={Min=16,Max=250,Default=Get("WalkSpeed",16)}, Callback=function(v) if Humanoid then Humanoid.WalkSpeed=v end end}); GMov:Space({Size=6})
-GMov:Slider({Title="JumpPower", Step=1, Value={Min=50,Max=350,Default=Get("JumpPower",50)}, Callback=function(v) if Humanoid then Humanoid.JumpPower=v end end}); GMov:Space({Size=6})
-GMov:Slider({Title="Gravedad", Step=0.1, Value={Min=0,Max=2,Default=Get("GravityScale",1)}, Callback=function(v) if Humanoid then Humanoid.GravityScale=v end end})
+GMov:Toggle({Title="Fly (Volar)", Def=Get("FlyEnabled", false), Callback=AS(function(s) if s then StartFly() else StopFly() end end)}); GMov:Space({Size=6})
+GMov:Toggle({Title="Noclip", Def=Get("NoclipEnabled", false), Callback=AS(SetNoclip)}); GMov:Space({Size=6})
+GMov:Toggle({Title="Salto Infinito", Def=Get("InfJumpEnabled", false), Callback=AS(SetInfJump)}); GMov:Space({Size=6})
+GMov:Toggle({Title="Click TP (Clic Der.)", Def=Get("ClickTPEnabled", false), Callback=AS(SetClickTP)}); GMov:Space({Size=6})
+GMov:Toggle({Title="Auto-Jump (Bunny Hop)", Def=Get("AutoJumpEnabled", false), Callback=AS(function(s) AutoJumpEnabled=s end)}); GMov:Space({Size=6})
+GMov:Toggle({Title="Walk on Water", Def=Get("WalkOnWaterEnabled", false), Callback=AS(function(s) WalkOnWaterEnabled=s end)}); GMov:Space({Size=6})
+GMov:Toggle({Title="Spin Bot", Def=Get("SpinBotEnabled", false), Callback=AS(SetSpinBot)}); GMov:Space({Size=6})
+GMov:Toggle({Title="Freeze Position", Def=Get("FreezePositionEnabled", false), Callback=AS(SetFreeze)}); GMov:Space({Size=6})
+GMov:Slider({Title="WalkSpeed", Step=1, Value={Min=16,Max=250,Default=Get("WalkSpeed",16)}, Callback=AS(function(v) if Humanoid then Humanoid.WalkSpeed=v end end)}); GMov:Space({Size=6})
+GMov:Slider({Title="JumpPower", Step=1, Value={Min=50,Max=350,Default=Get("JumpPower",50)}, Callback=AS(function(v) if Humanoid then Humanoid.JumpPower=v end end)}); GMov:Space({Size=6})
+GMov:Slider({Title="Gravedad", Step=0.1, Value={Min=0,Max=2,Default=Get("GravityScale",1)}, Callback=AS(function(v) if Humanoid then Humanoid.GravityScale=v end end)})
 GameTab:Space({Size=10})
+
 GameTab:Section({Title="👁️ Visual", TextSize=18}); GameTab:Space({Size=6})
 local GVis = GameTab:Section({Title="", Box=true, BoxBorder=true, Opened=true})
-GVis:Toggle({Title="ESP Jugadores", Def=Get("ESPEnabled", false), Callback=SetESP}); GVis:Space({Size=6})
-GVis:Toggle({Title="Fullbright", Def=Get("FullbrightEnabled", false), Callback=SetFullbright}); GVis:Space({Size=6})
-GVis:Toggle({Title="FPS Boost", Def=Get("FpsBoostEnabled", false), Callback=SetFpsBoost}); GVis:Space({Size=6})
-GVis:Slider({Title="FOV de Cámara", Step=1, Value={Min=60,Max=120,Default=Get("FOV",70)}, Callback=function(v) pcall(function() workspace.CurrentCamera.FieldOfView=v end) end}); GVis:Space({Size=6})
+GVis:Toggle({Title="ESP Jugadores", Def=Get("ESPEnabled", false), Callback=AS(SetESP)}); GVis:Space({Size=6})
+GVis:Toggle({Title="Fullbright", Def=Get("FullbrightEnabled", false), Callback=AS(SetFullbright)}); GVis:Space({Size=6})
+GVis:Toggle({Title="FPS Boost", Def=Get("FpsBoostEnabled", false), Callback=AS(SetFpsBoost)}); GVis:Space({Size=6})
+GVis:Slider({Title="FOV de Cámara", Step=1, Value={Min=60,Max=120,Default=Get("FOV",70)}, Callback=AS(function(v) pcall(function() workspace.CurrentCamera.FieldOfView=v end) end)}); GVis:Space({Size=6})
 local GVisB = GVis:Group({})
 GVisB:Button({Title="Desbloquear Zoom", Icon="zoom-in", Justify="Center", Callback=function() pcall(function() workspace.CurrentCamera.CameraMaxZoomDistance=1000; workspace.CurrentCamera.CameraMinZoomDistance=0.5 end); WindUI:Notify({Title="Zoom", Content="Desbloqueado", Duration=2}) end})
 GVisB:Space({Size=8})
 GVisB:Button({Title="Eliminar Partículas", Icon="trash-2", Justify="Center", Callback=RemoveParticles})
 GameTab:Space({Size=10})
+
 GameTab:Section({Title="🛡️ Protección", TextSize=18}); GameTab:Space({Size=6})
 local GProt = GameTab:Section({Title="", Box=true, BoxBorder=true, Opened=true})
-GProt:Toggle({Title="God Mode (Local)", Def=Get("GodModeEnabled", false), Callback=function(s) GodModeEnabled=s end}); GProt:Space({Size=6})
-GProt:Toggle({Title="Anti-Void", Def=Get("AntiVoidEnabled", false), Callback=function(s) AntiVoidEnabled=s end}); GProt:Space({Size=6})
-GProt:Toggle({Title="Anti-Ragdoll", Def=Get("AntiRagdollEnabled", false), Callback=function(s) AntiRagdollEnabled=s end}); GProt:Space({Size=6})
-GProt:Toggle({Title="Anti-AFK (Real)", Def=Get("AntiAFKEnabled", false), Callback=SetAntiAFK}); GProt:Space({Size=6})
-GProt:Toggle({Title="No Fall Damage", Def=Get("NoFallDamageEnabled", false), Callback=SetNoFallDamage}); GProt:Space({Size=6})
-GProt:Toggle({Title="Auto-Respawn Instantáneo", Def=Get("InstantRespawnEnabled", false), Callback=function(s) InstantRespawnEnabled=s end}); GProt:Space({Size=6})
-GProt:Toggle({Title="Auto-Rejoin al Morir", Def=Get("AutoRejoinEnabled", false), Callback=function(s) AutoRejoinEnabled=s end})
+GProt:Toggle({Title="God Mode (Local)", Def=Get("GodModeEnabled", false), Callback=AS(function(s) GodModeEnabled=s end)}); GProt:Space({Size=6})
+GProt:Toggle({Title="Anti-Void", Def=Get("AntiVoidEnabled", false), Callback=AS(function(s) AntiVoidEnabled=s end)}); GProt:Space({Size=6})
+GProt:Toggle({Title="Anti-Ragdoll", Def=Get("AntiRagdollEnabled", false), Callback=AS(function(s) AntiRagdollEnabled=s end)}); GProt:Space({Size=6})
+GProt:Toggle({Title="Anti-AFK (Real)", Def=Get("AntiAFKEnabled", false), Callback=AS(SetAntiAFK)}); GProt:Space({Size=6})
+GProt:Toggle({Title="No Fall Damage", Def=Get("NoFallDamageEnabled", false), Callback=AS(SetNoFallDamage)}); GProt:Space({Size=6})
+GProt:Toggle({Title="Auto-Respawn Instantáneo", Def=Get("InstantRespawnEnabled", false), Callback=AS(function(s) InstantRespawnEnabled=s end)}); GProt:Space({Size=6})
+GProt:Toggle({Title="Auto-Rejoin al Morir", Def=Get("AutoRejoinEnabled", false), Callback=AS(function(s) AutoRejoinEnabled=s end)})
 GameTab:Space({Size=10})
+
 GameTab:Section({Title="🔧 Utilidades", TextSize=18}); GameTab:Space({Size=6})
 local GUtil = GameTab:Section({Title="", Box=true, BoxBorder=true, Opened=true})
-GUtil:Toggle({Title="Auto-Clicker", Def=Get("AutoClickerEnabled", false), Callback=SetAutoClicker}); GUtil:Space({Size=6})
-GUtil:Slider({Title="CPS del Auto-Clicker", Step=1, Value={Min=1,Max=20,Default=Get("AutoClickerCPS",10)}, Callback=function(v) AutoClickerCPS=v end}); GUtil:Space({Size=8})
+GUtil:Toggle({Title="Auto-Clicker", Def=Get("AutoClickerEnabled", false), Callback=AS(SetAutoClicker)}); GUtil:Space({Size=6})
+GUtil:Slider({Title="CPS del Auto-Clicker", Step=1, Value={Min=1,Max=20,Default=Get("AutoClickerCPS",10)}, Callback=AS(function(v) AutoClickerCPS=v end)}); GUtil:Space({Size=8})
 local GU1 = GUtil:Group({})
-GU1:Button({Title="Rejoin", Icon="refresh-cw", Justify="Center", Callback=function() TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId) end}); GU1:Space({Size=8})
-GU1:Button({Title="Server Hop", Icon="shuffle", Justify="Center", Callback=ServerHop})
+GU1:Button({Title="TP All a Mí", Icon="users", Justify="Center", Callback=TPAllToMe}); GU1:Space({Size=8})
+GU1:Button({Title="Rejoin", Icon="refresh-cw", Justify="Center", Callback=function() TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId) end})
 GUtil:Space({Size=6})
 local GU2 = GUtil:Group({})
-GU2:Button({Title="Copiar JobID", Icon="clipboard", Justify="Center", Callback=function() setclipboard(tostring(game.JobId)); WindUI:Notify({Title="Copiado", Content="JobID copiado", Duration=2}) end}); GU2:Space({Size=8})
-GU2:Button({Title="Copiar Link del Juego", Icon="link", Justify="Center", Callback=function() setclipboard("https://www.roblox.com/games/"..tostring(game.PlaceId)); WindUI:Notify({Title="Copiado", Content="Link copiado", Duration=2}) end})
+GU2:Button({Title="Server Hop", Icon="shuffle", Justify="Center", Callback=ServerHop}); GU2:Space({Size=8})
+GU2:Button({Title="Copiar JobID", Icon="clipboard", Justify="Center", Callback=function() setclipboard(tostring(game.JobId)); WindUI:Notify({Title="Copiado", Content="JobID copiado", Duration=2}) end})
+GUtil:Space({Size=6})
+GUtil:Button({Title="Copiar Link del Juego", Icon="link", Justify="Center", Callback=function() setclipboard("https://www.roblox.com/games/"..tostring(game.PlaceId)); WindUI:Notify({Title="Copiado", Content="Link copiado", Duration=2}) end})
 GameTab:Space({Size=10})
+
 GameTab:Section({Title="📦 Scripts Universales", TextSize=18}); GameTab:Space({Size=6})
 local GScr = GameTab:Section({Title="", Box=true, BoxBorder=true, Opened=true})
 GScr:Button({Title="Infinite Yield (Admin Universal)", Desc="Ejecutar", Icon="play", Justify="Left", Callback=function()
-    pcall(function() loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))(); WindUI:Notify({Title="Infinite Yield", Content="Script ejecutado", Duration=3}) end)
+    pcall(function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))()
+        WindUI:Notify({Title="Infinite Yield", Content="Script ejecutado", Duration=3})
+    end)
 end})
 GScr:Space({Size=10})
 GScr:Button({Title="Dex Explorer", Desc="Ejecutar", Icon="play", Justify="Left", Callback=function()
-    pcall(function() loadstring(game:HttpGet("https://raw.githubusercontent.com/infyiff/backup/main/dex.lua"))(); WindUI:Notify({Title="Dex Explorer", Content="Script ejecutado", Duration=3}) end)
+    pcall(function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/infyiff/backup/main/dex.lua"))()
+        WindUI:Notify({Title="Dex Explorer", Content="Script ejecutado", Duration=3})
+    end)
 end})
 GameTab:Space({Size=12})
 
@@ -1492,33 +1493,33 @@ ServidoresTab:Button({Title="Recargar Amigos", Icon="refresh-cw", Justify="Cente
 ServidoresTab:Space({Size=10})
 task.spawn(function() task.wait(1.5); LoadPublicServers(); LoadFriendsServers() end)
 
--- 7. ESCUDOS (AHORA TODO FUNCIONA DE VERDAD)
+-- 7. ESCUDOS (ARREGLADO — AHORA SÍ FUNCIONAN)
 local EscudosTab = Window:Tab({Title="Escudos", Icon="shield"})
-EscudosTab:Section({Title="Protección Real", TextSize=20}); EscudosTab:Space({Size=6})
-local E1=EscudosTab:Group({})
-E1:Toggle({Title="Anti-AFK", Def=Get("AntiAFKEnabled",false), Callback=SetAntiAFK}); E1:Space({Size=8})
-E1:Toggle({Title="Anti-Kick (Reset)", Def=false, Callback=function(s) pcall(function() StarterGui:SetCore("ResetButtonCallback", not s) end) end})
+EscudosTab:Section({Title="🛡️ Protección y Defensas (reales)", TextSize=20}); EscudosTab:Space({Size=6})
+EscudosTab:Paragraph({Title="Nota", Desc="Anti-Kick solo bloquea kicks de scripts locales. Un kick del servidor no se puede bloquear del lado del cliente.", Image="info", ImageSize=14})
 EscudosTab:Space({Size=8})
-local E2=EscudosTab:Group({})
-E2:Toggle({Title="Anti-Freeze (Desanclar)", Def=Get("AntiFreezeEnabled",false), Callback=function(s) AntiFreezeEnabled=s end}); E2:Space({Size=8})
-E2:Toggle({Title="Anti-Cámara (Mantener Cámara)", Def=Get("AntiCameraEnabled",false), Callback=function(s) AntiCameraEnabled=s end})
-EscudosTab:Space({Size=8})
-local E3=EscudosTab:Group({})
-E3:Toggle({Title="Anti-Ragdoll", Def=Get("AntiRagdollEnabled",false), Callback=function(s) AntiRagdollEnabled=s end}); E3:Space({Size=8})
-E3:Toggle({Title="Anti-Void", Def=Get("AntiVoidEnabled",false), Callback=function(s) AntiVoidEnabled=s end})
-EscudosTab:Space({Size=8})
-EscudosTab:Toggle({Title="Escudo (Sit Protector)", Def=Get("SitProtectorEnabled",false), Callback=SetSitProtector})
-EscudosTab:Space({Size=8})
-local E4=EscudosTab:Group({})
-E4:Toggle({Title="No Empuje", Def=Get("NoPushEnabled",false), Callback=function(s) NoPushEnabled=s end}); E4:Space({Size=8})
-E4:Toggle({Title="No Retroceso", Def=Get("NoKnockbackEnabled",false), Callback=function(s) NoKnockbackEnabled=s end})
-EscudosTab:Space({Size=8})
-EscudosTab:Toggle({Title="Sin Fricción", Def=Get("NoFrictionEnabled",false), Callback=function(s) NoFrictionEnabled=s end})
-EscudosTab:Space({Size=8})
-EscudosTab:Section({Title="Acciones Rápidas", TextSize=18}); EscudosTab:Space({Size=6})
-local EB=EscudosTab:Group({})
-EB:Button({Title="Rejoin", Icon="refresh-cw", Justify="Center", Callback=function() TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId) end}); EB:Space({Size=8})
-EB:Button({Title="Server Hop", Icon="shuffle", Justify="Center", Callback=ServerHop})
+
+local function shieldPair(t1, cb1, d1, t2, cb2, d2)
+    local r = EscudosTab:Group({})
+    r:Toggle({Title=t1, Def=d1, Callback=AS(cb1)}); r:Space({Size=8})
+    r:Toggle({Title=t2, Def=d2, Callback=AS(cb2)})
+    EscudosTab:Space({Size=8})
+end
+
+shieldPair("Anti-AFK (Real)", SetAntiAFK, Get("AntiAFKEnabled", false),
+           "Anti-Kick (Hook Local)", SetAntiKick, Get("AntiKickEnabled", false))
+shieldPair("Anti-Reset (Bloquea Reset)", SetAntiReset, Get("AntiResetEnabled", false),
+           "Anti-Sit (No te sientan)", SetAntiSit, Get("AntiSitEnabled", false))
+shieldPair("Anti-Fling (Anti-Lanzamiento)", SetAntiFling, Get("AntiFlingEnabled", false),
+           "Anti-Freeze (Desanclar Auto.)", SetAntiFreeze, Get("AntiFreezeEnabled", false))
+shieldPair("Anti-Ragdoll", function(s) AntiRagdollEnabled = s end, Get("AntiRagdollEnabled", false),
+           "Anti-Void", function(s) AntiVoidEnabled = s end, Get("AntiVoidEnabled", false))
+shieldPair("No Empuje", function(s) NoPushEnabled = s end, Get("NoPushEnabled", false),
+           "No Retroceso", function(s) NoKnockbackEnabled = s end, Get("NoKnockbackEnabled", false))
+shieldPair("God Mode (Local)", function(s) GodModeEnabled = s end, Get("GodModeEnabled", false),
+           "Auto-Rejoin al Morir", function(s) AutoRejoinEnabled = s end, Get("AutoRejoinEnabled", false))
+shieldPair("Anti-Report (Oculta UI)", SetAntiReport, Get("AntiReportEnabled", false),
+           "No Fall Damage", SetNoFallDamage, Get("NoFallDamageEnabled", false))
 EscudosTab:Space({Size=12})
 
 -- 8. CONFIGURACIÓN
@@ -1532,37 +1533,40 @@ local C2=ConfigTab:Group({})
 C2:Button({Title="Copiar UserID", Icon="clipboard", Justify="Center", Callback=function() setclipboard(tostring(UserId)); WindUI:Notify({Title="Copiado", Content="UserID copiado", Duration=2}) end}); C2:Space({Size=8})
 C2:Button({Title="Copiar Username", Icon="clipboard", Justify="Center", Callback=function() setclipboard("@"..PlayerName); WindUI:Notify({Title="Copiado", Content="Username copiado", Duration=2}) end})
 ConfigTab:Space({Size=12})
-ConfigTab:Section({Title="Guardado (automático al cambiar)", TextSize=18}); ConfigTab:Space({Size=6})
+ConfigTab:Section({Title="Guardado (automático al cambiar opciones)", TextSize=18}); ConfigTab:Space({Size=6})
 local CFGRow=ConfigTab:Group({})
 CFGRow:Button({Title="Guardar Configuración", Icon="save", Justify="Center", Callback=function() GuardarConfiguracion(false) end})
 CFGRow:Space({Size=8})
 CFGRow:Button({Title="Cargar Configuración", Icon="refresh-cw", Justify="Center", Callback=function() CargarConfiguracion(); AplicarConfiguracion(); WindUI:Notify({Title="Configuración", Content="Aplicada", Duration=2}) end})
+ConfigTab:Space({Size=6})
+ConfigTab:Paragraph({Title="Cómo funciona", Desc="Cada toggle/slider que cambies se guarda solo (sin spam). Al ejecutar de nuevo, todo queda como lo dejaste.", Image="info", ImageSize=14})
+ConfigTab:Space({Size=12})
 
 -- 9. HERRAMIENTAS
 local H = Window:Tab({Title="Herramientas", Icon="wrench"})
 H:Section({Title="Movimiento", TextSize=20}); H:Space({Size=6})
 local Mov = H:Section({Title="Controles de Movimiento", Box=true, BoxBorder=true, Opened=true})
-Mov:Toggle({Title="Fly (Volar)", Def=Get("FlyEnabled", false), Callback=function(s) if s then StartFly() else StopFly() end end}); Mov:Space({Size=6})
-Mov:Slider({Title="Velocidad de Fly", Step=5, Value={Min=10,Max=200,Default=Get("FlySpeed", 60)}, Callback=function(v) FlySpeed=v end}); Mov:Space({Size=6})
-Mov:Toggle({Title="Noclip", Def=Get("NoclipEnabled", false), Callback=SetNoclip}); Mov:Space({Size=6})
-Mov:Toggle({Title="Salto Infinito", Def=Get("InfJumpEnabled", false), Callback=SetInfJump}); Mov:Space({Size=6})
-Mov:Slider({Title="WalkSpeed", Step=1, Value={Min=16,Max=250,Default=Get("WalkSpeed", 16)}, Callback=function(v) if Humanoid then Humanoid.WalkSpeed=v end end}); Mov:Space({Size=6})
-Mov:Slider({Title="JumpPower", Step=1, Value={Min=50,Max=350,Default=Get("JumpPower", 50)}, Callback=function(v) if Humanoid then Humanoid.JumpPower=v end end}); Mov:Space({Size=6})
-Mov:Slider({Title="Gravedad", Step=0.1, Value={Min=0,Max=2,Default=Get("GravityScale", 1)}, Callback=function(v) if Humanoid then Humanoid.GravityScale=v end end})
+Mov:Toggle({Title="Fly (Volar)", Def=Get("FlyEnabled", false), Callback=AS(function(s) if s then StartFly() else StopFly() end end)}); Mov:Space({Size=6})
+Mov:Slider({Title="Velocidad de Fly", Step=5, Value={Min=10,Max=200,Default=Get("FlySpeed", 60)}, Callback=AS(function(v) FlySpeed=v end)}); Mov:Space({Size=6})
+Mov:Toggle({Title="Noclip", Def=Get("NoclipEnabled", false), Callback=AS(SetNoclip)}); Mov:Space({Size=6})
+Mov:Toggle({Title="Salto Infinito", Def=Get("InfJumpEnabled", false), Callback=AS(SetInfJump)}); Mov:Space({Size=6})
+Mov:Slider({Title="WalkSpeed", Step=1, Value={Min=16,Max=250,Default=Get("WalkSpeed", 16)}, Callback=AS(function(v) if Humanoid then Humanoid.WalkSpeed=v end end)}); Mov:Space({Size=6})
+Mov:Slider({Title="JumpPower", Step=1, Value={Min=50,Max=350,Default=Get("JumpPower", 50)}, Callback=AS(function(v) if Humanoid then Humanoid.JumpPower=v end end)}); Mov:Space({Size=6})
+Mov:Slider({Title="Gravedad", Step=0.1, Value={Min=0,Max=2,Default=Get("GravityScale", 1)}, Callback=AS(function(v) if Humanoid then Humanoid.GravityScale=v end end)})
 H:Space({Size=10})
 H:Section({Title="Visual", TextSize=20}); H:Space({Size=6})
 local Vis = H:Section({Title="Efectos Visuales", Box=true, BoxBorder=true, Opened=true})
-Vis:Toggle({Title="Fullbright", Def=Get("FullbrightEnabled", false), Callback=SetFullbright}); Vis:Space({Size=6})
-Vis:Toggle({Title="ESP Jugadores", Def=Get("ESPEnabled", false), Callback=SetESP}); Vis:Space({Size=6})
-Vis:Toggle({Title="FPS Boost", Def=Get("FpsBoostEnabled", false), Callback=SetFpsBoost}); Vis:Space({Size=6})
-Vis:Slider({Title="FOV de Cámara", Step=1, Value={Min=60,Max=120,Default=Get("FOV", 70)}, Callback=function(v) pcall(function() workspace.CurrentCamera.FieldOfView=v end) end}); Vis:Space({Size=6})
+Vis:Toggle({Title="Fullbright", Def=Get("FullbrightEnabled", false), Callback=AS(SetFullbright)}); Vis:Space({Size=6})
+Vis:Toggle({Title="ESP Jugadores", Def=Get("ESPEnabled", false), Callback=AS(SetESP)}); Vis:Space({Size=6})
+Vis:Toggle({Title="FPS Boost", Def=Get("FpsBoostEnabled", false), Callback=AS(SetFpsBoost)}); Vis:Space({Size=6})
+Vis:Slider({Title="FOV de Cámara", Step=1, Value={Min=60,Max=120,Default=Get("FOV", 70)}, Callback=AS(function(v) pcall(function() workspace.CurrentCamera.FieldOfView=v end) end)}); Vis:Space({Size=6})
 Vis:Button({Title="Desbloquear Zoom", Icon="zoom-in", Justify="Center", Callback=function() pcall(function() workspace.CurrentCamera.CameraMaxZoomDistance=1000; workspace.CurrentCamera.CameraMinZoomDistance=0.5 end); WindUI:Notify({Title="Zoom", Content="Zoom desbloqueado", Duration=2}) end})
 H:Space({Size=10})
 H:Section({Title="Utilidades", TextSize=20}); H:Space({Size=6})
 local Uti = H:Section({Title="Herramientas Universales", Box=true, BoxBorder=true, Opened=true})
-Uti:Toggle({Title="Auto-Rejoin al Morir", Def=Get("AutoRejoinEnabled", false), Callback=function(s) AutoRejoinEnabled=s end}); Uti:Space({Size=6})
-Uti:Toggle({Title="Anti-Void", Def=Get("AntiVoidEnabled", false), Callback=function(s) AntiVoidEnabled=s end}); Uti:Space({Size=6})
-Uti:Toggle({Title="Anti-Ragdoll", Def=Get("AntiRagdollEnabled", false), Callback=function(s) AntiRagdollEnabled=s end}); Uti:Space({Size=8})
+Uti:Toggle({Title="Auto-Rejoin al Morir", Def=Get("AutoRejoinEnabled", false), Callback=AS(function(s) AutoRejoinEnabled=s end)}); Uti:Space({Size=6})
+Uti:Toggle({Title="Anti-Void", Def=Get("AntiVoidEnabled", false), Callback=AS(function(s) AntiVoidEnabled=s end)}); Uti:Space({Size=6})
+Uti:Toggle({Title="Anti-Ragdoll", Def=Get("AntiRagdollEnabled", false), Callback=AS(function(s) AntiRagdollEnabled=s end)}); Uti:Space({Size=8})
 SpectateDropdown = Uti:Dropdown({Title="Jugador a Espectear", Values=GetPlayerNames(true), Value=1, Callback=function(s) SpectateName=s end})
 Uti:Space({Size=6})
 local SpR=Uti:Group({})
@@ -1584,7 +1588,13 @@ Uti:Button({Title="Teletransportar a Jugador", Icon="map-pin", Justify="Center",
     else WindUI:Notify({Title="Error", Content="Jugador no disponible", Duration=2}) end
 end})
 Uti:Space({Size=6})
-Uti:Button({Title="Recargar Listas de Jugadores", Icon="refresh-cw", Justify="Center", Callback=RefreshTargetDropdowns})
+Uti:Button({Title="Recargar Listas de Jugadores", Icon="refresh-cw", Justify="Center", Callback=function()
+    pcall(function() SpectateDropdown:Refresh(GetPlayerNames(true)) end)
+    pcall(function() TPPlayerDropdown:Refresh(GetPlayerNames(false)) end)
+    pcall(function() if MorphDropdown then MorphDropdown:Refresh(GetPlayerNames(false)) end end)
+    pcall(function() if TargetDropdown then TargetDropdown:Refresh(GetPlayerNames(false)) end end)
+    WindUI:Notify({Title="Listas", Content="Jugadores recargados", Duration=2})
+end})
 Uti:Space({Size=8})
 Uti:Button({Title="Server Hop", Icon="shuffle", Justify="Center", Callback=ServerHop}); Uti:Space({Size=6})
 local UB1=Uti:Group({})
@@ -1601,25 +1611,25 @@ CoordsParagraph = Uti:Paragraph({Title="Coordenadas Actuales", Desc="X: 0  Y: 0 
 H:Space({Size=10})
 H:Section({Title="Movimiento Extra", TextSize=20}); H:Space({Size=6})
 local ME=H:Section({Title="Movimiento Adicional", Box=true, BoxBorder=true, Opened=true})
-ME:Toggle({Title="Click TP (Clic Derecho)", Def=Get("ClickTPEnabled", false), Callback=SetClickTP}); ME:Space({Size=6})
-ME:Toggle({Title="Auto-Jump (Bunny Hop)", Def=Get("AutoJumpEnabled", false), Callback=function(s) AutoJumpEnabled=s end}); ME:Space({Size=6})
-ME:Toggle({Title="Walk on Water", Def=Get("WalkOnWaterEnabled", false), Callback=function(s) WalkOnWaterEnabled=s end}); ME:Space({Size=6})
-ME:Toggle({Title="Spin Bot", Def=Get("SpinBotEnabled", false), Callback=SetSpinBot}); ME:Space({Size=6})
-ME:Toggle({Title="Freeze Position", Def=Get("FreezePositionEnabled", false), Callback=SetFreeze}); ME:Space({Size=6})
-ME:Slider({Title="Velocidad de Caída Máx.", Step=10, Value={Min=10,Max=200,Default=Get("FallSpeedCap", 200)}, Callback=function(v) FallSpeedCap=v end}); ME:Space({Size=6})
-ME:Slider({Title="Tamaño de Personaje", Step=0.1, Value={Min=0.3,Max=5,Default=Get("BodyScale", 1)}, Callback=function(v) pcall(function() if Humanoid then Humanoid.BodyHeightScale=v; Humanoid.BodyWidthScale=v; Humanoid.BodyDepthScale=v; if Humanoid.HeadScale then Humanoid.HeadScale=v end end end) end})
+ME:Toggle({Title="Click TP (Clic Derecho)", Def=Get("ClickTPEnabled", false), Callback=AS(SetClickTP)}); ME:Space({Size=6})
+ME:Toggle({Title="Auto-Jump (Bunny Hop)", Def=Get("AutoJumpEnabled", false), Callback=AS(function(s) AutoJumpEnabled=s end)}); ME:Space({Size=6})
+ME:Toggle({Title="Walk on Water", Def=Get("WalkOnWaterEnabled", false), Callback=AS(function(s) WalkOnWaterEnabled=s end)}); ME:Space({Size=6})
+ME:Toggle({Title="Spin Bot", Def=Get("SpinBotEnabled", false), Callback=AS(SetSpinBot)}); ME:Space({Size=6})
+ME:Toggle({Title="Freeze Position", Def=Get("FreezePositionEnabled", false), Callback=AS(SetFreeze)}); ME:Space({Size=6})
+ME:Slider({Title="Velocidad de Caída Máx.", Step=10, Value={Min=10,Max=200,Default=Get("FallSpeedCap", 200)}, Callback=AS(function(v) FallSpeedCap=v end)}); ME:Space({Size=6})
+ME:Slider({Title="Tamaño de Personaje", Step=0.1, Value={Min=0.3,Max=5,Default=Get("BodyScale", 1)}, Callback=AS(function(v) pcall(function() if Humanoid then Humanoid.BodyHeightScale=v; Humanoid.BodyWidthScale=v; Humanoid.BodyDepthScale=v; if Humanoid.HeadScale then Humanoid.HeadScale=v end end end) end)})
 H:Space({Size=10})
 H:Section({Title="Visual Extra", TextSize=20}); H:Space({Size=6})
 local VE=H:Section({Title="Efectos Adicionales", Box=true, BoxBorder=true, Opened=true})
-VE:Slider({Title="Velocidad de Animación", Step=0.1, Value={Min=0.1,Max=5,Default=Get("AnimationSpeed", 1)}, Callback=function(v) if Humanoid then pcall(function() Humanoid.AnimationSpeed=v end) end end}); VE:Space({Size=6})
-VE:Slider({Title="Hora del Día (ClockTime)", Step=1, Value={Min=0,Max=24,Default=Get("ClockTime", 14)}, Callback=function(v) Lighting.ClockTime=v end}); VE:Space({Size=6})
+VE:Slider({Title="Velocidad de Animación", Step=0.1, Value={Min=0.1,Max=5,Default=Get("AnimationSpeed", 1)}, Callback=AS(function(v) if Humanoid then pcall(function() Humanoid.AnimationSpeed=v end) end end)}); VE:Space({Size=6})
+VE:Slider({Title="Hora del Día (ClockTime)", Step=1, Value={Min=0,Max=24,Default=Get("ClockTime", 14)}, Callback=AS(function(v) Lighting.ClockTime=v end)}); VE:Space({Size=6})
 VE:Button({Title="Eliminar Partículas/Efectos", Icon="trash-2", Justify="Center", Callback=RemoveParticles})
 H:Space({Size=10})
 H:Section({Title="Utilidades Extra", TextSize=20}); H:Space({Size=6})
 local UE=H:Section({Title="Herramientas Adicionales", Box=true, BoxBorder=true, Opened=true})
-UE:Toggle({Title="God Mode (Local)", Def=Get("GodModeEnabled", false), Callback=function(s) GodModeEnabled=s end}); UE:Space({Size=6})
-UE:Toggle({Title="Auto-Respawn Instantáneo", Def=Get("InstantRespawnEnabled", false), Callback=function(s) InstantRespawnEnabled=s end}); UE:Space({Size=6})
-UE:Toggle({Title="Seguir Jugador (Follow)", Def=Get("FollowPlayerEnabled", false), Callback=function(s) FollowPlayerEnabled=s end}); UE:Space({Size=8})
+UE:Toggle({Title="God Mode (Local)", Def=Get("GodModeEnabled", false), Callback=AS(function(s) GodModeEnabled=s end)}); UE:Space({Size=6})
+UE:Toggle({Title="Auto-Respawn Instantáneo", Def=Get("InstantRespawnEnabled", false), Callback=AS(function(s) InstantRespawnEnabled=s end)}); UE:Space({Size=6})
+UE:Toggle({Title="Seguir Jugador (Follow)", Def=Get("FollowPlayerEnabled", false), Callback=AS(function(s) FollowPlayerEnabled=s end)}); UE:Space({Size=8})
 pcall(function() UE:TextBox({Title="Coordenadas (X, Y, Z)", PlaceholderText="0, 10, 0", Callback=function(t) CoordsText=t end}) end)
 UE:Space({Size=6})
 UE:Button({Title="TP a Coordenadas", Icon="map-pin", Justify="Center", Callback=function() TeleportToCoords(CoordsText) end}); UE:Space({Size=6})
@@ -1633,25 +1643,25 @@ H:Space({Size=12})
 local T = Window:Tab({Title="Trolleos", Icon="laugh"})
 T:Section({Title="Diversión y Trolleos", TextSize=20}); T:Space({Size=6})
 local TC=T:Section({Title="Chat y Mensajes", Box=true, BoxBorder=true, Opened=true})
-pcall(function() TC:TextBox({Title="Mensaje de Spam", PlaceholderText="Escribe tu mensaje...", Callback=function(t) SpamText=t end}) end)
+pcall(function() TC:TextBox({Title="Mensaje de Spam", PlaceholderText="Escribe tu mensaje...", Callback=AS(function(t) SpamText=t end)}) end)
 TC:Space({Size=6})
-TC:Toggle({Title="Chat Spammer", Def=Get("ChatSpamEnabled", false), Callback=SetChatSpam}); TC:Space({Size=6})
-TC:Toggle({Title="Dance/Emote Spam", Def=Get("DanceSpamEnabled", false), Callback=SetDanceSpam}); TC:Space({Size=6})
-TC:Toggle({Title="Chat Echo (Repetir)", Def=Get("ChatEchoEnabled", false), Callback=SetChatEcho})
+TC:Toggle({Title="Chat Spammer", Def=Get("ChatSpamEnabled", false), Callback=AS(SetChatSpam)}); TC:Space({Size=6})
+TC:Toggle({Title="Dance/Emote Spam", Def=Get("DanceSpamEnabled", false), Callback=AS(SetDanceSpam)}); TC:Space({Size=6})
+TC:Toggle({Title="Chat Echo (Repetir)", Def=Get("ChatEchoEnabled", false), Callback=AS(SetChatEcho)})
 T:Space({Size=10})
 local TV=T:Section({Title="Visuales Graciosos", Box=true, BoxBorder=true, Opened=true})
-TV:Toggle({Title="Personaje Arcoíris", Def=Get("RainbowEnabled", false), Callback=SetRainbow}); TV:Space({Size=6})
-TV:Toggle({Title="Cabeza Grande", Def=Get("BigHeadEnabled", false), Callback=SetBigHead}); TV:Space({Size=6})
-TV:Toggle({Title="Cámara Borracha", Def=Get("DrunkCamEnabled", false), Callback=SetDrunkCam}); TV:Space({Size=6})
-TV:Toggle({Title="Temblor de Pantalla", Def=Get("ScreenShakeEnabled", false), Callback=SetScreenShake}); TV:Space({Size=6})
-TV:Toggle({Title="Hacerse el Muerto", Def=Get("PlayDeadEnabled", false), Callback=SetPlayDead})
+TV:Toggle({Title="Personaje Arcoíris", Def=Get("RainbowEnabled", false), Callback=AS(SetRainbow)}); TV:Space({Size=6})
+TV:Toggle({Title="Cabeza Grande", Def=Get("BigHeadEnabled", false), Callback=AS(SetBigHead)}); TV:Space({Size=6})
+TV:Toggle({Title="Cámara Borracha", Def=Get("DrunkCamEnabled", false), Callback=AS(SetDrunkCam)}); TV:Space({Size=6})
+TV:Toggle({Title="Temblor de Pantalla", Def=Get("ScreenShakeEnabled", false), Callback=AS(SetScreenShake)}); TV:Space({Size=6})
+TV:Toggle({Title="Hacerse el Muerto", Def=Get("PlayDeadEnabled", false), Callback=AS(SetPlayDead)})
 T:Space({Size=10})
 local TU=T:Section({Title="Otros Trolleos", Box=true, BoxBorder=true, Opened=true})
 MorphDropdown = TU:Dropdown({Title="Jugador para Morph", Values=GetPlayerNames(false), Value=1, Callback=function(s) MorphName=s end})
 TU:Space({Size=6})
 TU:Button({Title="Morfearse como Jugador", Icon="user", Justify="Center", Callback=MorphAsPlayer}); TU:Space({Size=6})
 TU:Button({Title="Fake Kick (Pantalla Falsa)", Icon="alert-triangle", Justify="Center", Callback=FakeKick}); TU:Space({Size=6})
-TU:Button({Title="Recargar Lista Jugadores", Icon="refresh-cw", Justify="Center", Callback=RefreshTargetDropdowns})
+TU:Button({Title="Recargar Lista Jugadores", Icon="refresh-cw", Justify="Center", Callback=function() pcall(function() if MorphDropdown then MorphDropdown:Refresh(GetPlayerNames(false)) end end); WindUI:Notify({Title="Listas", Content="Recargadas", Duration=2}) end})
 T:Space({Size=12})
 
 -- 11. CRÉDITOS
@@ -1661,51 +1671,26 @@ local CG=Cr:Group({})
 CG:Paragraph({Title="Creador", Desc="ALAN_FF168\n© 2026", Image="code", ImageSize=16}); CG:Space({Size=10})
 CG:Paragraph({Title="UI Library", Desc="WindUI v1.6.65\nFootagesus", Image="book", ImageSize=16})
 Cr:Space({Size=8})
+Cr:Paragraph({Title="Target Module", Desc="Adaptado de SystemBroken (universal)", Image="crosshair", ImageSize=16})
+Cr:Space({Size=8})
 Cr:Paragraph({Title="Gracias por usar", Desc="¡Disfruta el script!", Image="heart", ImageSize=16})
 Cr:Space({Size=12})
 Cr:Paragraph({Title="", Desc="tonto el que ha leído esto", Image="smile", ImageSize=16})
 
--- Loop en tiempo real + guardado automático SOLO al cambiar (no cada 10s)
-local LastSig = ""
-local function StateSig()
-    return table.concat({
-        tostring(FlashAttackEnabled), tostring(FlashMultiplier),
-        tostring(TPWalkEnabled), tostring(TPWalkSpeed),
-        tostring(NoFrictionEnabled), tostring(InvisibleEnabled),
-        tostring(FlyEnabled), tostring(FlySpeed),
-        tostring(NoclipEnabled), tostring(InfJumpEnabled),
-        tostring(Humanoid and Humanoid.WalkSpeed or 16),
-        tostring(Humanoid and Humanoid.JumpPower or 50),
-        tostring(Humanoid and Humanoid.GravityScale or 1),
-        tostring(AutoWalkEnabled), tostring(FullbrightEnabled),
-        tostring(ESPEnabled), tostring(FpsBoostEnabled),
-        tostring((function() local ok,v=pcall(function() return workspace.CurrentCamera.FieldOfView end); return ok and v or 70 end)()),
-        tostring(Lighting.ClockTime),
-        tostring(AutoRejoinEnabled), tostring(AntiVoidEnabled),
-        tostring(AntiRagdollEnabled), tostring(GodModeEnabled),
-        tostring(InstantRespawnEnabled), tostring(FollowPlayerEnabled),
-        tostring(ClickTPEnabled), tostring(AutoJumpEnabled),
-        tostring(WalkOnWaterEnabled), tostring(SpinBotEnabled),
-        tostring(FreezePositionEnabled), tostring(FallSpeedCap),
-        tostring(ChatSpamEnabled), tostring(DanceSpamEnabled),
-        tostring(RainbowEnabled), tostring(DrunkCamEnabled),
-        tostring(PlayDeadEnabled), tostring(ChatEchoEnabled),
-        tostring(BigHeadEnabled), tostring(ScreenShakeEnabled),
-        tostring(SpamText), tostring(AntiAFKEnabled),
-        tostring(NoPushEnabled), tostring(NoKnockbackEnabled),
-        tostring(SitProtectorEnabled),
-        tostring(AutoClickerEnabled), tostring(AutoClickerCPS),
-        tostring(NoFallDamageEnabled),
-        tostring(AntiFreezeEnabled), tostring(AntiCameraEnabled),
-    }, "|")
-end
+-- Loop en tiempo real (SIN auto-guardado cada 10s)
 task.spawn(function()
-    while task.wait(0.5) do
+    while task.wait(0.1) do
         if not Character or not RootPart then UpdateChar() end
         if NoFrictionEnabled and RootPart then RootPart.Friction=0; RootPart.AirFriction=0
         elseif RootPart then RootPart.Friction=1; RootPart.AirFriction=0.5 end
-        if (NoPushEnabled or NoKnockbackEnabled) and RootPart then RootPart.CustomPhysicalProperties=PhysicalProperties.new(10, 0.3, NoPushEnabled and 0 or 0.5)
-        elseif RootPart then RootPart.CustomPhysicalProperties=PhysicalProperties.new(1, 0.5, 0.5) end
+        -- Anti-Fling tiene prioridad (densidad altísima = no te mueven)
+        if AntiFlingEnabled and RootPart then
+            RootPart.CustomPhysicalProperties = PhysicalProperties.new(100, NoPushEnabled and 0 or 1, 0)
+        elseif (NoPushEnabled or NoKnockbackEnabled) and RootPart then
+            RootPart.CustomPhysicalProperties=PhysicalProperties.new(10, 0.3, NoPushEnabled and 0 or 0.5)
+        elseif RootPart then
+            RootPart.CustomPhysicalProperties=PhysicalProperties.new(1, 0.5, 0.5)
+        end
         if AntiVoidEnabled and RootPart then
             if RootPart.Position.Y>-10 then LastSafePos=RootPart.Position
             elseif RootPart.Position.Y<-50 then RootPart.CFrame=CFrame.new(LastSafePos+Vector3.new(0,5,0)); RootPart.Velocity=Vector3.new(0,0,0) end
@@ -1724,32 +1709,15 @@ task.spawn(function()
             local t=TPPlayerName and Players:FindFirstChild(TPPlayerName)
             if t and t.Character and t.Character:FindFirstChild("HumanoidRootPart") then RootPart.CFrame=t.Character.HumanoidRootPart.CFrame*CFrame.new(0,0,5) end
         end
-        if AntiFreezeEnabled and RootPart and RootPart.Anchored and not FreezePositionEnabled then
-            pcall(function() RootPart.Anchored=false end)
+        -- Nuevos escudos en loop
+        if AntiSitEnabled and Humanoid then
+            pcall(function() Humanoid.Sit=false; Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, false) end)
         end
-        if AntiCameraEnabled then
-            pcall(function() if workspace.CurrentCamera.CameraSubject ~= Humanoid then workspace.CurrentCamera.CameraSubject = Humanoid end end)
+        if AntiFreezeEnabled and not FreezePositionEnabled and RootPart and RootPart.Anchored then
+            RootPart.Anchored = false
         end
         if CoordsParagraph and RootPart and CoordsParagraph.SetDesc then
             local p=RootPart.Position; CoordsParagraph:SetDesc("X: "..math.floor(p.X).."  Y: "..math.floor(p.Y).."  Z: "..math.floor(p.Z))
-        end
-        if TargetInfoParagraph and TargetInfoParagraph.SetDesc then
-            local txt = "Ninguno"
-            local t = TargetName and Players:FindFirstChild(TargetName)
-            if t and t.Character then
-                local hrp = t.Character:FindFirstChild("HumanoidRootPart")
-                local hum = t.Character:FindFirstChildOfClass("Humanoid")
-                local dist = (hrp and RootPart) and math.floor((RootPart.Position-hrp.Position).Magnitude) or 0
-                local hp = hum and (math.floor(hum.Health).."/"..math.floor(hum.MaxHealth)) or "?"
-                txt = t.Name.."\nDistancia: "..dist.." m\nVida: "..hp
-            end
-            TargetInfoParagraph:SetDesc(txt)
-        end
-        -- guardado automatico solo si algo cambio
-        local sig = StateSig()
-        if sig ~= LastSig then
-            LastSig = sig
-            task.spawn(function() GuardarConfiguracion(true) end)
         end
     end
 end)
@@ -1774,4 +1742,4 @@ end)
 
 AplicarConfiguracion()
 
-WindUI:Notify({Title="DENJI•ALEX", Content="v14: Target Module + Escudos Arreglados + Sin AutoSave 10s", Duration=4})
+WindUI:Notify({Title="DENJI•ALEX", Content="v11: Target integrado + Escudos reparados", Duration=4})
