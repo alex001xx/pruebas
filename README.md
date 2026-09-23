@@ -1385,12 +1385,17 @@ local function SF_GetReqFunc()
     return request or (syn and syn.request) or (http and http.request) or http_request
 end
 local function SF_HttpGet(url)
-    local ok, raw = pcall(function() return game:HttpGet(url) end)
+    -- 1) HttpService:GetAsync (el que funcionaba en v11)
+    local ok, raw = pcall(function() return game:GetService("HttpService"):GetAsync(url, true) end)
     if ok and raw and raw ~= "" then return raw end
+    -- 2) game:HttpGet
+    local ok2, raw2 = pcall(function() return game:HttpGet(url) end)
+    if ok2 and raw2 and raw2 ~= "" then return raw2 end
+    -- 3) request / syn.request (sale del cliente, puede llegar a games.roblox.com directo)
     local reqFunc = SF_GetReqFunc()
     if reqFunc then
-        local ok2, res = pcall(reqFunc, {Url = url, Method = "GET"})
-        if ok2 and res then
+        local ok3, res = pcall(reqFunc, {Url = url, Method = "GET", Headers = {["User-Agent"] = "Roblox/WinInet"}})
+        if ok3 and res then
             local sc = res.StatusCode or res.status
             if sc == 200 then return res.Body or res.body end
         end
@@ -1408,12 +1413,28 @@ local function SF_TeleportTo(jobId, placeId)
     end
     return true
 end
+local SF_LastError = ""
 local function SF_FetchServers()
-    local url = "https://games.roproxy.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"
-    local raw = SF_HttpGet(url)
-    if not raw then return nil end
+    local endpoints = {
+        "https://games.roproxy.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100",
+        "https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100",
+    }
+    local raw = nil
+    for _, url in ipairs(endpoints) do
+        raw = SF_HttpGet(url)
+        if raw then break end
+        task.wait(0.2)
+    end
+    if not raw then
+        SF_LastError = "Todos los proxys fallaron (roproxy caido o request bloqueado)."
+        return nil
+    end
     local ok2, data = pcall(function() return game:GetService("HttpService"):JSONDecode(raw) end)
-    if not ok2 or not data or not data.data then return nil end
+    if not ok2 or not data or not data.data then
+        SF_LastError = "Respuesta invalida (bloqueo de Cloudflare?)."
+        return nil
+    end
+    SF_LastError = ""
     local list = {}
     for _, s in ipairs(data.data) do
         if s.id then
@@ -1525,7 +1546,16 @@ ServB1:Button({Title="Hop Aleatorio", Icon="shuffle", Justify="Center", Callback
 ServActions:Space({Size=6})
 ServActions:Toggle({Title="Auto Hop", Def=false, Callback=AS(function(s) SF_SetAutoHop(s) end)})
 ServActions:Space({Size=6})
-ServActions:Button({Title="Refrescar Lista de Servidores", Icon="refresh-cw", Justify="Center", Callback=function() SF_RenderList() end})
+local SF_SelRow = ServActions:Group({})
+SF_SelRow:Button({Title="Limpiar Selección", Icon="x", Justify="Center", Callback=function()
+    SF_selectedJobId = nil; SF_selectedPlaceId = nil
+    if SF_SelectedParagraph and SF_SelectedParagraph.SetDesc then SF_SelectedParagraph:SetDesc("Ninguno (click en un servidor de la lista)") end
+    WindUI:Notify({Title="Server Finder", Content="Selección limpiada", Duration=2})
+end})
+SF_SelRow:Space({Size=8})
+SF_SelRow:Button({Title="Refrescar Lista", Icon="refresh-cw", Justify="Center", Callback=function() SF_RenderList() end})
+ServActions:Space({Size=6})
+SF_SelectedParagraph = ServActions:Paragraph({Title="Servidor Seleccionado", Desc="Ninguno (click en un servidor de la lista)", Image="map-pin", ImageSize=14})
 ServidoresTab:Space({Size=8})
 
 ServidoresTab:Section({Title="📋 Servidores (click = seleccionar)", TextSize=18}); ServidoresTab:Space({Size=6})
@@ -1538,7 +1568,8 @@ function SF_RenderList()
         local servers = SF_FetchServers()
         ServerListSection:Clear()
         if not servers or #servers == 0 then
-            ServerListSection:Paragraph({Title="No se encontraron servidores", Desc="Intenta refrescar", Image="alert-triangle", ImageSize=14})
+            ServerListSection:Paragraph({Title="No se encontraron servidores", Desc=SF_LastError~="" and SF_LastError or "Intenta refrescar.", Image="alert-triangle", ImageSize=14})
+            WindUI:Notify({Title="Server Finder", Content=SF_LastError~="" and SF_LastError or "Sin servidores.", Duration=5})
             return
         end
         SF_serverList = servers
@@ -1551,10 +1582,18 @@ function SF_RenderList()
             local desc = srv.players.."/"..srv.maxPlayers.."  ("..srv.ping.."ms)"
             if srv.isCurrent then desc = desc.."  (AQUÍ ESTÁS)"
             elseif srv.players <= threshold then desc = desc.."  (Óptimo)" end
-            ServerListSection:Button({Title="#"..i.."  "..srv.players.."/"..srv.maxPlayers, Desc=desc, Justify="Left", Callback=function()
+            local g = ServerListSection:Group({})
+            g:Button({Title="#"..i.."  "..srv.players.."/"..srv.maxPlayers, Desc=desc, Justify="Left", Callback=function()
                 SF_selectedJobId = srv.id
                 SF_selectedPlaceId = game.PlaceId
-                WindUI:Notify({Title="Seleccionado", Content="Servidor #"..i.." ("..srv.players.."/"..srv.maxPlayers.."). Pulsa UNIRSE AL SELECCIONADO.", Duration=3})
+                if SF_SelectedParagraph and SF_SelectedParagraph.SetDesc then
+                    SF_SelectedParagraph:SetDesc("Servidor #"..i.."  ("..srv.players.."/"..srv.maxPlayers..")")
+                end
+                WindUI:Notify({Title="Seleccionado", Content="Servidor #"..i..". Pulsa UNIRSE AL SELECCIONADO o TP directo.", Duration=3})
+            end})
+            g:Space({Size=8})
+            g:Button({Title="TP", Icon="send", Justify="Center", Callback=function()
+                SF_TeleportTo(srv.id, game.PlaceId)
             end})
             ServerListSection:Space({Size=4})
         end
