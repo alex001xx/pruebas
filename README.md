@@ -1271,16 +1271,16 @@ GScr:Button({Title="Dex Explorer", Desc="Ejecutar", Icon="play", Justify="Left",
 end})
 GameTab:Space({Size=12})
 
--- 6. RJ=New.SV (Private Server Finder — GUI propia eliminada, adaptado a WindUI)
+-- 6. RJ=New.SV (Private Server Finder — lista en ventana independiente)
 local RJTab = Window:Tab({Title="RJ=New.SV", Icon="globe"})
 
--- ██ LÓGICA (idéntica al script original, sin cambios) ██
+-- ██ LÓGICA (idéntica, sin cambios) ██
 local AutoOn = false
 local AutoCoroutine = nil
 local ServerList = {}
 local RJLimit = 1 -- reemplaza a LimitBox.Text
-
-local RJStatus, RJCounter, RJListSection = nil, nil, nil
+local RJStatus, RJCounter = nil, nil
+local ServerListGui = nil -- ventana independiente de la lista
 
 local function Fetch()
     local Url = string.format("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Asc&limit=100", game.PlaceId)
@@ -1308,49 +1308,6 @@ local function Fetch()
         end
     end
     return Result
-end
-
-local function LoadServers()
-    if RJListSection then
-        RJListSection:Clear()
-        RJListSection:Paragraph({Title="Cargando...", Desc="Espera un momento", Image="loading", ImageSize=14})
-    end
-    local url = string.format("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Asc&limit=100", game.PlaceId)
-    local ok, raw = pcall(function() return game:HttpGet(url) end)
-    if not ok or not raw then
-        if RJListSection then
-            RJListSection:Clear()
-            RJListSection:Paragraph({Title="Error", Desc="No se pudo cargar la lista", Image="alert-triangle", ImageSize=14})
-        end
-        return
-    end
-    local Http = game:GetService("HttpService")
-    local decodeOk, data = pcall(Http.JSONDecode, Http, raw)
-    if not decodeOk or not data or not data.data then
-        if RJListSection then
-            RJListSection:Clear()
-            RJListSection:Paragraph({Title="Error", Desc="Respuesta inválida de la API", Image="alert-triangle", ImageSize=14})
-        end
-        return
-    end
-    local currentId = tostring(game.JobId)
-    ServerList = {}
-    if RJListSection then
-        RJListSection:Clear()
-        for _, srv in ipairs(data.data) do
-            if srv.id and tostring(srv.id) ~= currentId then
-                table.insert(ServerList, {Id=tostring(srv.id), Players=srv.playing or 0, Max=srv.maxPlayers or 0, Ping=srv.ping or 0})
-                RJListSection:Button({
-                    Title = string.format("  %d/%d jugadores  •  Ping: %dms", srv.playing or 0, srv.maxPlayers or 0, srv.ping or 0),
-                    Justify = "Left",
-                    Callback = function()
-                        pcall(function() TeleportService:TeleportToPlaceInstance(game.PlaceId, srv.id, LocalPlayer) end)
-                    end
-                })
-                RJListSection:Space({Size=4})
-            end
-        end
-    end
 end
 
 local function JoinBest()
@@ -1385,7 +1342,168 @@ local function SetAutoHop(on)
     end
 end
 
--- ██ UI DE LA PESTAÑA (reemplaza a la GUI propia del script) ██
+-- ██ VENTANA INDEPENDIENTE: LISTA DE SERVIDORES (pastel naranja transparente) ██
+local function CerrarListaServidores()
+    if ServerListGui then
+        pcall(function() ServerListGui:Destroy() end)
+        ServerListGui = nil
+    end
+end
+
+local function AbrirListaServidores()
+    if ServerListGui then return end
+    local Http = game:GetService("HttpService")
+    local TweenService = game:GetService("TweenService")
+
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "ServidoresDisponibles"
+    ScreenGui.ResetOnSpawn = false
+    ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    if gethui then
+        ScreenGui.Parent = gethui()
+    elseif syn and syn.protect_gui then
+        syn.protect_gui(ScreenGui)
+        ScreenGui.Parent = game.CoreGui
+    else
+        ScreenGui.Parent = game:GetService("CoreGui")
+    end
+    ServerListGui = ScreenGui
+
+    local Main = Instance.new("Frame")
+    Main.Parent = ScreenGui
+    Main.Name = "Main"
+    Main.BackgroundColor3 = Color3.fromRGB(255, 195, 145) -- pastel naranja
+    Main.BackgroundTransparency = 0.30 -- transparente
+    Main.BorderSizePixel = 0
+    Main.Position = UDim2.new(0.5, -150, 0.5, -200)
+    Main.Size = UDim2.new(0, 300, 0, 400)
+    Main.Active = true
+    Main.Draggable = true
+    Main.ClipsDescendants = true
+    Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 10)
+    local Stroke = Instance.new("UIStroke", Main)
+    Stroke.Color = Color3.fromRGB(235, 160, 100)
+    Stroke.Thickness = 1.5
+    Stroke.Transparency = 0.2
+
+    local Title = Instance.new("TextLabel")
+    Title.Parent = Main
+    Title.Position = UDim2.new(0, 12, 0, 9)
+    Title.Size = UDim2.new(1, -100, 0, 20)
+    Title.BackgroundTransparency = 1
+    Title.Font = Enum.Font.GothamBold
+    Title.Text = "Servidores Disponibles"
+    Title.TextColor3 = Color3.fromRGB(90, 50, 20)
+    Title.TextSize = 13
+    Title.TextXAlignment = Enum.TextXAlignment.Left
+
+    local Refresh = Instance.new("TextButton")
+    Refresh.Parent = Main
+    Refresh.BackgroundColor3 = Color3.fromRGB(240, 160, 110)
+    Refresh.BackgroundTransparency = 0.15
+    Refresh.Position = UDim2.new(1, -100, 0, 8)
+    Refresh.Size = UDim2.new(0, 64, 0, 22)
+    Refresh.Font = Enum.Font.GothamBold
+    Refresh.Text = "Recargar"
+    Refresh.TextColor3 = Color3.fromRGB(90, 50, 20)
+    Refresh.TextSize = 9
+    Instance.new("UICorner", Refresh).CornerRadius = UDim.new(0, 6)
+
+    local Close = Instance.new("TextButton")
+    Close.Parent = Main
+    Close.BackgroundColor3 = Color3.fromRGB(240, 140, 100)
+    Close.BackgroundTransparency = 0.10
+    Close.Position = UDim2.new(1, -30, 0, 8)
+    Close.Size = UDim2.new(0, 22, 0, 22)
+    Close.Font = Enum.Font.GothamBold
+    Close.Text = "X"
+    Close.TextColor3 = Color3.fromRGB(90, 40, 10)
+    Close.TextSize = 12
+    Instance.new("UICorner", Close).CornerRadius = UDim.new(0, 6)
+    Close.MouseButton1Click:Connect(CerrarListaServidores)
+
+    local List = Instance.new("ScrollingFrame")
+    List.Parent = Main
+    List.Position = UDim2.new(0, 10, 0, 38)
+    List.Size = UDim2.new(1, -20, 1, -48)
+    List.BackgroundColor3 = Color3.fromRGB(255, 215, 175)
+    List.BackgroundTransparency = 0.35
+    List.BorderSizePixel = 0
+    List.ScrollBarThickness = 4
+    List.ScrollBarImageColor3 = Color3.fromRGB(230, 140, 80)
+    List.CanvasSize = UDim2.new(0, 0, 0, 0)
+    List.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    Instance.new("UICorner", List).CornerRadius = UDim.new(0, 8)
+    local Layout = Instance.new("UIListLayout")
+    Layout.Parent = List
+    Layout.Padding = UDim.new(0, 4)
+    Layout.SortOrder = Enum.SortOrder.LayoutOrder
+    local Pad = Instance.new("UIPadding")
+    Pad.Parent = List
+    Pad.PaddingTop = UDim.new(0, 6)
+    Pad.PaddingBottom = UDim.new(0, 6)
+
+    local function Hover(btn, normal, over)
+        btn.MouseEnter:Connect(function() TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = over}):Play() end)
+        btn.MouseLeave:Connect(function() TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = normal}):Play() end)
+    end
+
+    local function LoadServers()
+        if not ServerListGui then return end
+        for _, c in ipairs(List:GetChildren()) do if c:IsA("TextButton") or c:IsA("TextLabel") then c:Destroy() end end
+        local Loading = Instance.new("TextLabel")
+        Loading.Parent = List
+        Loading.Size = UDim2.new(1, -8, 0, 26)
+        Loading.BackgroundTransparency = 1
+        Loading.Font = Enum.Font.Gotham
+        Loading.Text = "Cargando servidores..."
+        Loading.TextColor3 = Color3.fromRGB(90, 50, 20)
+        Loading.TextSize = 11
+        task.spawn(function()
+            local url = string.format("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Asc&limit=100", game.PlaceId)
+            local ok, raw = pcall(function() return game:HttpGet(url) end)
+            Loading:Destroy()
+            if not ok or not raw then return end
+            local decodeOk, data = pcall(Http.JSONDecode, Http, raw)
+            if not decodeOk or not data or not data.data then return end
+            local currentId = tostring(game.JobId)
+            ServerList = {}
+            for _, srv in ipairs(data.data) do
+                if srv.id and tostring(srv.id) ~= currentId then
+                    table.insert(ServerList, {Id=tostring(srv.id), Players=srv.playing or 0, Max=srv.maxPlayers or 0, Ping=srv.ping or 0})
+                    local btn = Instance.new("TextButton")
+                    btn.Parent = List
+                    btn.Size = UDim2.new(1, -8, 0, 30)
+                    btn.BackgroundColor3 = Color3.fromRGB(255, 225, 190)
+                    btn.BackgroundTransparency = 0.15
+                    btn.BorderSizePixel = 0
+                    btn.Font = Enum.Font.Gotham
+                    btn.TextSize = 11
+                    btn.TextXAlignment = Enum.TextXAlignment.Left
+                    btn.TextColor3 = Color3.fromRGB(80, 45, 15)
+                    btn.Text = string.format("  %d/%d jugadores  •  Ping: %dms", srv.playing or 0, srv.maxPlayers or 0, srv.ping or 0)
+                    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+                    Hover(btn, Color3.fromRGB(255, 225, 190), Color3.fromRGB(255, 190, 140))
+                    btn.MouseButton1Click:Connect(function()
+                        pcall(function() TeleportService:TeleportToPlaceInstance(game.PlaceId, srv.id, LocalPlayer) end)
+                    end)
+                end
+            end
+        end)
+    end
+
+    Refresh.MouseButton1Click:Connect(LoadServers)
+    Hover(Refresh, Color3.fromRGB(240, 160, 110), Color3.fromRGB(255, 180, 120))
+    Hover(Close, Color3.fromRGB(240, 140, 100), Color3.fromRGB(255, 100, 80))
+    LoadServers()
+end
+
+local function ToggleListaServidores()
+    if ServerListGui then CerrarListaServidores()
+    else AbrirListaServidores() end
+end
+
+-- ██ UI DE LA PESTAÑA (sin lista embebida — solo botón abrir/cerrar) ██
 RJTab:Section({Title="RJ = New Server", TextSize=20}); RJTab:Space({Size=6})
 RJStatus = RJTab:Paragraph({Title="Estado", Desc="Listo", Image="info", ImageSize=14})
 RJTab:Space({Size=4})
@@ -1403,11 +1521,7 @@ RJBtnRow:Button({Title="BUSCAR Y UNIR", Icon="send", Justify="Center", Callback=
 RJBtnRow:Space({Size=8})
 RJBtnRow:Toggle({Title="Auto Hop", Def=false, Callback=function(s) SetAutoHop(s) end})
 RJTab:Space({Size=8})
-RJTab:Button({Title="RECARGAR", Icon="refresh-cw", Justify="Center", Callback=function() task.spawn(LoadServers) end})
-RJTab:Space({Size=10})
-RJTab:Section({Title="Servidores (clic para unirte)", TextSize=16}); RJTab:Space({Size=6})
-RJListSection = RJTab:Section({Title="", Box=true, BoxBorder=true, Opened=true})
-RJListSection:Paragraph({Title="Cargando...", Desc="Espera un momento", Image="loading", ImageSize=14})
+RJTab:Button({Title="Abrir / Cerrar Lista de Servidores", Icon="globe", Justify="Center", Callback=ToggleListaServidores})
 RJTab:Space({Size=12})
 
 -- Contador en tiempo real
@@ -1418,9 +1532,6 @@ task.spawn(function()
         end
     end
 end)
-
--- Inicio
-task.spawn(LoadServers)
 
 -- 7. ESCUDOS (ARREGLADO — AHORA SÍ FUNCIONAN)
 local EscudosTab = Window:Tab({Title="Escudos", Icon="shield"})
@@ -1574,10 +1685,6 @@ local CG=Cr:Group({})
 CG:Paragraph({Title="Creador", Desc="ALAN_FF168\n© 2026", Image="code", ImageSize=16}); CG:Space({Size=10})
 CG:Paragraph({Title="UI Library", Desc="WindUI v1.6.65\nFootagesus", Image="book", ImageSize=16})
 Cr:Space({Size=8})
-Cr:Paragraph({Title="Target Module", Desc="Adaptado de SystemBroken (universal)", Image="crosshair", ImageSize=16})
-Cr:Space({Size=8})
-Cr:Paragraph({Title="Server Finder", Desc="Adaptado de GlazeOnTop (Private Server Finder)", Image="globe", ImageSize=16})
-Cr:Space({Size=8})
 Cr:Paragraph({Title="Gracias por usar", Desc="¡Disfruta el script!", Image="heart", ImageSize=16})
 Cr:Space({Size=12})
 Cr:Paragraph({Title="", Desc="tonto el que ha leído esto", Image="smile", ImageSize=16})
@@ -1645,4 +1752,4 @@ end)
 
 AplicarConfiguracion()
 
-WindUI:Notify({Title="DENJI•ALEX", Content="v14: RJ lista limpia + sin Trolleos", Duration=4})
+WindUI:Notify({Title="DENJI•ALEX", Content="v15: Lista servidores ventana + Créditos limpio", Duration=4})
