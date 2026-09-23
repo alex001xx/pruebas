@@ -913,168 +913,6 @@ _G.TargetModule = {
 getgenv().TargetModule = _G.TargetModule
 
 -- ============================================================
--- 🔍 PRIVATE SERVER FINDER (adaptado a WindUI)
--- ============================================================
-local PSFThreshold = 1
-local PSFAutoEnabled = false
-local PSFAutoThread = nil
-local PSFServerList = {}
-local PSFStatusParagraph = nil
-local PSFListSection = nil
-local PSFNowParagraph = nil
-
-local function PSFSetStatus(desc)
-    if PSFStatusParagraph and PSFStatusParagraph.SetDesc then
-        PSFStatusParagraph:SetDesc(desc)
-    end
-end
-
-local function PSFFetchServers()
-    local Http = game:GetService("HttpService")
-    local proxies = {
-        "https://games.roproxy.com/v1/games/%d/servers/Public?sortOrder=Asc&limit=100",
-        "https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Asc&limit=100",
-    }
-    local rawData = nil
-    for _, fmt in ipairs(proxies) do
-        local ok, data = pcall(function()
-            return game:HttpGet(string.format(fmt, game.PlaceId))
-        end)
-        if ok and data and data ~= "" then rawData = data; break end
-    end
-    if not rawData then return nil, "Error al acceder a la API (proxy caído?)" end
-    local decodeOk, data = pcall(function() return Http:JSONDecode(rawData) end)
-    if not decodeOk or not data or not data.data then return nil, "Respuesta inválida de la API" end
-    local currentJobId = tostring(game.JobId)
-    local list = {}
-    for _, server in ipairs(data.data) do
-        if server.id and tostring(server.id) ~= currentJobId then
-            table.insert(list, {
-                id = tostring(server.id),
-                players = server.playing or 0,
-                maxPlayers = server.maxPlayers or 0,
-                ping = server.ping or 0
-            })
-        end
-    end
-    table.sort(list, function(a, b) return a.players < b.players end)
-    return list
-end
-
-local function PSFJoinServer(srv, idx)
-    PSFSetStatus("Conectando al servidor #" .. idx .. " (" .. srv.players .. "/" .. srv.maxPlayers .. ")...")
-    WindUI:Notify({Title="Server Finder", Content="Conectando al servidor #"..idx, Duration=3})
-    local ok, err = pcall(function()
-        TeleportService:TeleportToPlaceInstance(game.PlaceId, srv.id, LocalPlayer)
-    end)
-    if not ok then
-        PSFSetStatus("Error: " .. tostring(err or "desconocido"))
-        WindUI:Notify({Title="Server Finder", Content="Error de TP: "..tostring(err):sub(1,50), Duration=4})
-    end
-end
-
-local function PSFRenderList()
-    if not PSFListSection then return end
-    PSFListSection:Clear()
-    PSFListSection:Paragraph({Title="Cargando servidores...", Desc="Espera un momento...", Image="loading", ImageSize=14})
-    task.spawn(function()
-        local servers, err = PSFFetchServers()
-        PSFListSection:Clear()
-        if not servers or #servers == 0 then
-            PSFListSection:Paragraph({Title="Sin servidores", Desc=err or "Intenta recargar", Image="alert-triangle", ImageSize=14})
-            PSFSetStatus("No se encontraron servidores públicos")
-            return
-        end
-        PSFServerList = servers
-        PSFSetStatus(#servers .. " servidores disponibles (clic para unirte)")
-        PSFListSection:Paragraph({Title="Encontrados: "..#servers, Desc="Ordenados por menos jugadores. Límite óptimo: "..PSFThreshold, Image="globe", ImageSize=14})
-        PSFListSection:Space({Size=6})
-        for i=1, #servers, 2 do
-            local g = PSFListSection:Group({})
-            local s1 = servers[i]
-            local opt1 = s1.players <= PSFThreshold and " ★" or ""
-            g:Button({Title="#"..i..opt1.."  "..s1.players.."/"..s1.maxPlayers, Desc=s1.ping.." ms", Justify="Left", Callback=function() PSFJoinServer(s1, i) end})
-            if servers[i+1] then
-                g:Space({Size=8})
-                local s2 = servers[i+1]
-                local opt2 = s2.players <= PSFThreshold and " ★" or ""
-                g:Button({Title="#"..(i+1)..opt2.."  "..s2.players.."/"..s2.maxPlayers, Desc=s2.ping.." ms", Justify="Left", Callback=function() PSFJoinServer(s2, i+1) end})
-            end
-            PSFListSection:Space({Size=6})
-        end
-    end)
-end
-
-local function PSFGetRandomServer()
-    if #PSFServerList == 0 then
-        local fresh = PSFFetchServers()
-        if not fresh or #fresh == 0 then return nil end
-        PSFServerList = fresh
-    end
-    local threshold = math.max(1, PSFThreshold)
-    local candidates = {}
-    for _, s in ipairs(PSFServerList) do
-        if s.players <= threshold then
-            table.insert(candidates, s)
-        end
-    end
-    local pool = #candidates > 0 and candidates or PSFServerList
-    return pool[math.random(1, #pool)]
-end
-
-local function PSFJoinOnce()
-    local threshold = math.max(1, PSFThreshold)
-    local currentCount = #Players:GetPlayers()
-    if currentCount <= threshold then
-        PSFSetStatus("Servidor óptimo: " .. currentCount .. "/" .. threshold .. " — no es necesario hop")
-        WindUI:Notify({Title="Server Finder", Content="Tu servidor ya es óptimo ("..currentCount.."/"..threshold..")", Duration=3})
-        return false
-    end
-    PSFSetStatus("Buscando servidor con ≤" .. threshold .. " jugadores...")
-    task.wait(0.5)
-    local target = PSFGetRandomServer()
-    if not target then
-        PSFSetStatus("Falló la obtención de servidores")
-        return false
-    end
-    PSFSetStatus("Teletransportando... (" .. target.players .. " jug.)")
-    task.wait(0.3)
-    local ok, err = pcall(function()
-        TeleportService:TeleportToPlaceInstance(game.PlaceId, target.id, LocalPlayer)
-    end)
-    if not ok then
-        PSFSetStatus("Error de teletransporte: " .. tostring(err or "fallo"))
-        return false
-    end
-    return true
-end
-
-local function PSFSetAuto(s)
-    PSFAutoEnabled = s
-    if s then
-        if PSFAutoThread then task.cancel(PSFAutoThread); PSFAutoThread = nil end
-        PSFAutoThread = task.spawn(function()
-            while PSFAutoEnabled do
-                local threshold = math.max(1, PSFThreshold)
-                local count = #Players:GetPlayers()
-                if count <= threshold then
-                    PSFSetStatus("Óptimo (" .. count .. "/" .. threshold .. ") — Esperando...")
-                    task.wait(3)
-                else
-                    PSFJoinOnce()
-                    task.wait(5)
-                end
-            end
-        end)
-        WindUI:Notify({Title="Auto Hop", Content="Activado — buscará servidores ≤"..PSFThreshold, Duration=3})
-    else
-        if PSFAutoThread then task.cancel(PSFAutoThread); PSFAutoThread = nil end
-        PSFSetStatus("Auto Hop detenido")
-        WindUI:Notify({Title="Auto Hop", Content="Desactivado", Duration=2})
-    end
-end
-
--- ============================================================
 -- 💾 CONFIGURACIÓN PERSISTENTE (guardado al cambiar, NO cada 10s)
 -- ============================================================
 local ConfigFileName = "DENJI_ALEX_Config.json"
@@ -1141,8 +979,6 @@ local function GuardarConfiguracion(silent)
         AntiFlingEnabled = AntiFlingEnabled,
         AntiFreezeEnabled = AntiFreezeEnabled,
         AntiReportEnabled = AntiReportEnabled,
-        PSFThreshold = PSFThreshold,
-        PSFAutoEnabled = PSFAutoEnabled,
     }
     pcall(function()
         local Http = game:GetService("HttpService")
@@ -1186,7 +1022,6 @@ local function CargarConfiguracion()
         if Saved.FallSpeedCap then FallSpeedCap = Saved.FallSpeedCap end
         if Saved.SpamText then SpamText = Saved.SpamText end
         if Saved.AutoClickerCPS then AutoClickerCPS = Saved.AutoClickerCPS end
-        if Saved.PSFThreshold then PSFThreshold = Saved.PSFThreshold end
         WindUI:Notify({Title="Configuración", Content="Cargada correctamente", Duration=3})
     end)
 end
@@ -1253,7 +1088,6 @@ local function AplicarConfiguracion()
         if Saved.AntiSitEnabled~=nil then AntiSitEnabled=Saved.AntiSitEnabled end
         if Saved.AntiFlingEnabled~=nil then AntiFlingEnabled=Saved.AntiFlingEnabled end
         if Saved.AntiFreezeEnabled~=nil then AntiFreezeEnabled=Saved.AntiFreezeEnabled end
-        if Saved.PSFAutoEnabled then PSFSetAuto(true) end
     end)
 end
 
@@ -1560,47 +1394,144 @@ GScr:Button({Title="Dex Explorer", Desc="Ejecutar", Icon="play", Justify="Left",
 end})
 GameTab:Space({Size=12})
 
--- 6. SERVIDORES — PRIVATE SERVER FINDER (adaptado a WindUI)
-local ServidoresTab = Window:Tab({Title="Servidores", Icon="globe"})
-ServidoresTab:Section({Title="🔍 Buscador de Servidores", TextSize=20}); ServidoresTab:Space({Size=6})
+-- 6. RJ=New.SV (Private Server Finder — GUI propia eliminada, adaptado a WindUI)
+local RJTab = Window:Tab({Title="RJ=New.SV", Icon="globe"})
 
-PSFNowParagraph = ServidoresTab:Paragraph({Title="Servidor Actual", Desc="Jugadores: "..#Players:GetPlayers().." / "..Players.MaxPlayers, Image="users", ImageSize=14})
-ServidoresTab:Space({Size=6})
-PSFStatusParagraph = ServidoresTab:Paragraph({Title="Estado", Desc="Listo — Establece límite y pulsa Hop", Image="info", ImageSize=14})
-ServidoresTab:Space({Size=8})
+-- ██ LÓGICA (idéntica al script original, sin cambios) ██
+local AutoOn = false
+local AutoCoroutine = nil
+local ServerList = {}
+local RJLimit = 1 -- reemplaza a LimitBox.Text
 
+local RJStatus, RJCounter, RJListSection = nil, nil, nil
+
+local function Fetch()
+    local Url = string.format("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Asc&limit=100", game.PlaceId)
+    local Ok, Data = pcall(function() return game:HttpGet(Url) end)
+    if not Ok or not Data then
+        if RJStatus and RJStatus.SetDesc then RJStatus:SetDesc("Error de conexión") end
+        return nil
+    end
+    local Http = game:GetService("HttpService")
+    local DecodeOk, Json = pcall(Http.JSONDecode, Http, Data)
+    if not DecodeOk or not Json or not Json.data then
+        if RJStatus and RJStatus.SetDesc then RJStatus:SetDesc("Respuesta inválida") end
+        return nil
+    end
+    local CurrentId = tostring(game.JobId)
+    local Result = {}
+    for _, S in ipairs(Json.data) do
+        if S.id and tostring(S.id) ~= CurrentId then
+            table.insert(Result, {
+                Id = tostring(S.id),
+                Players = S.playing or 0,
+                Max = S.maxPlayers or 0,
+                Ping = S.ping or 0
+            })
+        end
+    end
+    return Result
+end
+
+local function Render()
+    if RJStatus and RJStatus.SetDesc then RJStatus:SetDesc("Cargando...") end
+    local Servers = Fetch()
+    if not Servers or #Servers == 0 then
+        if RJStatus and RJStatus.SetDesc then RJStatus:SetDesc("Sin servidores disponibles") end
+        if RJListSection then
+            RJListSection:Clear()
+            RJListSection:Paragraph({Title="Sin servidores", Desc="Intenta recargar", Image="alert-triangle", ImageSize=14})
+        end
+        return
+    end
+    ServerList = Servers
+    if RJStatus and RJStatus.SetDesc then RJStatus:SetDesc(#Servers .. " servidores encontrados") end
+    if RJListSection then
+        RJListSection:Clear()
+        local Limit = math.max(1, RJLimit)
+        for I, S in ipairs(Servers) do
+            local Marca = S.Players <= Limit and "  ★" or ""
+            RJListSection:Button({
+                Title = string.format("  %d/%d  •  Ping: %dms%s", S.Players, S.Max, S.Ping, Marca),
+                Justify = "Left",
+                Callback = function()
+                    if RJStatus and RJStatus.SetDesc then RJStatus:SetDesc("Conectando...") end
+                    pcall(function() TeleportService:TeleportToPlaceInstance(game.PlaceId, S.Id, LocalPlayer) end)
+                end
+            })
+            RJListSection:Space({Size=3})
+        end
+    end
+end
+
+local function JoinBest()
+    local Limit = math.max(1, RJLimit)
+    if #Players:GetPlayers() <= Limit then
+        if RJStatus and RJStatus.SetDesc then RJStatus:SetDesc("Servidor óptimo") end
+        return
+    end
+    local Servers = Fetch() or ServerList
+    if not Servers or #Servers == 0 then return end
+    local Candidates = {}
+    for _, S in ipairs(Servers) do
+        if S.Players <= Limit then table.insert(Candidates, S) end
+    end
+    local Target = #Candidates > 0 and Candidates[math.random(#Candidates)] or Servers[math.random(#Servers)]
+    if RJStatus and RJStatus.SetDesc then RJStatus:SetDesc("Teletransportando...") end
+    pcall(function() TeleportService:TeleportToPlaceInstance(game.PlaceId, Target.Id, LocalPlayer) end)
+end
+
+local function SetAutoHop(on)
+    AutoOn = on
+    if on then
+        AutoCoroutine = task.spawn(function()
+            while AutoOn do
+                JoinBest()
+                task.wait(4)
+            end
+        end)
+    else
+        if AutoCoroutine then pcall(function() task.cancel(AutoCoroutine) end); AutoCoroutine = nil end
+        if RJStatus and RJStatus.SetDesc then RJStatus:SetDesc("Detenido") end
+    end
+end
+
+-- ██ UI DE LA PESTAÑA (reemplaza a la GUI propia del script) ██
+RJTab:Section({Title="RJ = New Server", TextSize=20}); RJTab:Space({Size=6})
+RJStatus = RJTab:Paragraph({Title="Estado", Desc="Listo", Image="info", ImageSize=14})
+RJTab:Space({Size=4})
+RJCounter = RJTab:Paragraph({Title="Jugadores", Desc="Jugadores: "..#Players:GetPlayers(), Image="users", ImageSize=14})
+RJTab:Space({Size=8})
 pcall(function()
-    ServidoresTab:TextBox({Title="Jugadores máximos permitidos (límite)", PlaceholderText=tostring(PSFThreshold), Callback=AS(function(t)
+    RJTab:TextBox({Title="Máx jugadores por servidor", PlaceholderText="1", Callback=function(t)
         local n = tonumber(t)
-        if n and n >= 1 then PSFThreshold = math.floor(n) end
-    end)})
+        if n and n >= 1 then RJLimit = math.floor(n) end
+    end})
 end)
-ServidoresTab:Space({Size=8})
+RJTab:Space({Size=8})
+local RJBtnRow = RJTab:Group({})
+RJBtnRow:Button({Title="BUSCAR Y UNIR", Icon="send", Justify="Center", Callback=function() task.spawn(JoinBest) end})
+RJBtnRow:Space({Size=8})
+RJBtnRow:Toggle({Title="Auto Hop", Def=false, Callback=function(s) SetAutoHop(s) end})
+RJTab:Space({Size=8})
+RJTab:Button({Title="RECARGAR", Icon="refresh-cw", Justify="Center", Callback=function() task.spawn(Render) end})
+RJTab:Space({Size=10})
+RJTab:Section({Title="Servidores (★ = óptimo, clic para unirte)", TextSize=16}); RJTab:Space({Size=6})
+RJListSection = RJTab:Section({Title="", Box=true, BoxBorder=true, Opened=true})
+RJListSection:Paragraph({Title="Cargando...", Desc="Espera un momento", Image="loading", ImageSize=14})
+RJTab:Space({Size=12})
 
-local PSFActionRow = ServidoresTab:Group({})
-PSFActionRow:Button({Title="Buscar y Unirme Ahora", Icon="send", Justify="Center", Callback=function() PSFJoinOnce() end})
-PSFActionRow:Space({Size=8})
-PSFActionRow:Toggle({Title="Auto Hop", Def=Get("PSFAutoEnabled", false), Callback=AS(function(s) PSFSetAuto(s) end)})
-ServidoresTab:Space({Size=10})
-
-ServidoresTab:Section({Title="📋 Lista de Servidores (★ = óptimo, clic para unirte)", TextSize=16}); ServidoresTab:Space({Size=6})
-PSFListSection = ServidoresTab:Section({Title="", Box=true, BoxBorder=true, Opened=true})
-PSFListSection:Paragraph({Title="Cargando servidores...", Desc="Espera un momento...", Image="loading", ImageSize=14})
-ServidoresTab:Space({Size=8})
-ServidoresTab:Button({Title="Recargar Lista de Servidores", Icon="refresh-cw", Justify="Center", Callback=function() PSFRenderList() end})
-ServidoresTab:Space({Size=12})
-
--- Actualizar contador en vivo
+-- Contador en tiempo real
 task.spawn(function()
     while task.wait(1) do
-        if PSFNowParagraph and PSFNowParagraph.SetDesc then
-            PSFNowParagraph:SetDesc("Jugadores: "..#Players:GetPlayers().." / "..Players.MaxPlayers)
+        if RJCounter and RJCounter.SetDesc then
+            RJCounter:SetDesc("Jugadores: " .. #Players:GetPlayers())
         end
     end
 end)
 
--- Cargar lista al iniciar
-task.spawn(function() task.wait(1.5); PSFRenderList() end)
+-- Inicio
+task.spawn(Render)
 
 -- 7. ESCUDOS (ARREGLADO — AHORA SÍ FUNCIONAN)
 local EscudosTab = Window:Tab({Title="Escudos", Icon="shield"})
@@ -1851,4 +1782,4 @@ end)
 
 AplicarConfiguracion()
 
-WindUI:Notify({Title="DENJI•ALEX", Content="v12: Server Finder + Target 2x línea", Duration=4})
+WindUI:Notify({Title="DENJI•ALEX", Content="v13: RJ=New.SV + Target 2x línea", Duration=4})
