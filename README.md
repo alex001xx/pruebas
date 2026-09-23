@@ -970,6 +970,75 @@ end
 
 CargarConfiguracion()
 
+-- === CÍRCULO CON FOTO DE PERFIL — NARANJA PASTEL ===
+task.spawn(function()
+    pcall(function()
+        local PlayersSvc = game:GetService("Players")
+        local plr = PlayersSvc.LocalPlayer
+
+        -- Contenedor principal (protegido para executors)
+        local Gui = Instance.new("ScreenGui")
+        Gui.Name = "FotoPerfilCirculo"
+        Gui.ResetOnSpawn = false
+        Gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+        if gethui then
+            Gui.Parent = gethui()
+        elseif syn and syn.protect_gui then
+            syn.protect_gui(Gui)
+            Gui.Parent = game.CoreGui
+        else
+            Gui.Parent = game:GetService("CoreGui")
+        end
+
+        -- Marco circular — Fondo: NARANJA PASTEL CLARITO
+        local Circulo = Instance.new("Frame")
+        Circulo.Name = "CirculoPerfil"
+        Circulo.Parent = Gui
+        Circulo.BackgroundColor3 = Color3.fromRGB(255, 210, 150) -- Naranja pastel clarito
+        Circulo.Position = UDim2.new(0.05, 0, 0.05, 0)
+        Circulo.Size = UDim2.new(0, 150, 0, 150)
+        Circulo.Active = true
+        Circulo.Draggable = true
+
+        -- Hacerlo circular
+        local Esquinas = Instance.new("UICorner")
+        Esquinas.CornerRadius = UDim.new(1, 0)
+        Esquinas.Parent = Circulo
+
+        -- Borde luminoso
+        local Borde = Instance.new("UIStroke")
+        Borde.Thickness = 3
+        Borde.Color = Color3.fromRGB(255, 180, 100) -- Tono naranja un poco más oscuro para el borde
+        Borde.Parent = Circulo
+
+        -- Imagen de perfil
+        local Foto = Instance.new("ImageLabel")
+        Foto.Name = "Foto"
+        Foto.Parent = Circulo
+        Foto.BackgroundTransparency = 1
+        Foto.Position = UDim2.new(0, 5, 0, 5)
+        Foto.Size = UDim2.new(1, -10, 1, -10)
+
+        -- Recortar la imagen al círculo
+        local Recorte = Instance.new("UICorner")
+        Recorte.CornerRadius = UDim.new(1, 0)
+        Recorte.Parent = Foto
+
+        -- Cargar tu foto de perfil
+        local Cargar = pcall(function()
+            Foto.Image = PlayersSvc:GetUserThumbnailAsync(
+                plr.UserId,
+                Enum.ThumbnailType.HeadShot,
+                Enum.ThumbnailSize.Size420x420
+            )
+        end)
+
+        if not Cargar then
+            Foto.Image = "rbxassetid://6026588573" -- Imagen de respaldo
+        end
+    end)
+end)
+
 local Window = WindUI:CreateWindow({
     Title="DENJI•ALEX", Icon="sword", Author="DENJI•ALEX", Folder="DENJI•ALEX",
     Size=UDim2.fromOffset(600,540), MinSize=Vector2.new(520,420), MaxSize=Vector2.new(850,680),
@@ -1747,52 +1816,4 @@ end)
 
 AplicarConfiguracion()
 
-
--- === FOTO DE PERFIL EN GUI ===
-task.spawn(function()
-    local Gui = Instance.new("ScreenGui")
-    Gui.Name = "PerfilGui"
-    Gui.ResetOnSpawn = false
-    if gethui then
-        Gui.Parent = gethui()
-    elseif syn and syn.protect_gui then
-        syn.protect_gui(Gui)
-        Gui.Parent = game.CoreGui
-    else
-        pcall(function() Gui.Parent = game:GetService("CoreGui") end)
-    end
-
-    -- Contenedor de la foto
-    local Marco = Instance.new("Frame")
-    Marco.Name = "MarcoPerfil"
-    Marco.Parent = Gui
-    Marco.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-    Marco.Position = UDim2.new(0.05, 0, 0.05, 0)
-    Marco.Size = UDim2.new(0, 150, 0, 150)
-    Marco.BorderSizePixel = 2
-    Marco.BorderColor3 = Color3.fromRGB(0, 255, 255)
-
-    -- Imagen de perfil
-    local Foto = Instance.new("ImageLabel")
-    Foto.Name = "FotoPerfil"
-    Foto.Parent = Marco
-    Foto.Size = UDim2.new(1, 0, 1, 0)
-    Foto.BackgroundTransparency = 1
-
-    -- Obtener y asignar tu foto de perfil
-    local ok, FotoUrl, Cargada = pcall(function()
-        return Players:GetUserThumbnailAsync(
-            UserId,
-            Enum.ThumbnailType.HeadShot,
-            Enum.ThumbnailSize.Size420x420
-        )
-    end)
-
-    if ok and FotoUrl and Cargada then
-        Foto.Image = FotoUrl
-    else
-        Foto.Image = "rbxassetid://159991693" -- Imagen de respaldo
-    end
-end)
-
-WindUI:Notify({Title="DENJI•ALEX", Content="v16: Foto perfil GUI independiente", Duration=4})
+WindUI:Notify({Title="DENJI•ALEX", Content="v16: Foto perfil círculo naranja pastel", Duration=4})
