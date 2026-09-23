@@ -1262,7 +1262,14 @@ TPair("Lanzar (Fling)", "Fling", "Ver (Cámara)", "View")
 TPair("Enfocar (Focus)", "Focus", "Bang / Pegar", "Bang")
 TPair("Sentar en Cabeza", "HeadSit", "Pararse Junto (Stand)", "Stand")
 TPair("Mochila (Backpack)", "Backpack", "Posición Baja (Doggy)", "Doggy")
-TargetTog:Toggle({Title="Arrastrar (Drag)", Def=false, Callback=AS(function(s) TargetToggle("Drag", s) end)})
+local DragRow = TargetTog:Group({})
+DragRow:Toggle({Title="Arrastrar (Drag)", Def=false, Callback=AS(function(s) TargetToggle("Drag", s) end)})
+DragRow:Space({Size=8})
+DragRow:Button({Title="Detener Todo", Icon="x", Justify="Center", Callback=function()
+    for k in pairs(TargetToggles) do TargetToggles[k] = false end
+    TargetCleanup()
+    WindUI:Notify({Title="Target", Content="Todos los toggles detenidos", Duration=2})
+end})
 TargetTab:Space({Size=10})
 
 TargetTab:Section({Title="⚡ Acciones (una vez)", TextSize=18}); TargetTab:Space({Size=6})
@@ -1373,240 +1380,450 @@ GScr:Button({Title="Dex Explorer", Desc="Ejecutar", Icon="play", Justify="Left",
 end})
 GameTab:Space({Size=12})
 
--- 6. SERVIDORES (DJN•ALX Server Finder adaptado a WindUI)
-SF_selectedJobId = nil
-SF_selectedPlaceId = nil
-SF_autoEnabled = false
-SF_autoThread = nil
-SF_serverList = {}
-SF_maxPlayers = "1"
+-- 6. SERVIDORES — Private Server Finder (lógica del finder intacta, sin cambios)
+local function AbrirPrivateServerFinder()
+    -- eliminar instancia vieja si existe (evita duplicados al abrirlo 2 veces)
+    pcall(function()
+        local old = game:GetService("CoreGui"):FindFirstChild("PrivateServerFinder")
+        if old then old:Destroy() end
+        if gethui then local o2 = gethui():FindFirstChild("PrivateServerFinder"); if o2 then o2:Destroy() end end
+    end)
 
-local function SF_GetReqFunc()
-    return request or (syn and syn.request) or (http and http.request) or http_request
-end
-local function SF_HttpGet(url)
-    -- 1) HttpService:GetAsync (el que funcionaba en v11)
-    local ok, raw = pcall(function() return game:GetService("HttpService"):GetAsync(url, true) end)
-    if ok and raw and raw ~= "" then return raw end
-    -- 2) game:HttpGet
-    local ok2, raw2 = pcall(function() return game:HttpGet(url) end)
-    if ok2 and raw2 and raw2 ~= "" then return raw2 end
-    -- 3) request / syn.request (sale del cliente, puede llegar a games.roblox.com directo)
-    local reqFunc = SF_GetReqFunc()
-    if reqFunc then
-        local ok3, res = pcall(reqFunc, {Url = url, Method = "GET", Headers = {["User-Agent"] = "Roblox/WinInet"}})
-        if ok3 and res then
-            local sc = res.StatusCode or res.status
-            if sc == 200 then return res.Body or res.body end
-        end
-    end
-    return nil
-end
-local function SF_TeleportTo(jobId, placeId)
-    if not jobId then return false end
-    local targetPlace = placeId or game.PlaceId
-    WindUI:Notify({Title="Server Finder", Content="Conectando al servidor...", Duration=3})
-    local ok = pcall(function() TeleportService:TeleportToPlaceInstance(targetPlace, jobId, LocalPlayer) end)
-    if not ok then
-        WindUI:Notify({Title="Server Finder", Content="Error al teletransportarse.", Duration=3})
-        return false
-    end
-    return true
-end
-local SF_LastError = ""
-local function SF_FetchServers()
-    local endpoints = {
-        "https://games.roproxy.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100",
-        "https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100",
-    }
-    local raw = nil
-    for _, url in ipairs(endpoints) do
-        raw = SF_HttpGet(url)
-        if raw then break end
-        task.wait(0.2)
-    end
-    if not raw then
-        SF_LastError = "Todos los proxys fallaron (roproxy caido o request bloqueado)."
-        return nil
-    end
-    local ok2, data = pcall(function() return game:GetService("HttpService"):JSONDecode(raw) end)
-    if not ok2 or not data or not data.data then
-        SF_LastError = "Respuesta invalida (bloqueo de Cloudflare?)."
-        return nil
-    end
-    SF_LastError = ""
-    local list = {}
-    for _, s in ipairs(data.data) do
-        if s.id then
-            table.insert(list, {
-                id = tostring(s.id),
-                players = s.playing or 0,
-                maxPlayers = s.maxPlayers or 0,
-                ping = s.ping or 0,
-                isCurrent = (tostring(s.id) == tostring(game.JobId))
-            })
-        end
-    end
-    return list
-end
-local function SF_GetThreshold()
-    return math.max(1, math.floor(tonumber(SF_maxPlayers) or 1))
-end
-local function SF_GetRandomServer()
-    if #SF_serverList == 0 then
-        local servers = SF_FetchServers()
-        if not servers or #servers == 0 then return nil end
-        SF_serverList = servers
-    end
-    local threshold = SF_GetThreshold()
-    local good, any = {}, {}
-    for _, s in ipairs(SF_serverList) do
-        if not s.isCurrent then
-            table.insert(any, s)
-            if s.players <= threshold then table.insert(good, s) end
-        end
-    end
-    local pool = #good > 0 and good or any
-    if #pool == 0 then return nil end
-    return pool[math.random(1, #pool)].id
-end
-local function SF_JoinOnce()
-    local threshold = SF_GetThreshold()
-    local currentCount = #Players:GetPlayers()
-    if currentCount <= threshold then
-        WindUI:Notify({Title="Server Finder", Content="Servidor óptimo ("..currentCount.." <= "..threshold..")", Duration=3})
-        return false
-    end
-    task.wait(0.5)
-    local serverId = SF_GetRandomServer()
-    if not serverId then
-        WindUI:Notify({Title="Server Finder", Content="Error al buscar servidores.", Duration=3})
-        return false
-    end
-    SF_TeleportTo(serverId, game.PlaceId)
-    return true
-end
-local function SF_SetAutoHop(s)
-    SF_autoEnabled = s
-    if s then
-        if SF_autoThread then pcall(function() task.cancel(SF_autoThread) end) end
-        SF_autoThread = task.spawn(function()
-            while SF_autoEnabled do
-                local threshold = SF_GetThreshold()
-                local count = #Players:GetPlayers()
-                if count <= threshold then
-                    task.wait(3)
-                else
-                    SF_JoinOnce()
-                    task.wait(5)
-                end
-            end
-        end)
-        WindUI:Notify({Title="Auto Hop", Content="Activado", Duration=2})
+    -- ═══════════════════════════════════════════════
+    -- PRIVATE SERVER FINDER — Versión Universal  (CÓDIGO INTACTO)
+    -- Compatible con Universal, Synapse, Script-Ware, etc.
+    -- ═══════════════════════════════════════════════
+
+    local Players = game:GetService("Players")
+    local TeleportService = game:GetService("TeleportService")
+    local HttpService = game:GetService("HttpService")
+    local TweenService = game:GetService("TweenService")
+
+    local LocalPlayer = Players.LocalPlayer
+    local PlaceId = game.PlaceId
+
+    -- ██ GUI CONTAINER — Compatibilidad Universal ██
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "PrivateServerFinder"
+    ScreenGui.ResetOnSpawn = false
+    ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+    -- Protección/Parentado compatible con Universal
+    if gethui then
+        ScreenGui.Parent = gethui()
+    elseif syn and syn.protect_gui then
+        syn.protect_gui(ScreenGui)
+        ScreenGui.Parent = game.CoreGui
     else
-        if SF_autoThread then pcall(function() task.cancel(SF_autoThread) end); SF_autoThread = nil end
-        WindUI:Notify({Title="Auto Hop", Content="Desactivado", Duration=2})
+        ScreenGui.Parent = game:GetService("CoreGui")
     end
-end
 
-local ServidoresTab = Window:Tab({Title="Servidores", Icon="globe"})
-ServidoresTab:Section({Title="🌐 Server Finder", TextSize=20}); ServidoresTab:Space({Size=6})
+    -- ██ ESTILO PRINCIPAL ██
+    local MainFrame = Instance.new("Frame")
+    MainFrame.Parent = ScreenGui
+    MainFrame.BackgroundColor3 = Color3.fromRGB(15, 12, 25)
+    MainFrame.BorderSizePixel = 0
+    MainFrame.Position = UDim2.new(0.5, -140, 0.5, -210)
+    MainFrame.Size = UDim2.new(0, 280, 0, 420)
+    MainFrame.Active = true
+    MainFrame.Draggable = true
+    MainFrame.ClipsDescendants = true
+    Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 12)
 
-local ServInfo = ServidoresTab:Section({Title="Servidor Actual", Box=true, BoxBorder=true, Opened=true})
-local ServPlayersParagraph = ServInfo:Paragraph({Title="Jugadores", Desc=#Players:GetPlayers().." / "..Players.MaxPlayers, Image="users", ImageSize=14})
-ServInfo:Space({Size=4})
-ServInfo:Paragraph({Title="Place ID", Desc=tostring(game.PlaceId), Image="hash", ImageSize=14}); ServInfo:Space({Size=4})
-ServInfo:Paragraph({Title="Job ID", Desc=string.sub(tostring(game.JobId),1,12).."...", Image="clipboard", ImageSize=14})
-ServInfo:Space({Size=6})
-local ServInfoBtns = ServInfo:Group({})
-ServInfoBtns:Button({Title="Reingresar", Icon="refresh-cw", Justify="Center", Callback=function() TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId) end})
-ServInfoBtns:Space({Size=8})
-ServInfoBtns:Button({Title="Copiar JobID", Icon="clipboard", Justify="Center", Callback=function() setclipboard(tostring(game.JobId)); WindUI:Notify({Title="Copiado", Content="JobID copiado", Duration=2}) end})
-ServidoresTab:Space({Size=8})
+    local UIStroke = Instance.new("UIStroke", MainFrame)
+    UIStroke.Color = Color3.fromRGB(60, 50, 90)
+    UIStroke.Thickness = 1.5
 
-task.spawn(function()
-    while task.wait(1) do
-        if ServPlayersParagraph and ServPlayersParagraph.SetDesc then
-            ServPlayersParagraph:SetDesc(#Players:GetPlayers().." / "..Players.MaxPlayers)
-        end
+    -- ██ CABECERA ██
+    local Title = Instance.new("TextLabel", MainFrame)
+    Title.Position = UDim2.new(0, 15, 0, 12)
+    Title.Size = UDim2.new(0, 200, 0, 18)
+    Title.BackgroundTransparency = 1
+    Title.Font = Enum.Font.FredokaOne
+    Title.Text = "PRIVATE SERVER FINDER"
+    Title.TextColor3 = Color3.fromRGB(0, 230, 255)
+    Title.TextSize = 13
+    Title.TextXAlignment = Enum.TextXAlignment.Left
+
+    local Subtitle = Instance.new("TextLabel", MainFrame)
+    Subtitle.Position = UDim2.new(0, 15, 0, 30)
+    Subtitle.Size = UDim2.new(0, 200, 0, 14)
+    Subtitle.BackgroundTransparency = 1
+    Subtitle.Font = Enum.Font.GothamMedium
+    Subtitle.Text = "by GlazeOnTop — Universal"
+    Subtitle.TextColor3 = Color3.fromRGB(120, 120, 150)
+    Subtitle.TextSize = 10
+    Subtitle.TextXAlignment = Enum.TextXAlignment.Left
+
+    -- Botón Cerrar
+    local CloseBtn = Instance.new("TextButton", MainFrame)
+    CloseBtn.BackgroundColor3 = Color3.fromRGB(35, 30, 50)
+    CloseBtn.Position = UDim2.new(1, -32, 0, 12)
+    CloseBtn.Size = UDim2.new(0, 20, 0, 20)
+    CloseBtn.Font = Enum.Font.GothamBold
+    CloseBtn.Text = "X"
+    CloseBtn.TextColor3 = Color3.fromRGB(200, 200, 220)
+    CloseBtn.TextSize = 11
+    Instance.new("UICorner", CloseBtn).CornerRadius = UDim.new(0, 6)
+    CloseBtn.MouseButton1Click:Connect(function()
+        if autoThread then task.cancel(autoThread) end
+        ScreenGui:Destroy()
+    end)
+
+    -- ██ TARJETA DE ESTADO ██
+    local StatusCard = Instance.new("Frame", MainFrame)
+    StatusCard.Position = UDim2.new(0, 15, 0, 52)
+    StatusCard.Size = UDim2.new(1, -30, 0, 50)
+    StatusCard.BackgroundColor3 = Color3.fromRGB(24, 20, 40)
+    StatusCard.BorderSizePixel = 0
+    Instance.new("UICorner", StatusCard).CornerRadius = UDim.new(0, 8)
+
+    local NowLabel = Instance.new("TextLabel", StatusCard)
+    NowLabel.Position = UDim2.new(0, 10, 0, 6)
+    NowLabel.Size = UDim2.new(1, -20, 0, 18)
+    NowLabel.BackgroundTransparency = 1
+    NowLabel.Font = Enum.Font.GothamBold
+    NowLabel.TextXAlignment = Enum.TextXAlignment.Left
+    NowLabel.TextColor3 = Color3.fromRGB(0, 230, 255)
+    NowLabel.TextSize = 12
+
+    local StatusLabel = Instance.new("TextLabel", StatusCard)
+    StatusLabel.Position = UDim2.new(0, 10, 0, 24)
+    StatusLabel.Size = UDim2.new(1, -20, 0, 22)
+    StatusLabel.BackgroundTransparency = 1
+    StatusLabel.Font = Enum.Font.GothamMedium
+    StatusLabel.TextXAlignment = Enum.TextXAlignment.Left
+    StatusLabel.TextColor3 = Color3.fromRGB(160, 160, 180)
+    StatusLabel.TextSize = 10
+    StatusLabel.TextWrapped = true
+    StatusLabel.Text = "Listo — Establece límite y pulsa Hop"
+
+    -- ██ ENTRADA DE LÍMITE ██
+    local MaxBox = Instance.new("TextBox", MainFrame)
+    MaxBox.Position = UDim2.new(0, 15, 0, 110)
+    MaxBox.Size = UDim2.new(1, -30, 0, 32)
+    MaxBox.BackgroundColor3 = Color3.fromRGB(24, 20, 40)
+    MaxBox.BorderSizePixel = 0
+    MaxBox.Font = Enum.Font.GothamBold
+    MaxBox.Text = "1"
+    MaxBox.PlaceholderText = "Jugadores máximos permitidos"
+    MaxBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+    MaxBox.TextSize = 13
+    MaxBox.ClearTextOnFocus = false
+    Instance.new("UICorner", MaxBox).CornerRadius = UDim.new(0, 8)
+
+    -- ██ BOTONES DE ACCIÓN ██
+    local JoinBtn = Instance.new("TextButton", MainFrame)
+    JoinBtn.Position = UDim2.new(0, 15, 0, 150)
+    JoinBtn.Size = UDim2.new(1, -30, 0, 30)
+    JoinBtn.BackgroundColor3 = Color3.fromRGB(0, 140, 255)
+    JoinBtn.BorderSizePixel = 0
+    JoinBtn.Font = Enum.Font.GothamBold
+    JoinBtn.Text = "BUSCAR Y UNIRME AHORA"
+    JoinBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    JoinBtn.TextSize = 11
+    Instance.new("UICorner", JoinBtn).CornerRadius = UDim.new(0, 8)
+
+    local AutoBtn = Instance.new("TextButton", MainFrame)
+    AutoBtn.Position = UDim2.new(0, 15, 0, 186)
+    AutoBtn.Size = UDim2.new(1, -30, 0, 30)
+    AutoBtn.BackgroundColor3 = Color3.fromRGB(35, 30, 50)
+    AutoBtn.BorderSizePixel = 0
+    AutoBtn.Font = Enum.Font.GothamBold
+    AutoBtn.Text = "AUTO HOP: DESACTIVADO"
+    AutoBtn.TextColor3 = Color3.fromRGB(180, 180, 200)
+    AutoBtn.TextSize = 11
+    Instance.new("UICorner", AutoBtn).CornerRadius = UDim.new(0, 8)
+
+    -- ██ LISTA DE SERVIDORES ██
+    local ListHeader = Instance.new("TextLabel", MainFrame)
+    ListHeader.Position = UDim2.new(0, 15, 0, 224)
+    ListHeader.Size = UDim2.new(1, -30, 0, 16)
+    ListHeader.BackgroundTransparency = 1
+    ListHeader.Font = Enum.Font.GothamBold
+    ListHeader.Text = "SERVIDORES (clic para unirte)"
+    ListHeader.TextColor3 = Color3.fromRGB(120, 120, 150)
+    ListHeader.TextSize = 10
+    ListHeader.TextXAlignment = Enum.TextXAlignment.Left
+
+    local RefreshBtn = Instance.new("TextButton", MainFrame)
+    RefreshBtn.Position = UDim2.new(1, -70, 0, 222)
+    RefreshBtn.Size = UDim2.new(0, 55, 0, 20)
+    RefreshBtn.BackgroundColor3 = Color3.fromRGB(35, 30, 50)
+    RefreshBtn.BorderSizePixel = 0
+    RefreshBtn.Font = Enum.Font.GothamBold
+    RefreshBtn.Text = "RECARGAR"
+    RefreshBtn.TextColor3 = Color3.fromRGB(0, 230, 255)
+    RefreshBtn.TextSize = 9
+    Instance.new("UICorner", RefreshBtn).CornerRadius = UDim.new(0, 5)
+
+    -- Contenedor desplazable
+    local ScrollingFrame = Instance.new("ScrollingFrame", MainFrame)
+    ScrollingFrame.Position = UDim2.new(0, 15, 0, 244)
+    ScrollingFrame.Size = UDim2.new(1, -30, 0, 160)
+    ScrollingFrame.BackgroundColor3 = Color3.fromRGB(20, 16, 34)
+    ScrollingFrame.BorderSizePixel = 0
+    ScrollingFrame.ScrollBarThickness = 4
+    ScrollingFrame.ScrollBarImageColor3 = Color3.fromRGB(0, 230, 255)
+    ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+    ScrollingFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    Instance.new("UICorner", ScrollingFrame).CornerRadius = UDim.new(0, 8)
+
+    local ListLayout = Instance.new("UIListLayout", ScrollingFrame)
+    ListLayout.Padding = UDim.new(0, 4)
+    ListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    ListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+
+    local Padding = Instance.new("UIPadding", ScrollingFrame)
+    Padding.PaddingTop = UDim.new(0, 6)
+    Padding.PaddingBottom = UDim.new(0, 6)
+
+    -- ██ EFECTOS HOVER ██
+    local function addHover(btn, normalColor, hoverColor)
+        btn.MouseEnter:Connect(function()
+            TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = hoverColor}):Play()
+        end)
+        btn.MouseLeave:Connect(function()
+            TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = normalColor}):Play()
+        end)
     end
-end)
 
-ServidoresTab:Section({Title="⚙️ Filtro y Acciones", TextSize=18}); ServidoresTab:Space({Size=6})
-local ServActions = ServidoresTab:Section({Title="", Box=true, BoxBorder=true, Opened=true})
-pcall(function() ServActions:TextBox({Title="Max Players Allowed (umbral)", PlaceholderText="1 (por defecto)", Callback=function(t) SF_maxPlayers = t end}) end)
-ServActions:Space({Size=6})
-local ServB1 = ServActions:Group({})
-ServB1:Button({Title="Unirse al Seleccionado", Icon="send", Justify="Center", Callback=function()
-    if not SF_selectedJobId then WindUI:Notify({Title="Server Finder", Content="Primero selecciona un servidor de la lista", Duration=3}); return end
-    SF_TeleportTo(SF_selectedJobId, SF_selectedPlaceId)
-end})
-ServB1:Space({Size=8})
-ServB1:Button({Title="Hop Aleatorio", Icon="shuffle", Justify="Center", Callback=function() SF_JoinOnce() end})
-ServActions:Space({Size=6})
-ServActions:Toggle({Title="Auto Hop", Def=false, Callback=AS(function(s) SF_SetAutoHop(s) end)})
-ServActions:Space({Size=6})
-local SF_SelRow = ServActions:Group({})
-SF_SelRow:Button({Title="Limpiar Selección", Icon="x", Justify="Center", Callback=function()
-    SF_selectedJobId = nil; SF_selectedPlaceId = nil
-    if SF_SelectedParagraph and SF_SelectedParagraph.SetDesc then SF_SelectedParagraph:SetDesc("Ninguno (click en un servidor de la lista)") end
-    WindUI:Notify({Title="Server Finder", Content="Selección limpiada", Duration=2})
-end})
-SF_SelRow:Space({Size=8})
-SF_SelRow:Button({Title="Refrescar Lista", Icon="refresh-cw", Justify="Center", Callback=function() SF_RenderList() end})
-ServActions:Space({Size=6})
-SF_SelectedParagraph = ServActions:Paragraph({Title="Servidor Seleccionado", Desc="Ninguno (click en un servidor de la lista)", Image="map-pin", ImageSize=14})
-ServidoresTab:Space({Size=8})
+    addHover(JoinBtn, Color3.fromRGB(0, 140, 255), Color3.fromRGB(30, 160, 255))
+    addHover(CloseBtn, Color3.fromRGB(35, 30, 50), Color3.fromRGB(220, 50, 70))
+    addHover(RefreshBtn, Color3.fromRGB(35, 30, 50), Color3.fromRGB(50, 45, 70))
 
-ServidoresTab:Section({Title="📋 Servidores (click = seleccionar)", TextSize=18}); ServidoresTab:Space({Size=6})
-local ServerListSection = ServidoresTab:Section({Title="", Box=true, BoxBorder=true, Opened=true})
+    -- ██ LÓGICA PRINCIPAL ██
+    local autoEnabled = false
+    local autoThread = nil
+    local currentServerList = {}
 
-function SF_RenderList()
-    ServerListSection:Clear()
-    ServerListSection:Paragraph({Title="Cargando servidores...", Desc="Espera un momento...", Image="loading", ImageSize=14})
+    -- Actualizar contador de jugadores
     task.spawn(function()
-        local servers = SF_FetchServers()
-        ServerListSection:Clear()
+        while ScreenGui and ScreenGui.Parent do
+            local count = #Players:GetPlayers()
+            NowLabel.Text = "Servidor actual: " .. count .. " jugador(es)"
+            task.wait(1)
+        end
+    end)
+
+    -- Obtener lista de servidores
+    local function fetchServers()
+        local url = string.format("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Asc&limit=100", PlaceId)
+        local success, rawData = pcall(function()
+            return game:HttpGet(url)
+        end)
+
+        if not success or not rawData or rawData == "" then
+            StatusLabel.Text = "Error al acceder a la API"
+            StatusLabel.TextColor3 = Color3.fromRGB(255, 80, 80)
+            return nil
+        end
+
+        local decodeOk, data = pcall(HttpService.JSONDecode, HttpService, rawData)
+        if not decodeOk or not data or not data.data then
+            StatusLabel.Text = "Respuesta inválida de la API"
+            StatusLabel.TextColor3 = Color3.fromRGB(255, 80, 80)
+            return nil
+        end
+
+        local currentJobId = tostring(game.JobId)
+        local list = {}
+        for _, server in ipairs(data.data) do
+            if server.id and tostring(server.id) ~= currentJobId then
+                table.insert(list, {
+                    id = tostring(server.id),
+                    players = server.playing or 0,
+                    maxPlayers = server.maxPlayers or 0,
+                    ping = server.ping or 0
+                })
+            end
+        end
+        return list
+    end
+
+    -- Renderizar lista
+    local function renderServerList()
+        -- Limpiar
+        for _, child in ipairs(ScrollingFrame:GetChildren()) do
+            if child:IsA("TextButton") then child:Destroy() end
+        end
+
+        StatusLabel.Text = "Cargando servidores..."
+        StatusLabel.TextColor3 = Color3.fromRGB(255, 180, 50)
+
+        local servers = fetchServers()
         if not servers or #servers == 0 then
-            ServerListSection:Paragraph({Title="No se encontraron servidores", Desc=SF_LastError~="" and SF_LastError or "Intenta refrescar.", Image="alert-triangle", ImageSize=14})
-            WindUI:Notify({Title="Server Finder", Content=SF_LastError~="" and SF_LastError or "Sin servidores.", Duration=5})
+            StatusLabel.Text = "No se encontraron servidores públicos"
+            StatusLabel.TextColor3 = Color3.fromRGB(255, 80, 80)
             return
         end
-        SF_serverList = servers
-        local threshold = SF_GetThreshold()
-        local avail = 0
-        for _, s in ipairs(servers) do if not s.isCurrent then avail = avail + 1 end end
-        ServerListSection:Paragraph({Title=avail.." servidores disponibles", Desc="Umbral óptimo: <= "..threshold.." jugadores. Click para seleccionar.", Image="globe", ImageSize=14})
-        ServerListSection:Space({Size=6})
-        for i, srv in ipairs(servers) do
-            local desc = srv.players.."/"..srv.maxPlayers.."  ("..srv.ping.."ms)"
-            if srv.isCurrent then desc = desc.."  (AQUÍ ESTÁS)"
-            elseif srv.players <= threshold then desc = desc.."  (Óptimo)" end
-            local g = ServerListSection:Group({})
-            g:Button({Title="#"..i.."  "..srv.players.."/"..srv.maxPlayers, Desc=desc, Justify="Left", Callback=function()
-                SF_selectedJobId = srv.id
-                SF_selectedPlaceId = game.PlaceId
-                if SF_SelectedParagraph and SF_SelectedParagraph.SetDesc then
-                    SF_SelectedParagraph:SetDesc("Servidor #"..i.."  ("..srv.players.."/"..srv.maxPlayers..")")
+
+        currentServerList = servers
+        StatusLabel.Text = #servers .. " servidores disponibles"
+        StatusLabel.TextColor3 = Color3.fromRGB(0, 230, 150)
+
+        local threshold = math.max(1, tonumber(MaxBox.Text) or 1)
+
+        for idx, srv in ipairs(servers) do
+            local btn = Instance.new("TextButton")
+            btn.Parent = ScrollingFrame
+            btn.Size = UDim2.new(1, -12, 0, 28)
+            btn.BackgroundColor3 = Color3.fromRGB(28, 24, 46)
+            btn.BorderSizePixel = 0
+            btn.Font = Enum.Font.GothamMedium
+            btn.TextSize = 10
+            btn.TextXAlignment = Enum.TextXAlignment.Left
+            btn.TextColor3 = srv.players <= threshold and Color3.fromRGB(0, 230, 150) or Color3.fromRGB(200, 200, 220)
+            btn.Text = string.format("  #%d   %d/%d jugadores   • Ping: %dms", idx, srv.players, srv.maxPlayers, srv.ping)
+            btn.LayoutOrder = idx
+            Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+
+            addHover(btn, Color3.fromRGB(28, 24, 46), Color3.fromRGB(45, 40, 70))
+
+            btn.MouseButton1Click:Connect(function()
+                StatusLabel.Text = "Conectando al servidor #" .. idx .. "..."
+                StatusLabel.TextColor3 = Color3.fromRGB(0, 230, 255)
+                local ok, err = pcall(function()
+                    TeleportService:TeleportToPlaceInstance(PlaceId, srv.id, LocalPlayer)
+                end)
+                if not ok then
+                    StatusLabel.Text = "Error: " .. tostring(err or "desconocido")
+                    StatusLabel.TextColor3 = Color3.fromRGB(255, 80, 80)
                 end
-                WindUI:Notify({Title="Seleccionado", Content="Servidor #"..i..". Pulsa UNIRSE AL SELECCIONADO o TP directo.", Duration=3})
-            end})
-            g:Space({Size=8})
-            g:Button({Title="TP", Icon="send", Justify="Center", Callback=function()
-                SF_TeleportTo(srv.id, game.PlaceId)
-            end})
-            ServerListSection:Space({Size=4})
+            end)
         end
+    end
+
+    RefreshBtn.MouseButton1Click:Connect(renderServerList)
+
+    -- Obtener servidor aleatorio válido
+    local function getRandomServer()
+        if #currentServerList == 0 then
+            local fresh = fetchServers()
+            if not fresh or #fresh == 0 then return nil end
+            currentServerList = fresh
+        end
+
+        local threshold = math.max(1, tonumber(MaxBox.Text) or 1)
+        local candidates = {}
+        for _, s in ipairs(currentServerList) do
+            if s.players <= threshold then
+                table.insert(candidates, s)
+            end
+        end
+
+        local pool = #candidates > 0 and candidates or currentServerList
+        return pool[math.random(1, #pool)]
+    end
+
+    -- Unir a un servidor
+    local function joinOnce()
+        local threshold = math.max(1, tonumber(MaxBox.Text) or 1)
+        local currentCount = #Players:GetPlayers()
+
+        if currentCount <= threshold then
+            StatusLabel.Text = "Servidor óptimo: " .. currentCount .. "/" .. threshold
+            StatusLabel.TextColor3 = Color3.fromRGB(0, 230, 150)
+            return false
+        end
+
+        StatusLabel.Text = "Buscando servidor con menos jugadores..."
+        StatusLabel.TextColor3 = Color3.fromRGB(255, 180, 50)
+        task.wait(0.5)
+
+        local target = getRandomServer()
+        if not target then
+            StatusLabel.Text = "Falló la obtención de servidores"
+            StatusLabel.TextColor3 = Color3.fromRGB(255, 80, 80)
+            return false
+        end
+
+        StatusLabel.Text = "Teletransportando... (" .. target.players .. " jug.)"
+        StatusLabel.TextColor3 = Color3.fromRGB(0, 230, 255)
+        task.wait(0.3)
+
+        local ok, err = pcall(function()
+            TeleportService:TeleportToPlaceInstance(PlaceId, target.id, LocalPlayer)
+        end)
+
+        if not ok then
+            StatusLabel.Text = "Error de teletransporte: " .. tostring(err or "fallo")
+            StatusLabel.TextColor3 = Color3.fromRGB(255, 80, 80)
+            return false
+        end
+
+        return true
+    end
+
+    -- Botón Hop manual
+    JoinBtn.MouseButton1Click:Connect(function()
+        JoinBtn.Active = false
+        joinOnce()
+        task.wait(2)
+        JoinBtn.Active = true
+    end)
+
+    -- Auto Hop
+    AutoBtn.MouseButton1Click:Connect(function()
+        autoEnabled = not autoEnabled
+
+        if autoEnabled then
+            AutoBtn.Text = "AUTO HOP: ACTIVADO"
+            AutoBtn.BackgroundColor3 = Color3.fromRGB(0, 180, 120)
+            AutoBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+
+            autoThread = task.spawn(function()
+                while autoEnabled and ScreenGui.Parent do
+                    local threshold = math.max(1, tonumber(MaxBox.Text) or 1)
+                    local count = #Players:GetPlayers()
+
+                    if count <= threshold then
+                        StatusLabel.Text = "Óptimo (" .. count .. "/" .. threshold .. ") — Esperando..."
+                        StatusLabel.TextColor3 = Color3.fromRGB(0, 230, 150)
+                        task.wait(3)
+                    else
+                        joinOnce()
+                        task.wait(5)
+                    end
+                end
+            end)
+        else
+            AutoBtn.Text = "AUTO HOP: DESACTIVADO"
+            AutoBtn.BackgroundColor3 = Color3.fromRGB(35, 30, 50)
+            AutoBtn.TextColor3 = Color3.fromRGB(180, 180, 200)
+            if autoThread then
+                task.cancel(autoThread)
+                autoThread = nil
+            end
+            StatusLabel.Text = "Auto Hop detenido"
+            StatusLabel.TextColor3 = Color3.fromRGB(160, 160, 180)
+        end
+    end)
+
+    -- Cargar lista al iniciar
+    task.spawn(renderServerList)
+end
+
+local function CerrarPrivateServerFinder()
+    pcall(function()
+        local old = game:GetService("CoreGui"):FindFirstChild("PrivateServerFinder")
+        if old then old:Destroy() end
+        if gethui then local o2 = gethui():FindFirstChild("PrivateServerFinder"); if o2 then o2:Destroy() end end
     end)
 end
 
+local ServidoresTab = Window:Tab({Title="Servidores", Icon="globe"})
+ServidoresTab:Section({Title="🌐 Private Server Finder", TextSize=20}); ServidoresTab:Space({Size=6})
+local PSF_Info = ServidoresTab:Section({Title="", Box=true, BoxBorder=true, Opened=true})
+PSF_Info:Paragraph({Title="Servidor Actual", Desc=#Players:GetPlayers().." / "..Players.MaxPlayers, Image="users", ImageSize=14}); PSF_Info:Space({Size=8})
+local PSF_Btns = PSF_Info:Group({})
+PSF_Btns:Button({Title="Abrir Finder", Icon="play", Justify="Center", Callback=function() AbrirPrivateServerFinder(); WindUI:Notify({Title="Servidores", Content="Private Server Finder abierto", Duration=2}) end})
+PSF_Btns:Space({Size=8})
+PSF_Btns:Button({Title="Cerrar Finder", Icon="x", Justify="Center", Callback=function() CerrarPrivateServerFinder(); WindUI:Notify({Title="Servidores", Content="Finder cerrado", Duration=2}) end})
 ServidoresTab:Space({Size=8})
-ServidoresTab:Section({Title="👥 Amigos", TextSize=18}); ServidoresTab:Space({Size=6})
-local FriendsSection = ServidoresTab:Section({Title="", Box=true, BoxBorder=true, Opened=true})
-FriendsSection:Paragraph({Title="Aviso", Desc="Delta no soporta lista de amigos (no envía sesión de Roblox). Usa la lista de servidores arriba o invita a tus amigos manualmente.", Image="alert-triangle", ImageSize=14})
-ServidoresTab:Space({Size=10})
+PSF_Info:Paragraph({Title="Nota", Desc="El finder se abre en su propia ventana flotante (arrastrable). Su código está intacto, sin modificaciones. Usa 'Abrir Finder' cada vez que lo necesites.", Image="info", ImageSize=14})
+ServidoresTab:Space({Size=12})
 
-task.spawn(function() task.wait(1.5); SF_RenderList() end)
 
 -- 7. ESCUDOS (ARREGLADO — AHORA SÍ FUNCIONAN)
 local EscudosTab = Window:Tab({Title="Escudos", Icon="shield"})
