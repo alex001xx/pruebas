@@ -974,7 +974,6 @@ local function GuardarConfiguracion(silent)
         AntiAFKEnabled = AntiAFKEnabled,
         NoPushEnabled = NoPushEnabled,
         NoKnockbackEnabled = NoKnockbackEnabled,
-        SitProtectorEnabled = SitProtectorEnabled,
         AutoClickerEnabled = AutoClickerEnabled,
         AutoClickerCPS = AutoClickerCPS,
         NoFallDamageEnabled = NoFallDamageEnabled,
@@ -1075,7 +1074,6 @@ local function AplicarConfiguracion()
         if Saved.ChatEchoEnabled then SetChatEcho(true) end
         if Saved.BigHeadEnabled then SetBigHead(true) end
         if Saved.ScreenShakeEnabled then SetScreenShake(true) end
-        if Saved.SitProtectorEnabled then SetSitProtector(true) end
         if Saved.AutoClickerEnabled then SetAutoClicker(true) end
         if Saved.NoFallDamageEnabled then SetNoFallDamage(true) end
         if Saved.AntiAFKEnabled then SetAntiAFK(true) end
@@ -1208,21 +1206,7 @@ ExtScripts:Button({Title="Hitbox Girls", Desc="Ejecutar script", Icon="play", Ju
     end)
 end})
 
--- 3. MIS SCRIPTS
-local MisScriptsTab = Window:Tab({Title="Mis Scripts", Icon="folder"})
-MisScriptsTab:Section({Title="Scripts Guardados", TextSize=20}); MisScriptsTab:Space({Size=6})
-local ScriptsSection = MisScriptsTab:Section({Title="", Box=true, BoxBorder=true, Opened=true})
-ScriptsSection:Button({Title="AY1Amikas", Desc="Ejecutar script", Icon="play", Justify="Left", Callback=function()
-    pcall(function()
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/alex001xx/AY1AniChoco/refs/heads/main/README.md"))()
-        WindUI:Notify({Title="AY1Amikas", Content="Script ejecutado", Duration=3})
-    end)
-end})
-ScriptsSection:Space({Size=10})
-ScriptsSection:Toggle({Title="Escudo", Desc="Sit siempre + Anti-abrazo", Def=Get("SitProtectorEnabled", false), Callback=AS(SetSitProtector)})
-MisScriptsTab:Space({Size=12})
-
--- 4. TARGET (nuevo, integrado en WindUI)
+-- 3. TARGET (integrado en WindUI)
 local TargetTab = Window:Tab({Title="Target", Icon="crosshair"})
 TargetTab:Section({Title="🎯 Seleccionar Objetivo", TextSize=20}); TargetTab:Space({Size=6})
 local TargetSel = TargetTab:Section({Title="", Box=true, BoxBorder=true, Opened=true})
@@ -1267,14 +1251,17 @@ TargetTab:Space({Size=10})
 
 TargetTab:Section({Title="🔄 Toggles de Objetivo", TextSize=18}); TargetTab:Space({Size=6})
 local TargetTog = TargetTab:Section({Title="", Box=true, BoxBorder=true, Opened=true})
-TargetTog:Toggle({Title="Lanzar (Fling)", Def=false, Callback=AS(function(s) TargetToggle("Fling", s) end)}); TargetTog:Space({Size=6})
-TargetTog:Toggle({Title="Ver (Cámara)", Def=false, Callback=AS(function(s) TargetToggle("View", s) end)}); TargetTog:Space({Size=6})
-TargetTog:Toggle({Title="Enfocar (Focus)", Def=false, Callback=AS(function(s) TargetToggle("Focus", s) end)}); TargetTog:Space({Size=6})
-TargetTog:Toggle({Title="Bang / Pegar", Def=false, Callback=AS(function(s) TargetToggle("Bang", s) end)}); TargetTog:Space({Size=6})
-TargetTog:Toggle({Title="Sentar en Cabeza", Def=false, Callback=AS(function(s) TargetToggle("HeadSit", s) end)}); TargetTog:Space({Size=6})
-TargetTog:Toggle({Title="Pararse Junto (Stand)", Def=false, Callback=AS(function(s) TargetToggle("Stand", s) end)}); TargetTog:Space({Size=6})
-TargetTog:Toggle({Title="Mochila (Backpack)", Def=false, Callback=AS(function(s) TargetToggle("Backpack", s) end)}); TargetTog:Space({Size=6})
-TargetTog:Toggle({Title="Posición Baja (Doggy)", Def=false, Callback=AS(function(s) TargetToggle("Doggy", s) end)}); TargetTog:Space({Size=6})
+local function TPair(t1, k1, t2, k2)
+    local g = TargetTog:Group({})
+    g:Toggle({Title=t1, Def=false, Callback=AS(function(s) TargetToggle(k1, s) end)})
+    g:Space({Size=8})
+    g:Toggle({Title=t2, Def=false, Callback=AS(function(s) TargetToggle(k2, s) end)})
+    TargetTog:Space({Size=6})
+end
+TPair("Lanzar (Fling)", "Fling", "Ver (Cámara)", "View")
+TPair("Enfocar (Focus)", "Focus", "Bang / Pegar", "Bang")
+TPair("Sentar en Cabeza", "HeadSit", "Pararse Junto (Stand)", "Stand")
+TPair("Mochila (Backpack)", "Backpack", "Posición Baja (Doggy)", "Doggy")
 TargetTog:Toggle({Title="Arrastrar (Drag)", Def=false, Callback=AS(function(s) TargetToggle("Drag", s) end)})
 TargetTab:Space({Size=10})
 
@@ -1386,112 +1373,201 @@ GScr:Button({Title="Dex Explorer", Desc="Ejecutar", Icon="play", Justify="Left",
 end})
 GameTab:Space({Size=12})
 
--- 6. SERVIDORES
+-- 6. SERVIDORES (DJN•ALX Server Finder adaptado a WindUI)
+SF_selectedJobId = nil
+SF_selectedPlaceId = nil
+SF_autoEnabled = false
+SF_autoThread = nil
+SF_serverList = {}
+SF_maxPlayers = "1"
+
+local function SF_GetReqFunc()
+    return request or (syn and syn.request) or (http and http.request) or http_request
+end
+local function SF_HttpGet(url)
+    local ok, raw = pcall(function() return game:HttpGet(url) end)
+    if ok and raw and raw ~= "" then return raw end
+    local reqFunc = SF_GetReqFunc()
+    if reqFunc then
+        local ok2, res = pcall(reqFunc, {Url = url, Method = "GET"})
+        if ok2 and res then
+            local sc = res.StatusCode or res.status
+            if sc == 200 then return res.Body or res.body end
+        end
+    end
+    return nil
+end
+local function SF_TeleportTo(jobId, placeId)
+    if not jobId then return false end
+    local targetPlace = placeId or game.PlaceId
+    WindUI:Notify({Title="Server Finder", Content="Conectando al servidor...", Duration=3})
+    local ok = pcall(function() TeleportService:TeleportToPlaceInstance(targetPlace, jobId, LocalPlayer) end)
+    if not ok then
+        WindUI:Notify({Title="Server Finder", Content="Error al teletransportarse.", Duration=3})
+        return false
+    end
+    return true
+end
+local function SF_FetchServers()
+    local url = "https://games.roproxy.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"
+    local raw = SF_HttpGet(url)
+    if not raw then return nil end
+    local ok2, data = pcall(function() return game:GetService("HttpService"):JSONDecode(raw) end)
+    if not ok2 or not data or not data.data then return nil end
+    local list = {}
+    for _, s in ipairs(data.data) do
+        if s.id then
+            table.insert(list, {
+                id = tostring(s.id),
+                players = s.playing or 0,
+                maxPlayers = s.maxPlayers or 0,
+                ping = s.ping or 0,
+                isCurrent = (tostring(s.id) == tostring(game.JobId))
+            })
+        end
+    end
+    return list
+end
+local function SF_GetThreshold()
+    return math.max(1, math.floor(tonumber(SF_maxPlayers) or 1))
+end
+local function SF_GetRandomServer()
+    if #SF_serverList == 0 then
+        local servers = SF_FetchServers()
+        if not servers or #servers == 0 then return nil end
+        SF_serverList = servers
+    end
+    local threshold = SF_GetThreshold()
+    local good, any = {}, {}
+    for _, s in ipairs(SF_serverList) do
+        if not s.isCurrent then
+            table.insert(any, s)
+            if s.players <= threshold then table.insert(good, s) end
+        end
+    end
+    local pool = #good > 0 and good or any
+    if #pool == 0 then return nil end
+    return pool[math.random(1, #pool)].id
+end
+local function SF_JoinOnce()
+    local threshold = SF_GetThreshold()
+    local currentCount = #Players:GetPlayers()
+    if currentCount <= threshold then
+        WindUI:Notify({Title="Server Finder", Content="Servidor óptimo ("..currentCount.." <= "..threshold..")", Duration=3})
+        return false
+    end
+    task.wait(0.5)
+    local serverId = SF_GetRandomServer()
+    if not serverId then
+        WindUI:Notify({Title="Server Finder", Content="Error al buscar servidores.", Duration=3})
+        return false
+    end
+    SF_TeleportTo(serverId, game.PlaceId)
+    return true
+end
+local function SF_SetAutoHop(s)
+    SF_autoEnabled = s
+    if s then
+        if SF_autoThread then pcall(function() task.cancel(SF_autoThread) end) end
+        SF_autoThread = task.spawn(function()
+            while SF_autoEnabled do
+                local threshold = SF_GetThreshold()
+                local count = #Players:GetPlayers()
+                if count <= threshold then
+                    task.wait(3)
+                else
+                    SF_JoinOnce()
+                    task.wait(5)
+                end
+            end
+        end)
+        WindUI:Notify({Title="Auto Hop", Content="Activado", Duration=2})
+    else
+        if SF_autoThread then pcall(function() task.cancel(SF_autoThread) end); SF_autoThread = nil end
+        WindUI:Notify({Title="Auto Hop", Content="Desactivado", Duration=2})
+    end
+end
+
 local ServidoresTab = Window:Tab({Title="Servidores", Icon="globe"})
-ServidoresTab:Section({Title="Información Actual", TextSize=18}); ServidoresTab:Space({Size=6})
-local ServInfoRow = ServidoresTab:Group({})
-ServInfoRow:Paragraph({Title="Jugadores", Desc=#Players:GetPlayers().." / "..Players.MaxPlayers, Image="users", ImageSize=14}); ServInfoRow:Space({Size=8})
-ServInfoRow:Paragraph({Title="Place ID", Desc=tostring(game.PlaceId), Image="hash", ImageSize=14}); ServInfoRow:Space({Size=8})
-ServInfoRow:Paragraph({Title="Job ID", Desc=string.sub(tostring(game.JobId),1,12).."...", Image="clipboard", ImageSize=14})
-ServidoresTab:Space({Size=10})
-local ServActionRow = ServidoresTab:Group({})
-ServActionRow:Button({Title="Reingresar", Icon="refresh-cw", Justify="Center", Callback=function() TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId) end}); ServActionRow:Space({Size=8})
-ServActionRow:Button({Title="Copiar JobID", Icon="clipboard", Justify="Center", Callback=function() setclipboard(tostring(game.JobId)); WindUI:Notify({Title="Copiado", Content="JobID copiado", Duration=2}) end})
-ServidoresTab:Space({Size=12})
-ServidoresTab:Section({Title="Servidores Disponibles", TextSize=18}); ServidoresTab:Space({Size=6})
-local PublicServersSection = ServidoresTab:Section({Title="", Box=true, BoxBorder=true, Opened=true})
-PublicServersSection:Paragraph({Title="Cargando servidores...", Desc="Espera un momento...", Image="loading", ImageSize=16})
-local function LoadPublicServers()
-    PublicServersSection:Clear()
-    PublicServersSection:Paragraph({Title="Cargando servidores...", Desc="Espera un momento...", Image="loading", ImageSize=16})
+ServidoresTab:Section({Title="🌐 Server Finder", TextSize=20}); ServidoresTab:Space({Size=6})
+
+local ServInfo = ServidoresTab:Section({Title="Servidor Actual", Box=true, BoxBorder=true, Opened=true})
+local ServPlayersParagraph = ServInfo:Paragraph({Title="Jugadores", Desc=#Players:GetPlayers().." / "..Players.MaxPlayers, Image="users", ImageSize=14})
+ServInfo:Space({Size=4})
+ServInfo:Paragraph({Title="Place ID", Desc=tostring(game.PlaceId), Image="hash", ImageSize=14}); ServInfo:Space({Size=4})
+ServInfo:Paragraph({Title="Job ID", Desc=string.sub(tostring(game.JobId),1,12).."...", Image="clipboard", ImageSize=14})
+ServInfo:Space({Size=6})
+local ServInfoBtns = ServInfo:Group({})
+ServInfoBtns:Button({Title="Reingresar", Icon="refresh-cw", Justify="Center", Callback=function() TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId) end})
+ServInfoBtns:Space({Size=8})
+ServInfoBtns:Button({Title="Copiar JobID", Icon="clipboard", Justify="Center", Callback=function() setclipboard(tostring(game.JobId)); WindUI:Notify({Title="Copiado", Content="JobID copiado", Duration=2}) end})
+ServidoresTab:Space({Size=8})
+
+task.spawn(function()
+    while task.wait(1) do
+        if ServPlayersParagraph and ServPlayersParagraph.SetDesc then
+            ServPlayersParagraph:SetDesc(#Players:GetPlayers().." / "..Players.MaxPlayers)
+        end
+    end
+end)
+
+ServidoresTab:Section({Title="⚙️ Filtro y Acciones", TextSize=18}); ServidoresTab:Space({Size=6})
+local ServActions = ServidoresTab:Section({Title="", Box=true, BoxBorder=true, Opened=true})
+pcall(function() ServActions:TextBox({Title="Max Players Allowed (umbral)", PlaceholderText="1 (por defecto)", Callback=function(t) SF_maxPlayers = t end}) end)
+ServActions:Space({Size=6})
+local ServB1 = ServActions:Group({})
+ServB1:Button({Title="Unirse al Seleccionado", Icon="send", Justify="Center", Callback=function()
+    if not SF_selectedJobId then WindUI:Notify({Title="Server Finder", Content="Primero selecciona un servidor de la lista", Duration=3}); return end
+    SF_TeleportTo(SF_selectedJobId, SF_selectedPlaceId)
+end})
+ServB1:Space({Size=8})
+ServB1:Button({Title="Hop Aleatorio", Icon="shuffle", Justify="Center", Callback=function() SF_JoinOnce() end})
+ServActions:Space({Size=6})
+ServActions:Toggle({Title="Auto Hop", Def=false, Callback=AS(function(s) SF_SetAutoHop(s) end)})
+ServActions:Space({Size=6})
+ServActions:Button({Title="Refrescar Lista de Servidores", Icon="refresh-cw", Justify="Center", Callback=function() SF_RenderList() end})
+ServidoresTab:Space({Size=8})
+
+ServidoresTab:Section({Title="📋 Servidores (click = seleccionar)", TextSize=18}); ServidoresTab:Space({Size=6})
+local ServerListSection = ServidoresTab:Section({Title="", Box=true, BoxBorder=true, Opened=true})
+
+function SF_RenderList()
+    ServerListSection:Clear()
+    ServerListSection:Paragraph({Title="Cargando servidores...", Desc="Espera un momento...", Image="loading", ImageSize=14})
     task.spawn(function()
-        local ok, err = pcall(function()
-            local Http=game:GetService("HttpService")
-            local res=Http:GetAsync("https://games.roproxy.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Asc&limit=100")
-            local response=Http:JSONDecode(res)
-            PublicServersSection:Clear()
-            if not response or not response.data or #response.data==0 then
-                PublicServersSection:Paragraph({Title="Sin servidores", Desc="Intenta recargar", Image="info", ImageSize=16}); return
-            end
-            PublicServersSection:Paragraph({Title="Encontrados: "..#response.data.." servidores", Desc="Presiona TP para unirte", Image="globe", ImageSize=14})
-            PublicServersSection:Space({Size=6})
-            for i=1,#response.data,2 do
-                local g=PublicServersSection:Group({})
-                local s1=response.data[i]; local p1=s1.playing or 0; local m1=s1.maxPlayers or 0
-                g:Button({Title="Servidor "..i, Desc=p1.."/"..m1, Justify="Left", Callback=function() TeleportService:TeleportToPlaceInstance(game.PlaceId, s1.id) end})
-                g:Button({Title="TP", Icon="send", Justify="Center", Callback=function() TeleportService:TeleportToPlaceInstance(game.PlaceId, s1.id) end})
-                if response.data[i+1] then
-                    g:Space({Size=8})
-                    local s2=response.data[i+1]; local p2=s2.playing or 0; local m2=s2.maxPlayers or 0
-                    g:Button({Title="Servidor "..(i+1), Desc=p2.."/"..m2, Justify="Left", Callback=function() TeleportService:TeleportToPlaceInstance(game.PlaceId, s2.id) end})
-                    g:Button({Title="TP", Icon="send", Justify="Center", Callback=function() TeleportService:TeleportToPlaceInstance(game.PlaceId, s2.id) end})
-                end
-                PublicServersSection:Space({Size=6})
-            end
-        end)
-        if not ok then
-            PublicServersSection:Clear()
-            PublicServersSection:Paragraph({Title="Error al cargar", Desc="El proxy puede estar caído. Recarga.", Image="alert-triangle", ImageSize=16})
-            WindUI:Notify({Title="Servidores", Content="Error: "..tostring(err):sub(1,60), Duration=4})
+        local servers = SF_FetchServers()
+        ServerListSection:Clear()
+        if not servers or #servers == 0 then
+            ServerListSection:Paragraph({Title="No se encontraron servidores", Desc="Intenta refrescar", Image="alert-triangle", ImageSize=14})
+            return
+        end
+        SF_serverList = servers
+        local threshold = SF_GetThreshold()
+        local avail = 0
+        for _, s in ipairs(servers) do if not s.isCurrent then avail = avail + 1 end end
+        ServerListSection:Paragraph({Title=avail.." servidores disponibles", Desc="Umbral óptimo: <= "..threshold.." jugadores. Click para seleccionar.", Image="globe", ImageSize=14})
+        ServerListSection:Space({Size=6})
+        for i, srv in ipairs(servers) do
+            local desc = srv.players.."/"..srv.maxPlayers.."  ("..srv.ping.."ms)"
+            if srv.isCurrent then desc = desc.."  (AQUÍ ESTÁS)"
+            elseif srv.players <= threshold then desc = desc.."  (Óptimo)" end
+            ServerListSection:Button({Title="#"..i.."  "..srv.players.."/"..srv.maxPlayers, Desc=desc, Justify="Left", Callback=function()
+                SF_selectedJobId = srv.id
+                SF_selectedPlaceId = game.PlaceId
+                WindUI:Notify({Title="Seleccionado", Content="Servidor #"..i.." ("..srv.players.."/"..srv.maxPlayers.."). Pulsa UNIRSE AL SELECCIONADO.", Duration=3})
+            end})
+            ServerListSection:Space({Size=4})
         end
     end)
 end
-ServidoresTab:Button({Title="Recargar Servidores Públicos", Icon="refresh-cw", Justify="Center", Callback=LoadPublicServers})
-ServidoresTab:Space({Size=12})
-ServidoresTab:Section({Title="Servidores de Amigos", TextSize=18}); ServidoresTab:Space({Size=6})
-local FriendsServersSection = ServidoresTab:Section({Title="", Box=true, BoxBorder=true, Opened=true})
-FriendsServersSection:Paragraph({Title="Cargando amigos...", Desc="Espera un momento...", Image="loading", ImageSize=16})
-local function JoinFriend(fid, fname)
-    task.spawn(function()
-        local ok=pcall(function()
-            local Http=game:GetService("HttpService")
-            local res=Http:RequestAsync({Url="https://presence.roproxy.com/v1/presence/users", Method="POST", Headers={["Content-Type"]="application/json"}, Body=Http:JSONEncode({userIds={tonumber(fid)}})})
-            local data=Http:JSONDecode(res.Body)
-            local pres=data and data.userPresences and data.userPresences[1]
-            if pres and pres.userPresenceType==2 and pres.placeId and pres.gameId then
-                WindUI:Notify({Title="Uniéndose", Content="A "..fname, Duration=3})
-                TeleportService:TeleportToPlaceInstance(pres.placeId, pres.gameId)
-            else WindUI:Notify({Title="No disponible", Content=fname.." no está en un juego", Duration=3}) end
-        end)
-        if not ok then WindUI:Notify({Title="Error", Content="No se pudo obtener la sesión del amigo", Duration=3}) end
-    end)
-end
-local function LoadFriendsServers()
-    FriendsServersSection:Clear()
-    FriendsServersSection:Paragraph({Title="Cargando amigos...", Desc="Espera un momento...", Image="loading", ImageSize=16})
-    task.spawn(function()
-        local ok, err = pcall(function()
-            local Http=game:GetService("HttpService")
-            local res=Http:GetAsync("https://friends.roproxy.com/v1/users/"..UserId.."/friends")
-            local fd=Http:JSONDecode(res)
-            FriendsServersSection:Clear()
-            if not fd or not fd.data or #fd.data==0 then FriendsServersSection:Paragraph({Title="No tienes amigos", Desc="Agrega amigos para verlos", Image="user-x", ImageSize=16}); return end
-            FriendsServersSection:Paragraph({Title="Amigos: "..#fd.data, Desc="Presiona TP para unirte", Image="users", ImageSize=14})
-            FriendsServersSection:Space({Size=6})
-            for i=1,#fd.data,2 do
-                local g=FriendsServersSection:Group({})
-                local f1=fd.data[i]; local n1=f1.displayName and f1.displayName~="" and f1.displayName or f1.name
-                g:Button({Title=n1, Desc="@"..f1.name, Justify="Left", Callback=function() JoinFriend(f1.id, f1.name) end})
-                g:Button({Title="TP", Icon="send", Justify="Center", Callback=function() JoinFriend(f1.id, f1.name) end})
-                if fd.data[i+1] then
-                    g:Space({Size=8})
-                    local f2=fd.data[i+1]; local n2=f2.displayName and f2.displayName~="" and f2.displayName or f2.name
-                    g:Button({Title=n2, Desc="@"..f2.name, Justify="Left", Callback=function() JoinFriend(f2.id, f2.name) end})
-                    g:Button({Title="TP", Icon="send", Justify="Center", Callback=function() JoinFriend(f2.id, f2.name) end})
-                end
-                FriendsServersSection:Space({Size=6})
-            end
-        end)
-        if not ok then
-            FriendsServersSection:Clear()
-            FriendsServersSection:Paragraph({Title="Error al cargar", Desc="El proxy puede estar caído. Recarga.", Image="alert-triangle", ImageSize=16})
-            WindUI:Notify({Title="Amigos", Content="Error: "..tostring(err):sub(1,60), Duration=4})
-        end
-    end)
-end
-ServidoresTab:Button({Title="Recargar Amigos", Icon="refresh-cw", Justify="Center", Callback=LoadFriendsServers})
+
+ServidoresTab:Space({Size=8})
+ServidoresTab:Section({Title="👥 Amigos", TextSize=18}); ServidoresTab:Space({Size=6})
+local FriendsSection = ServidoresTab:Section({Title="", Box=true, BoxBorder=true, Opened=true})
+FriendsSection:Paragraph({Title="Aviso", Desc="Delta no soporta lista de amigos (no envía sesión de Roblox). Usa la lista de servidores arriba o invita a tus amigos manualmente.", Image="alert-triangle", ImageSize=14})
 ServidoresTab:Space({Size=10})
-task.spawn(function() task.wait(1.5); LoadPublicServers(); LoadFriendsServers() end)
+
+task.spawn(function() task.wait(1.5); SF_RenderList() end)
 
 -- 7. ESCUDOS (ARREGLADO — AHORA SÍ FUNCIONAN)
 local EscudosTab = Window:Tab({Title="Escudos", Icon="shield"})
