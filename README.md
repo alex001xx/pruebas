@@ -970,75 +970,6 @@ end
 
 CargarConfiguracion()
 
--- === CÍRCULO CON FOTO DE PERFIL — NARANJA PASTEL ===
-task.spawn(function()
-    pcall(function()
-        local PlayersSvc = game:GetService("Players")
-        local plr = PlayersSvc.LocalPlayer
-
-        -- Contenedor principal (protegido para executors)
-        local Gui = Instance.new("ScreenGui")
-        Gui.Name = "FotoPerfilCirculo"
-        Gui.ResetOnSpawn = false
-        Gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-        if gethui then
-            Gui.Parent = gethui()
-        elseif syn and syn.protect_gui then
-            syn.protect_gui(Gui)
-            Gui.Parent = game.CoreGui
-        else
-            Gui.Parent = game:GetService("CoreGui")
-        end
-
-        -- Marco circular — Fondo: NARANJA PASTEL CLARITO
-        local Circulo = Instance.new("Frame")
-        Circulo.Name = "CirculoPerfil"
-        Circulo.Parent = Gui
-        Circulo.BackgroundColor3 = Color3.fromRGB(255, 210, 150) -- Naranja pastel clarito
-        Circulo.Position = UDim2.new(0.05, 0, 0.05, 0)
-        Circulo.Size = UDim2.new(0, 150, 0, 150)
-        Circulo.Active = true
-        Circulo.Draggable = true
-
-        -- Hacerlo circular
-        local Esquinas = Instance.new("UICorner")
-        Esquinas.CornerRadius = UDim.new(1, 0)
-        Esquinas.Parent = Circulo
-
-        -- Borde luminoso
-        local Borde = Instance.new("UIStroke")
-        Borde.Thickness = 3
-        Borde.Color = Color3.fromRGB(255, 180, 100) -- Tono naranja un poco más oscuro para el borde
-        Borde.Parent = Circulo
-
-        -- Imagen de perfil
-        local Foto = Instance.new("ImageLabel")
-        Foto.Name = "Foto"
-        Foto.Parent = Circulo
-        Foto.BackgroundTransparency = 1
-        Foto.Position = UDim2.new(0, 5, 0, 5)
-        Foto.Size = UDim2.new(1, -10, 1, -10)
-
-        -- Recortar la imagen al círculo
-        local Recorte = Instance.new("UICorner")
-        Recorte.CornerRadius = UDim.new(1, 0)
-        Recorte.Parent = Foto
-
-        -- Cargar tu foto de perfil
-        local Cargar = pcall(function()
-            Foto.Image = PlayersSvc:GetUserThumbnailAsync(
-                plr.UserId,
-                Enum.ThumbnailType.HeadShot,
-                Enum.ThumbnailSize.Size420x420
-            )
-        end)
-
-        if not Cargar then
-            Foto.Image = "rbxassetid://6026588573" -- Imagen de respaldo
-        end
-    end)
-end)
-
 local Window = WindUI:CreateWindow({
     Title="DENJI•ALEX", Icon="sword", Author="DENJI•ALEX", Folder="DENJI•ALEX",
     Size=UDim2.fromOffset(600,540), MinSize=Vector2.new(520,420), MaxSize=Vector2.new(850,680),
@@ -1816,4 +1747,58 @@ end)
 
 AplicarConfiguracion()
 
-WindUI:Notify({Title="DENJI•ALEX", Content="v16: Foto perfil círculo naranja pastel", Duration=4})
+-- === CÍRCULO CON FOTO DE PERFIL DENTRO DE LA PESTAÑA PLAYER (naranja pastel) ===
+task.spawn(function()
+    pcall(function()
+        task.wait(0.6) -- esperar a que WindUI termine de construir la GUI
+        if not PlayerTab then return end
+        -- Buscar el contenedor de la pestaña Player (ScrollingFrame) con fallbacks
+        local Contenedor = nil
+        pcall(function() Contenedor = PlayerTab.UIElements and PlayerTab.UIElements.ContainerFrame end)
+        if not Contenedor then pcall(function() Contenedor = PlayerTab.ContainerFrame end) end
+        if not Contenedor then pcall(function() Contenedor = PlayerTab.Container end) end
+        if not Contenedor then pcall(function() Contenedor = Window.SideBar and Window.SideBar.Parent end) end
+        if not Contenedor then return end
+
+        local Circulo = Instance.new("Frame")
+        Circulo.Name = "CirculoPerfil"
+        Circulo.Parent = Contenedor
+        Circulo.BackgroundColor3 = Color3.fromRGB(255, 210, 150) -- Naranja pastel clarito
+        Circulo.BackgroundTransparency = 0
+        Circulo.Position = UDim2.new(0, 12, 0, 210)
+        Circulo.Size = UDim2.new(0, 140, 0, 140)
+        Circulo.ZIndex = 50
+        Circulo.Active = false
+        local Esquinas = Instance.new("UICorner")
+        Esquinas.CornerRadius = UDim.new(1, 0)
+        Esquinas.Parent = Circulo
+        local Borde = Instance.new("UIStroke")
+        Borde.Thickness = 3
+        Borde.Color = Color3.fromRGB(255, 180, 100) -- Borde naranja un poco más oscuro
+        Borde.Parent = Circulo
+
+        local Foto = Instance.new("ImageLabel")
+        Foto.Name = "Foto"
+        Foto.Parent = Circulo
+        Foto.BackgroundTransparency = 1
+        Foto.Position = UDim2.new(0, 5, 0, 5)
+        Foto.Size = UDim2.new(1, -10, 1, -10)
+        Foto.ZIndex = 51
+        local Recorte = Instance.new("UICorner")
+        Recorte.CornerRadius = UDim.new(1, 0)
+        Recorte.Parent = Foto
+
+        local Cargar = pcall(function()
+            Foto.Image = Players:GetUserThumbnailAsync(
+                UserId,
+                Enum.ThumbnailType.HeadShot,
+                Enum.ThumbnailSize.Size420x420
+            )
+        end)
+        if not Cargar then
+            Foto.Image = "rbxassetid://6026588573" -- Imagen de respaldo
+        end
+    end)
+end)
+
+WindUI:Notify({Title="DENJI•ALEX", Content="v17: Foto perfil dentro de pestaña Player", Duration=4})
