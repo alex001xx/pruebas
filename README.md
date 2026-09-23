@@ -1765,10 +1765,11 @@ task.spawn(function()
         Circulo.Parent = Contenedor
         Circulo.BackgroundColor3 = Color3.fromRGB(255, 210, 150) -- Naranja pastel clarito
         Circulo.BackgroundTransparency = 0
-        Circulo.Position = UDim2.new(1, -108, 0, 6)
+        Circulo.Position = UDim2.new(0, 10, 0, 6)
         Circulo.Size = UDim2.new(0, 100, 0, 100)
         Circulo.ZIndex = 50
         Circulo.Active = false
+        Circulo.LayoutOrder = -100
         local Esquinas = Instance.new("UICorner")
         Esquinas.CornerRadius = UDim.new(1, 0)
         Esquinas.Parent = Circulo
@@ -1804,4 +1805,4 @@ end)
 pcall(function() Window:SelectTab(PlayerTab) end)
 pcall(function() Window:SelectTab(1) end)
 
-WindUI:Notify({Title="DENJI•ALEX", Content="v18: Círculo arriba + auto-abrir Player", Duration=4})
+WindUI:Notify({Title="DENJI•ALEX", Content="v19: Círculo arriba de funciones", Duration=4})
