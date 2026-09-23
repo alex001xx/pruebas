@@ -970,10 +970,6 @@ end
 
 CargarConfiguracion()
 
-local AvatarUrl
-pcall(function() AvatarUrl=Players:GetUserThumbnailAsync(UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size150x150) end)
-if not AvatarUrl or AvatarUrl=="" then AvatarUrl="rbxthumb://type=AvatarHeadShot&id="..UserId.."&w=150&h=150" end
-
 local Window = WindUI:CreateWindow({
     Title="DENJI•ALEX", Icon="sword", Author="DENJI•ALEX", Folder="DENJI•ALEX",
     Size=UDim2.fromOffset(600,540), MinSize=Vector2.new(520,420), MaxSize=Vector2.new(850,680),
@@ -984,7 +980,6 @@ local Window = WindUI:CreateWindow({
 
 -- 1. PLAYER
 local PlayerTab = Window:Tab({Title="Player", Icon="user"})
-PlayerTab:Image({Image=AvatarUrl, ImageSize=100, ImageColor=Color3.fromRGB(255,255,255)})
 PlayerTab:Paragraph({Title=DisplayName, Desc="@"..PlayerName.."  |  ID: "..UserId, Image="user", ImageSize=18})
 PlayerTab:Space({Size=8})
 local StatsGroup = PlayerTab:Group({})
@@ -1752,4 +1747,52 @@ end)
 
 AplicarConfiguracion()
 
-WindUI:Notify({Title="DENJI•ALEX", Content="v15: Lista servidores ventana + Créditos limpio", Duration=4})
+
+-- === FOTO DE PERFIL EN GUI ===
+task.spawn(function()
+    local Gui = Instance.new("ScreenGui")
+    Gui.Name = "PerfilGui"
+    Gui.ResetOnSpawn = false
+    if gethui then
+        Gui.Parent = gethui()
+    elseif syn and syn.protect_gui then
+        syn.protect_gui(Gui)
+        Gui.Parent = game.CoreGui
+    else
+        pcall(function() Gui.Parent = game:GetService("CoreGui") end)
+    end
+
+    -- Contenedor de la foto
+    local Marco = Instance.new("Frame")
+    Marco.Name = "MarcoPerfil"
+    Marco.Parent = Gui
+    Marco.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    Marco.Position = UDim2.new(0.05, 0, 0.05, 0)
+    Marco.Size = UDim2.new(0, 150, 0, 150)
+    Marco.BorderSizePixel = 2
+    Marco.BorderColor3 = Color3.fromRGB(0, 255, 255)
+
+    -- Imagen de perfil
+    local Foto = Instance.new("ImageLabel")
+    Foto.Name = "FotoPerfil"
+    Foto.Parent = Marco
+    Foto.Size = UDim2.new(1, 0, 1, 0)
+    Foto.BackgroundTransparency = 1
+
+    -- Obtener y asignar tu foto de perfil
+    local ok, FotoUrl, Cargada = pcall(function()
+        return Players:GetUserThumbnailAsync(
+            UserId,
+            Enum.ThumbnailType.HeadShot,
+            Enum.ThumbnailSize.Size420x420
+        )
+    end)
+
+    if ok and FotoUrl and Cargada then
+        Foto.Image = FotoUrl
+    else
+        Foto.Image = "rbxassetid://159991693" -- Imagen de respaldo
+    end
+end)
+
+WindUI:Notify({Title="DENJI•ALEX", Content="v16: Foto perfil GUI independiente", Duration=4})
