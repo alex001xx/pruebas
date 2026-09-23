@@ -20,10 +20,6 @@ FollowPlayerEnabled, SpinBotEnabled, FreezePositionEnabled, InstantRespawnEnable
 FallSpeedCap, SavedPosition, CoordsText, ClickTPConn, SpinConn = 200, nil, "", nil, nil
 AutoWalkEnabled, AutoWalkConn = false, nil
 TPWalkEnabled, TPWalkSpeed, TPWalkConn = false, 0.30, nil
-ChatSpamEnabled, DanceSpamEnabled, RainbowEnabled, DrunkCamEnabled = false, false, false, false
-PlayDeadEnabled, ChatEchoEnabled, BigHeadEnabled, ScreenShakeEnabled = false, false, false, false
-SpamText, MorphName, MorphDropdown, RainbowConn = "Hola! :D", nil, nil, nil
-EchoConns, EchoPlayerAddedConn, ChatSpamKill, DanceKill, OriginalHeadSize = {}, nil, false, false, nil
 InvisibleEnabled = false
 AutoClickerEnabled, AutoClickerCPS = false, 10
 NoFallDamageEnabled, NoFallConn = false, nil
@@ -75,7 +71,6 @@ local function GetPlayerNames(includeNone)
     if #names == 0 then table.insert(names, "No hay jugadores") end
     return names
 end
-local function SayChat(text) pcall(function() game:GetService("ReplicatedStorage").DefaultChatSystemChatEvents.SayMessageRequest:FireServer(text, "All") end) end
 local function TeleportToCoords(text)
     if not text or text == "" then WindUI:Notify({Title="Error", Content="Texto vacío", Duration=2}) return end
     local x,y,z = text:match("([%-%d%.]+)[,%s]+([%-%d%.]+)[,%s]+([%-%d%.]+)")
@@ -423,106 +418,6 @@ local function RemoveParticles()
     pcall(function() for _,v in ipairs(workspace:GetDescendants()) do if v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Smoke") or v:IsA("Fire") or v:IsA("Sparkles") or v:IsA("Beam") or v:IsA("Explosion") then v:Destroy(); count=count+1 end end end)
     WindUI:Notify({Title="Partículas", Content="Eliminados "..count.." efectos", Duration=2})
 end
-local function SetChatSpam(s)
-    if s and ChatSpamEnabled then return end
-    ChatSpamEnabled=s
-    if s then ChatSpamKill=false; task.spawn(function() while ChatSpamEnabled and not ChatSpamKill do SayChat(SpamText); task.wait(1.2) end end)
-    else ChatSpamKill=true end
-end
-local function SetDanceSpam(s)
-    if s and DanceSpamEnabled then return end
-    DanceSpamEnabled=s
-    if s then DanceKill=false; local d={"/e dance","/e dance2","/e dance3","/e wave","/e laugh"}; task.spawn(function() while DanceSpamEnabled and not DanceKill do SayChat(d[math.random(1,#d)]); task.wait(1.5) end end)
-    else DanceKill=true end
-end
-local function FakeKick()
-    task.spawn(function() pcall(function()
-        local sg=Instance.new("ScreenGui"); sg.Name="WindFakeKick"; sg.ResetOnSpawn=false; sg.DisplayOrder=9999
-        local fr=Instance.new("Frame"); fr.Size=UDim2.fromScale(1,1); fr.BackgroundColor3=Color3.fromRGB(120,0,0); fr.BorderSizePixel=0; fr.Parent=sg
-        local tl=Instance.new("TextLabel"); tl.Size=UDim2.fromScale(0.8,0.4); tl.Position=UDim2.fromScale(0.1,0.3); tl.BackgroundTransparency=1; tl.Text="KICKED\n\nYou were kicked from this experience.\nReason: Cheating / Exploiting"; tl.TextColor3=Color3.fromRGB(255,255,255); tl.TextScaled=true; tl.Font=Enum.Font.SourceSansBold; tl.Parent=fr
-        local ok,core=pcall(function() return game:GetService("CoreGui") end)
-        sg.Parent=(ok and core) or LocalPlayer:WaitForChild("PlayerGui")
-        task.wait(4); sg:Destroy()
-    end) end)
-end
-local function SetRainbow(s)
-    RainbowEnabled=s
-    if s then
-        if not RainbowConn then
-            local hue=0
-            RainbowConn=RunService.Heartbeat:Connect(function()
-                if not RainbowEnabled then return end
-                hue=(hue+0.015)%1; local c=Color3.fromHSV(hue,1,1)
-                if Character then
-                    local bc=Character:FindFirstChildOfClass("BodyColors")
-                    if bc then pcall(function() bc.HeadColor=c; bc.TorsoColor=c; bc.LeftArmColor=c; bc.RightArmColor=c; bc.LeftLegColor=c; bc.RightLegColor=c end)
-                    else for _,v in ipairs(Character:GetDescendants()) do if v:IsA("BasePart") and v.Name~="HumanoidRootPart" then pcall(function() v.Color=c end) end end end
-                end
-            end)
-        end
-    else if RainbowConn then RainbowConn:Disconnect(); RainbowConn=nil end end
-end
-local function SetDrunkCam(s)
-    if s and DrunkCamEnabled then return end
-    DrunkCamEnabled=s
-    if s then pcall(function() RunService:BindToRenderStep("WindDrunkCam", Enum.RenderPriority.Camera.Value+1, function()
-        if not DrunkCamEnabled then return end
-        local cam=workspace.CurrentCamera
-        if cam then cam.CFrame=cam.CFrame*CFrame.Angles(math.sin(tick()*3)*0.06, math.cos(tick()*2.5)*0.06, math.sin(tick()*4)*0.04) end
-    end) end)
-    else pcall(function() RunService:UnbindFromRenderStep("WindDrunkCam") end) end
-end
-local function SetPlayDead(s)
-    PlayDeadEnabled=s
-    if Humanoid then pcall(function()
-        if s then Humanoid.PlatformStand=true; Humanoid:ChangeState(Enum.HumanoidStateType.Physics)
-        else Humanoid.PlatformStand=false; Humanoid:ChangeState(Enum.HumanoidStateType.GettingUp) end
-    end) end
-end
-local function HookEchoPlayer(plr)
-    local conn=plr.Chatted:Connect(function(msg) if not ChatEchoEnabled or plr==LocalPlayer then return end; task.wait(0.3); SayChat(msg) end)
-    table.insert(EchoConns, conn)
-end
-local function SetChatEcho(s)
-    if s and ChatEchoEnabled then return end
-    ChatEchoEnabled=s
-    if s then
-        for _,plr in ipairs(Players:GetPlayers()) do if plr~=LocalPlayer then HookEchoPlayer(plr) end end
-        if not EchoPlayerAddedConn then EchoPlayerAddedConn=Players.PlayerAdded:Connect(function(plr) if ChatEchoEnabled then HookEchoPlayer(plr) end end) end
-    else
-        for _,c in ipairs(EchoConns) do pcall(function() c:Disconnect() end) end; EchoConns={}
-        if EchoPlayerAddedConn then EchoPlayerAddedConn:Disconnect(); EchoPlayerAddedConn=nil end
-    end
-end
-local function SetBigHead(s)
-    BigHeadEnabled=s
-    pcall(function()
-        if Humanoid and Humanoid.HeadScale then Humanoid.HeadScale=s and 3 or 1 end
-        local head=Character and Character:FindFirstChild("Head")
-        if head and head:IsA("BasePart") then if not OriginalHeadSize then OriginalHeadSize=head.Size end; head.Size=s and (OriginalHeadSize*3) or OriginalHeadSize end
-    end)
-end
-local function SetScreenShake(s)
-    if s and ScreenShakeEnabled then return end
-    ScreenShakeEnabled=s
-    if s then pcall(function() RunService:BindToRenderStep("WindShake", Enum.RenderPriority.Camera.Value+2, function()
-        if not ScreenShakeEnabled then return end
-        local cam=workspace.CurrentCamera
-        if cam then cam.CFrame=cam.CFrame*CFrame.Angles((math.random()-0.5)*0.09,(math.random()-0.5)*0.09,(math.random()-0.5)*0.05) end
-    end) end)
-    else pcall(function() RunService:UnbindFromRenderStep("WindShake") end) end
-end
-local function MorphAsPlayer()
-    task.spawn(function()
-        if not MorphName or MorphName=="No hay jugadores" then WindUI:Notify({Title="Morph", Content="Selecciona un jugador", Duration=2}); return end
-        local target=Players:FindFirstChild(MorphName)
-        if target and Humanoid then
-            local ok=pcall(function() local desc=Players:GetHumanoidDescriptionFromUserId(target.UserId); Humanoid:ApplyDescription(desc) end)
-            WindUI:Notify({Title=ok and "Morph" or "Error", Content=ok and "Ahora te ves como "..MorphName or "No se pudo aplicar", Duration=2})
-        else WindUI:Notify({Title="Error", Content="Jugador no disponible", Duration=2}) end
-    end)
-end
-
 -- 🖱️ AUTO-CLICKER UNIVERSAL
 local function SetAutoClicker(s)
     AutoClickerEnabled = s
@@ -957,15 +852,6 @@ local function GuardarConfiguracion(silent)
         SpinBotEnabled = SpinBotEnabled,
         FreezePositionEnabled = FreezePositionEnabled,
         FallSpeedCap = FallSpeedCap,
-        ChatSpamEnabled = ChatSpamEnabled,
-        DanceSpamEnabled = DanceSpamEnabled,
-        RainbowEnabled = RainbowEnabled,
-        DrunkCamEnabled = DrunkCamEnabled,
-        PlayDeadEnabled = PlayDeadEnabled,
-        ChatEchoEnabled = ChatEchoEnabled,
-        BigHeadEnabled = BigHeadEnabled,
-        ScreenShakeEnabled = ScreenShakeEnabled,
-        SpamText = SpamText,
         AntiAFKEnabled = AntiAFKEnabled,
         NoPushEnabled = NoPushEnabled,
         NoKnockbackEnabled = NoKnockbackEnabled,
@@ -1020,7 +906,6 @@ local function CargarConfiguracion()
         if Saved.TPWalkSpeed then TPWalkSpeed = Saved.TPWalkSpeed end
         if Saved.FlySpeed then FlySpeed = Saved.FlySpeed end
         if Saved.FallSpeedCap then FallSpeedCap = Saved.FallSpeedCap end
-        if Saved.SpamText then SpamText = Saved.SpamText end
         if Saved.AutoClickerCPS then AutoClickerCPS = Saved.AutoClickerCPS end
         WindUI:Notify({Title="Configuración", Content="Cargada correctamente", Duration=3})
     end)
@@ -1058,14 +943,6 @@ local function AplicarConfiguracion()
         if Saved.FpsBoostEnabled then SetFpsBoost(true) end
         if Saved.ClickTPEnabled then SetClickTP(true) end
         if Saved.SpinBotEnabled then SetSpinBot(true) end
-        if Saved.ChatSpamEnabled then SetChatSpam(true) end
-        if Saved.DanceSpamEnabled then SetDanceSpam(true) end
-        if Saved.RainbowEnabled then SetRainbow(true) end
-        if Saved.DrunkCamEnabled then SetDrunkCam(true) end
-        if Saved.PlayDeadEnabled then SetPlayDead(true) end
-        if Saved.ChatEchoEnabled then SetChatEcho(true) end
-        if Saved.BigHeadEnabled then SetBigHead(true) end
-        if Saved.ScreenShakeEnabled then SetScreenShake(true) end
         if Saved.SitProtectorEnabled then SetSitProtector(true) end
         if Saved.AutoClickerEnabled then SetAutoClicker(true) end
         if Saved.NoFallDamageEnabled then SetNoFallDamage(true) end
@@ -1433,33 +1310,45 @@ local function Fetch()
     return Result
 end
 
-local function Render()
-    if RJStatus and RJStatus.SetDesc then RJStatus:SetDesc("Cargando...") end
-    local Servers = Fetch()
-    if not Servers or #Servers == 0 then
-        if RJStatus and RJStatus.SetDesc then RJStatus:SetDesc("Sin servidores disponibles") end
+local function LoadServers()
+    if RJListSection then
+        RJListSection:Clear()
+        RJListSection:Paragraph({Title="Cargando...", Desc="Espera un momento", Image="loading", ImageSize=14})
+    end
+    local url = string.format("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Asc&limit=100", game.PlaceId)
+    local ok, raw = pcall(function() return game:HttpGet(url) end)
+    if not ok or not raw then
         if RJListSection then
             RJListSection:Clear()
-            RJListSection:Paragraph({Title="Sin servidores", Desc="Intenta recargar", Image="alert-triangle", ImageSize=14})
+            RJListSection:Paragraph({Title="Error", Desc="No se pudo cargar la lista", Image="alert-triangle", ImageSize=14})
         end
         return
     end
-    ServerList = Servers
-    if RJStatus and RJStatus.SetDesc then RJStatus:SetDesc(#Servers .. " servidores encontrados") end
+    local Http = game:GetService("HttpService")
+    local decodeOk, data = pcall(Http.JSONDecode, Http, raw)
+    if not decodeOk or not data or not data.data then
+        if RJListSection then
+            RJListSection:Clear()
+            RJListSection:Paragraph({Title="Error", Desc="Respuesta inválida de la API", Image="alert-triangle", ImageSize=14})
+        end
+        return
+    end
+    local currentId = tostring(game.JobId)
+    ServerList = {}
     if RJListSection then
         RJListSection:Clear()
-        local Limit = math.max(1, RJLimit)
-        for I, S in ipairs(Servers) do
-            local Marca = S.Players <= Limit and "  ★" or ""
-            RJListSection:Button({
-                Title = string.format("  %d/%d  •  Ping: %dms%s", S.Players, S.Max, S.Ping, Marca),
-                Justify = "Left",
-                Callback = function()
-                    if RJStatus and RJStatus.SetDesc then RJStatus:SetDesc("Conectando...") end
-                    pcall(function() TeleportService:TeleportToPlaceInstance(game.PlaceId, S.Id, LocalPlayer) end)
-                end
-            })
-            RJListSection:Space({Size=3})
+        for _, srv in ipairs(data.data) do
+            if srv.id and tostring(srv.id) ~= currentId then
+                table.insert(ServerList, {Id=tostring(srv.id), Players=srv.playing or 0, Max=srv.maxPlayers or 0, Ping=srv.ping or 0})
+                RJListSection:Button({
+                    Title = string.format("  %d/%d jugadores  •  Ping: %dms", srv.playing or 0, srv.maxPlayers or 0, srv.ping or 0),
+                    Justify = "Left",
+                    Callback = function()
+                        pcall(function() TeleportService:TeleportToPlaceInstance(game.PlaceId, srv.id, LocalPlayer) end)
+                    end
+                })
+                RJListSection:Space({Size=4})
+            end
         end
     end
 end
@@ -1514,9 +1403,9 @@ RJBtnRow:Button({Title="BUSCAR Y UNIR", Icon="send", Justify="Center", Callback=
 RJBtnRow:Space({Size=8})
 RJBtnRow:Toggle({Title="Auto Hop", Def=false, Callback=function(s) SetAutoHop(s) end})
 RJTab:Space({Size=8})
-RJTab:Button({Title="RECARGAR", Icon="refresh-cw", Justify="Center", Callback=function() task.spawn(Render) end})
+RJTab:Button({Title="RECARGAR", Icon="refresh-cw", Justify="Center", Callback=function() task.spawn(LoadServers) end})
 RJTab:Space({Size=10})
-RJTab:Section({Title="Servidores (★ = óptimo, clic para unirte)", TextSize=16}); RJTab:Space({Size=6})
+RJTab:Section({Title="Servidores (clic para unirte)", TextSize=16}); RJTab:Space({Size=6})
 RJListSection = RJTab:Section({Title="", Box=true, BoxBorder=true, Opened=true})
 RJListSection:Paragraph({Title="Cargando...", Desc="Espera un momento", Image="loading", ImageSize=14})
 RJTab:Space({Size=12})
@@ -1531,7 +1420,7 @@ task.spawn(function()
 end)
 
 -- Inicio
-task.spawn(Render)
+task.spawn(LoadServers)
 
 -- 7. ESCUDOS (ARREGLADO — AHORA SÍ FUNCIONAN)
 local EscudosTab = Window:Tab({Title="Escudos", Icon="shield"})
@@ -1631,7 +1520,6 @@ Uti:Space({Size=6})
 Uti:Button({Title="Recargar Listas de Jugadores", Icon="refresh-cw", Justify="Center", Callback=function()
     pcall(function() SpectateDropdown:Refresh(GetPlayerNames(true)) end)
     pcall(function() TPPlayerDropdown:Refresh(GetPlayerNames(false)) end)
-    pcall(function() if MorphDropdown then MorphDropdown:Refresh(GetPlayerNames(false)) end end)
     pcall(function() if TargetDropdown then TargetDropdown:Refresh(GetPlayerNames(false)) end end)
     WindUI:Notify({Title="Listas", Content="Jugadores recargados", Duration=2})
 end})
@@ -1679,32 +1567,7 @@ SvR:Space({Size=8})
 SvR:Button({Title="Volver a Posición", Icon="home", Justify="Center", Callback=function() if SavedPosition and RootPart then RootPart.CFrame=SavedPosition; RootPart.Velocity=Vector3.new(0,0,0); WindUI:Notify({Title="TP", Content="Volviste", Duration=2}) else WindUI:Notify({Title="Error", Content="No hay posición guardada", Duration=2}) end end})
 H:Space({Size=12})
 
--- 10. TROLLEOS
-local T = Window:Tab({Title="Trolleos", Icon="laugh"})
-T:Section({Title="Diversión y Trolleos", TextSize=20}); T:Space({Size=6})
-local TC=T:Section({Title="Chat y Mensajes", Box=true, BoxBorder=true, Opened=true})
-pcall(function() TC:TextBox({Title="Mensaje de Spam", PlaceholderText="Escribe tu mensaje...", Callback=AS(function(t) SpamText=t end)}) end)
-TC:Space({Size=6})
-TC:Toggle({Title="Chat Spammer", Def=Get("ChatSpamEnabled", false), Callback=AS(SetChatSpam)}); TC:Space({Size=6})
-TC:Toggle({Title="Dance/Emote Spam", Def=Get("DanceSpamEnabled", false), Callback=AS(SetDanceSpam)}); TC:Space({Size=6})
-TC:Toggle({Title="Chat Echo (Repetir)", Def=Get("ChatEchoEnabled", false), Callback=AS(SetChatEcho)})
-T:Space({Size=10})
-local TV=T:Section({Title="Visuales Graciosos", Box=true, BoxBorder=true, Opened=true})
-TV:Toggle({Title="Personaje Arcoíris", Def=Get("RainbowEnabled", false), Callback=AS(SetRainbow)}); TV:Space({Size=6})
-TV:Toggle({Title="Cabeza Grande", Def=Get("BigHeadEnabled", false), Callback=AS(SetBigHead)}); TV:Space({Size=6})
-TV:Toggle({Title="Cámara Borracha", Def=Get("DrunkCamEnabled", false), Callback=AS(SetDrunkCam)}); TV:Space({Size=6})
-TV:Toggle({Title="Temblor de Pantalla", Def=Get("ScreenShakeEnabled", false), Callback=AS(SetScreenShake)}); TV:Space({Size=6})
-TV:Toggle({Title="Hacerse el Muerto", Def=Get("PlayDeadEnabled", false), Callback=AS(SetPlayDead)})
-T:Space({Size=10})
-local TU=T:Section({Title="Otros Trolleos", Box=true, BoxBorder=true, Opened=true})
-MorphDropdown = TU:Dropdown({Title="Jugador para Morph", Values=GetPlayerNames(false), Value=1, Callback=function(s) MorphName=s end})
-TU:Space({Size=6})
-TU:Button({Title="Morfearse como Jugador", Icon="user", Justify="Center", Callback=MorphAsPlayer}); TU:Space({Size=6})
-TU:Button({Title="Fake Kick (Pantalla Falsa)", Icon="alert-triangle", Justify="Center", Callback=FakeKick}); TU:Space({Size=6})
-TU:Button({Title="Recargar Lista Jugadores", Icon="refresh-cw", Justify="Center", Callback=function() pcall(function() if MorphDropdown then MorphDropdown:Refresh(GetPlayerNames(false)) end end); WindUI:Notify({Title="Listas", Content="Recargadas", Duration=2}) end})
-T:Space({Size=12})
-
--- 11. CRÉDITOS
+-- 10. CRÉDITOS
 local Cr = Window:Tab({Title="Créditos", Icon="award"})
 Cr:Section({Title="Agradecimientos", TextSize=20}); Cr:Space({Size=6})
 local CG=Cr:Group({})
@@ -1782,4 +1645,4 @@ end)
 
 AplicarConfiguracion()
 
-WindUI:Notify({Title="DENJI•ALEX", Content="v13: RJ=New.SV + Target 2x línea", Duration=4})
+WindUI:Notify({Title="DENJI•ALEX", Content="v14: RJ lista limpia + sin Trolleos", Duration=4})
