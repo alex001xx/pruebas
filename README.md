@@ -731,7 +731,7 @@ local function TargetPlayAnim(id, time, speed)
         local c = LocalPlayer.Character; if not c then return end
         local h = c:FindFirstChildOfClass("Humanoid"); if not h then return end
         local a = Instance.new("Animation"); a.AnimationId = "rbxassetid://"..id
-        local tr = h:LoadAnimation(a); tr:Play(); tr:TimePosition = time; tr:AdjustSpeed(speed)
+        local tr = h:LoadAnimation(a); tr:Play(); tr.TimePosition = time; tr:AdjustSpeed(speed)
     end)
 end
 
