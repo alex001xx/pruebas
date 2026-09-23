@@ -1765,8 +1765,8 @@ task.spawn(function()
         Circulo.Parent = Contenedor
         Circulo.BackgroundColor3 = Color3.fromRGB(255, 210, 150) -- Naranja pastel clarito
         Circulo.BackgroundTransparency = 0
-        Circulo.Position = UDim2.new(0, 12, 0, 210)
-        Circulo.Size = UDim2.new(0, 140, 0, 140)
+        Circulo.Position = UDim2.new(1, -108, 0, 6)
+        Circulo.Size = UDim2.new(0, 100, 0, 100)
         Circulo.ZIndex = 50
         Circulo.Active = false
         local Esquinas = Instance.new("UICorner")
@@ -1801,4 +1801,7 @@ task.spawn(function()
     end)
 end)
 
-WindUI:Notify({Title="DENJI•ALEX", Content="v17: Foto perfil dentro de pestaña Player", Duration=4})
+pcall(function() Window:SelectTab(PlayerTab) end)
+pcall(function() Window:SelectTab(1) end)
+
+WindUI:Notify({Title="DENJI•ALEX", Content="v18: Círculo arriba + auto-abrir Player", Duration=4})
