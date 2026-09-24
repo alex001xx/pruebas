@@ -1765,7 +1765,7 @@ task.spawn(function()
         Circulo.Parent = Contenedor
         Circulo.BackgroundColor3 = Color3.fromRGB(255, 210, 150) -- Naranja pastel clarito
         Circulo.BackgroundTransparency = 0
-        Circulo.Position = UDim2.new(1, -108, 0, 8)
+        Circulo.Position = UDim2.new(1, -108, 0, 220)
         Circulo.Size = UDim2.new(0, 100, 0, 100)
         Circulo.ZIndex = 50
         Circulo.Active = false
@@ -1805,4 +1805,4 @@ end)
 pcall(function() Window:SelectTab(PlayerTab) end)
 pcall(function() Window:SelectTab(1) end)
 
-WindUI:Notify({Title="DENJI•ALEX", Content="v20: Círculo al lado del nombre", Duration=4})
+WindUI:Notify({Title="DENJI•ALEX", Content="v21: Círculo a la altura de Rendimiento", Duration=4})
