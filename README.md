@@ -1747,48 +1747,86 @@ end)
 
 AplicarConfiguracion()
 
--- === CÍRCULO CON FOTO DE PERFIL DENTRO DE LA PESTAÑA PLAYER (naranja pastel) ===
+-- === CÍRCULO CON FOTO DE PERFIL + NOMBRE EN LÍNEA HORIZONTAL ===
 task.spawn(function()
     pcall(function()
         task.wait(0.6) -- esperar a que WindUI termine de construir la GUI
         if not PlayerTab then return end
-        -- Buscar el contenedor de la pestaña Player (ScrollingFrame) con fallbacks
+        
+        -- Buscar el contenedor de la pestaña Player
         local Contenedor = nil
         pcall(function() Contenedor = PlayerTab.UIElements and PlayerTab.UIElements.ContainerFrame end)
-        if not Contenedor then pcall(function() Contenedor = PlayerTab.ContainerFrame end) end
-        if not Contenedor then pcall(function() Contenedor = PlayerTab.Container end) end
-        if not Contenedor then pcall(function() Contenedor = Window.SideBar and Window.SideBar.Parent end) end
+        if not Contenedor then pcall(function() Contenedor = PlayerTab.ContainerFrame end) end)
+        if not Contenedor then pcall(function() Contenedor = PlayerTab.Container end) end)
         if not Contenedor then return end
-
+        
+        -- Buscar el primer párrafo (el que tiene tu nombre/Display)
+        local ParrafoNombre = nil
+        for _, hijo in ipairs(Contenedor:GetChildren()) do
+            if hijo:IsA("Frame") or hijo:IsA("GuiObject") then
+                local tieneTexto = hijo:FindFirstChildWhichIsA("TextLabel", true)
+                if tieneTexto and tieneTexto.Text:match(DisplayName) then
+                    ParrafoNombre = hijo
+                    break
+                end
+            end
+        end
+        
+        -- Si no lo encontramos por texto, tomamos el primer hijo válido
+        if not ParrafoNombre then
+            for _, hijo in ipairs(Contenedor:GetChildren()) do
+                if hijo:IsA("Frame") and hijo.Visible then
+                    ParrafoNombre = hijo
+                    break
+                end
+            end
+        end
+        
+        if not ParrafoNombre then return end
+        
+        -- Crear contenedor horizontal que tendrá foto + nombre
+        local ContenedorPerfil = Instance.new("Frame")
+        ContenedorPerfil.Name = "PerfilHorizontal"
+        ContenedorPerfil.Parent = Contenedor
+        ContenedorPerfil.BackgroundTransparency = 1
+        ContenedorPerfil.Position = ParrafoNombre.Position
+        ContenedorPerfil.Size = UDim2.new(1, -20, 0, 90) -- Ancho completo, alto 90
+        ContenedorPerfil.ZIndex = 50
+        ContenedorPerfil.LayoutOrder = ParrafoNombre.LayoutOrder or -100
+        
+        -- === CÍRCULO DE FOTO (izquierda) ===
         local Circulo = Instance.new("Frame")
         Circulo.Name = "CirculoPerfil"
-        Circulo.Parent = Contenedor
-        Circulo.BackgroundColor3 = Color3.fromRGB(255, 210, 150) -- Naranja pastel clarito
+        Circulo.Parent = ContenedorPerfil
+        Circulo.BackgroundColor3 = Color3.fromRGB(255, 210, 150) -- Naranja pastel
         Circulo.BackgroundTransparency = 0
-        Circulo.Position = UDim2.new(0, 10, 0, 6)
-        Circulo.Size = UDim2.new(0, 100, 0, 100)
-        Circulo.ZIndex = 50
+        Circulo.Position = UDim2.new(0, 0, 0, 5) -- Arriba-izquierda del contenedor
+        Circulo.Size = UDim2.new(0, 80, 0, 80) -- Tamaño reducido para que quede bien
+        Circulo.ZIndex = 51
         Circulo.Active = false
-        Circulo.LayoutOrder = -100
+        
         local Esquinas = Instance.new("UICorner")
         Esquinas.CornerRadius = UDim.new(1, 0)
         Esquinas.Parent = Circulo
+        
         local Borde = Instance.new("UIStroke")
         Borde.Thickness = 3
-        Borde.Color = Color3.fromRGB(255, 180, 100) -- Borde naranja un poco más oscuro
+        Borde.Color = Color3.fromRGB(255, 180, 100) -- Borde naranja más oscuro
         Borde.Parent = Circulo
-
+        
         local Foto = Instance.new("ImageLabel")
         Foto.Name = "Foto"
         Foto.Parent = Circulo
         Foto.BackgroundTransparency = 1
-        Foto.Position = UDim2.new(0, 5, 0, 5)
-        Foto.Size = UDim2.new(1, -10, 1, -10)
-        Foto.ZIndex = 51
+        Foto.Position = UDim2.new(0, 4, 0, 4)
+        Foto.Size = UDim2.new(1, -8, 1, -8)
+        Foto.ZIndex = 52
+        
         local Recorte = Instance.new("UICorner")
         Recorte.CornerRadius = UDim.new(1, 0)
         Recorte.Parent = Foto
-
+        
+        -- Cargar foto de perfil
         local Cargar = pcall(function()
             Foto.Image = Players:GetUserThumbnailAsync(
                 UserId,
@@ -1799,10 +1837,21 @@ task.spawn(function()
         if not Cargar then
             Foto.Image = "rbxassetid://6026588573" -- Imagen de respaldo
         end
+        
+        -- === PÁRRAFO DE NOMBRE (derecha, al lado de la foto) ===
+        ParrafoNombre.Parent = ContenedorPerfil
+        ParrafoNombre.Position = UDim2.new(0, 95, 0, 10) -- A la derecha del círculo (80px + 15px de margen)
+        ParrafoNombre.Size = UDim2.new(1, -100, 1, -20) -- Ocupa el resto del ancho
+        
+        -- Si hay un UIListLayout en el contenedor, ajustamos para que el contenedor ocupe el lugar correcto
+        local Layout = Contenedor:FindFirstChildOfClass("UIListLayout")
+        if Layout then
+            ContenedorPerfil.AutomaticSize = Enum.AutomaticSize.Y
+        end
     end)
 end)
 
 pcall(function() Window:SelectTab(PlayerTab) end)
 pcall(function() Window:SelectTab(1) end)
 
-WindUI:Notify({Title="DENJI•ALEX", Content="v19: Círculo arriba de funciones", Duration=4})
+WindUI:Notify({Title="DENJI•ALEX", Content="v19: Círculo al lado del nombre", Duration=4})
