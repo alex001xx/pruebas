@@ -1040,9 +1040,6 @@ local Window = WindUI:CreateWindow({
 -- 1. PLAYER
 local PlayerTab = Window:Tab({Title="Player", Icon="user"})
 PlayerTab:Space({Size=6})
-local PerfilBox = PlayerTab:Group({})
-PerfilBox:Paragraph({Title=DisplayName, Desc="@"..PlayerName.."\nID: "..UserId, Image="user", ImageSize=16})
-PlayerTab:Space({Size=8})
 local StatsGroup = PlayerTab:Group({})
 StatsGroup:Space({Size=10})
 local PerfSection = StatsGroup:Section({Title="Rendimiento", Box=true, BoxBorder=true, Opened=true})
@@ -1862,12 +1859,11 @@ AplicarConfiguracion()
 -- Reintento 1.5s despues: por si WindUI o el personaje aun no estaban listos del todo
 task.spawn(function() task.wait(1.5); pcall(AplicarConfiguracion) end)
 
--- === CÍRCULO CON FOTO DE PERFIL DENTRO DE LA PESTAÑA PLAYER (naranja pastel) ===
+-- === CUADRO DE PERFIL: foto 100x100 a la DERECHA, nombre + ID en lista a la IZQUIERDA ===
 task.spawn(function()
     pcall(function()
         task.wait(0.6) -- esperar a que WindUI termine de construir la GUI
         if not PlayerTab then return end
-        -- Buscar el contenedor de la pestaña Player (ScrollingFrame) con fallbacks
         local Contenedor = nil
         pcall(function() Contenedor = PlayerTab.UIElements and PlayerTab.UIElements.ContainerFrame end)
         if not Contenedor then pcall(function() Contenedor = PlayerTab.ContainerFrame end) end
@@ -1875,22 +1871,36 @@ task.spawn(function()
         if not Contenedor then pcall(function() Contenedor = Window.SideBar and Window.SideBar.Parent end) end
         if not Contenedor then return end
 
+        local Box = Instance.new("Frame")
+        Box.Name = "PerfilCuadro"
+        Box.Parent = Contenedor
+        Box.LayoutOrder = -100
+        Box.Size = UDim2.new(1, -16, 0, 116)
+        Box.BackgroundColor3 = Color3.fromRGB(32, 32, 40)
+        Box.BackgroundTransparency = 0.12
+        Box.BorderSizePixel = 0
+        Box.Active = false
+        Instance.new("UICorner", Box).CornerRadius = UDim.new(0, 10)
+        local BordeBox = Instance.new("UIStroke")
+        BordeBox.Parent = Box
+        BordeBox.Thickness = 1
+        BordeBox.Color = Color3.fromRGB(60, 60, 75)
+        BordeBox.Transparency = 0.3
+
+        -- Foto de perfil (tamano ORIGINAL 100x100) dentro del cuadro, lado derecho
         local Circulo = Instance.new("Frame")
         Circulo.Name = "CirculoPerfil"
-        Circulo.Parent = Contenedor
-        Circulo.BackgroundColor3 = Color3.fromRGB(255, 210, 150) -- Naranja pastel clarito
+        Circulo.Parent = Box
+        Circulo.BackgroundColor3 = Color3.fromRGB(255, 210, 150) -- naranja pastel
         Circulo.BackgroundTransparency = 0
-        Circulo.Position = UDim2.new(1, -78, 0, 6)
-        Circulo.Size = UDim2.new(0, 70, 0, 70)
-        Circulo.ZIndex = 50
+        Circulo.Position = UDim2.new(1, -108, 0.5, -50)
+        Circulo.Size = UDim2.new(0, 100, 0, 100)
+        Circulo.ZIndex = 51
         Circulo.Active = false
-        Circulo.LayoutOrder = -100
-        local Esquinas = Instance.new("UICorner")
-        Esquinas.CornerRadius = UDim.new(1, 0)
-        Esquinas.Parent = Circulo
+        Instance.new("UICorner", Circulo).CornerRadius = UDim.new(1, 0)
         local Borde = Instance.new("UIStroke")
         Borde.Thickness = 3
-        Borde.Color = Color3.fromRGB(255, 180, 100) -- Borde naranja un poco más oscuro
+        Borde.Color = Color3.fromRGB(255, 180, 100)
         Borde.Parent = Circulo
 
         local Foto = Instance.new("ImageLabel")
@@ -1899,10 +1909,8 @@ task.spawn(function()
         Foto.BackgroundTransparency = 1
         Foto.Position = UDim2.new(0, 5, 0, 5)
         Foto.Size = UDim2.new(1, -10, 1, -10)
-        Foto.ZIndex = 51
-        local Recorte = Instance.new("UICorner")
-        Recorte.CornerRadius = UDim.new(1, 0)
-        Recorte.Parent = Foto
+        Foto.ZIndex = 52
+        Instance.new("UICorner", Foto).CornerRadius = UDim.new(1, 0)
 
         local Cargar = pcall(function()
             Foto.Image = Players:GetUserThumbnailAsync(
@@ -1914,10 +1922,29 @@ task.spawn(function()
         if not Cargar then
             Foto.Image = "rbxassetid://6026588573" -- Imagen de respaldo
         end
+
+        -- Nombre + ID en forma de lista, lado izquierdo del cuadro
+        local function HacerTexto(y, texto, tamano, bold, color)
+            local lbl = Instance.new("TextLabel")
+            lbl.Parent = Box
+            lbl.BackgroundTransparency = 1
+            lbl.Position = UDim2.new(0, 14, 0, y)
+            lbl.Size = UDim2.new(1, -130, 0, tamano + 6)
+            lbl.Font = bold and Enum.Font.GothamBold or Enum.Font.Gotham
+            lbl.Text = texto
+            lbl.TextColor3 = color
+            lbl.TextSize = tamano
+            lbl.TextXAlignment = Enum.TextXAlignment.Left
+            lbl.TextTruncate = Enum.TextTruncate.AtEnd
+            return lbl
+        end
+        HacerTexto(14, DisplayName, 19, true, Color3.fromRGB(255, 255, 255))
+        HacerTexto(44, "@"..PlayerName, 14, false, Color3.fromRGB(200, 200, 210))
+        HacerTexto(68, "ID: "..tostring(UserId), 14, false, Color3.fromRGB(170, 170, 185))
     end)
 end)
 
 pcall(function() Window:SelectTab(PlayerTab) end)
 pcall(function() Window:SelectTab(1) end)
 
-WindUI:Notify({Title="DENJI•ALEX", Content="v25: Player perfil compacto + servidor actual amarillo", Duration=4})
+WindUI:Notify({Title="DENJI•ALEX", Content="v26: Perfil en cuadro unico con foto 100x100 a la derecha", Duration=4})
