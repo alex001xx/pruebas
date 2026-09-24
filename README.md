@@ -980,14 +980,14 @@ local Window = WindUI:CreateWindow({
 
 -- 1. PLAYER
 local PlayerTab = Window:Tab({Title="Player", Icon="user"})
-PlayerTab:Paragraph({Title=DisplayName, Desc="@"..PlayerName.."  |  ID: "..UserId, Image="user", ImageSize=18})
+local PerfilSection = PlayerTab:Section({Title="Tu Perfil", Box=true, BoxBorder=true, Opened=true})
+PerfilSection:Paragraph({Title="Display", Desc=DisplayName, Image="user", ImageSize=14}); PerfilSection:Space({Size=4})
+PerfilSection:Paragraph({Title="Usuario", Desc="@"..PlayerName, Image="at-sign", ImageSize=14}); PerfilSection:Space({Size=4})
+PerfilSection:Paragraph({Title="User ID", Desc=tostring(UserId), Image="hash", ImageSize=14})
 PlayerTab:Space({Size=8})
 local StatsGroup = PlayerTab:Group({})
 local InfoSection = StatsGroup:Section({Title="Cuenta", Box=true, BoxBorder=true, Opened=true})
-InfoSection:Paragraph({Title="Jugadores", Desc=#Players:GetPlayers().." / "..Players.MaxPlayers, Image="users", ImageSize=14}); InfoSection:Space({Size=4})
-InfoSection:Paragraph({Title="Display", Desc=DisplayName, Image="user", ImageSize=14}); InfoSection:Space({Size=4})
-InfoSection:Paragraph({Title="Usuario", Desc="@"..PlayerName, Image="at-sign", ImageSize=14}); InfoSection:Space({Size=4})
-InfoSection:Paragraph({Title="User ID", Desc=tostring(UserId), Image="hash", ImageSize=14})
+InfoSection:Paragraph({Title="Jugadores", Desc=#Players:GetPlayers().." / "..Players.MaxPlayers, Image="users", ImageSize=14})
 StatsGroup:Space({Size=10})
 local PerfSection = StatsGroup:Section({Title="Rendimiento", Box=true, BoxBorder=true, Opened=true})
 local StatsParagraph = PerfSection:Paragraph({Title="En Tiempo Real", Desc="Ping: Cargando...\nFPS: Cargando...\nMemoria: Cargando...", Image="activity", ImageSize=14})
@@ -1765,7 +1765,7 @@ task.spawn(function()
         Circulo.Parent = Contenedor
         Circulo.BackgroundColor3 = Color3.fromRGB(255, 210, 150) -- Naranja pastel clarito
         Circulo.BackgroundTransparency = 0
-        Circulo.Position = UDim2.new(1, -108, 0, 220)
+        Circulo.Position = UDim2.new(1, -108, 0, 10)
         Circulo.Size = UDim2.new(0, 100, 0, 100)
         Circulo.ZIndex = 50
         Circulo.Active = false
@@ -1805,4 +1805,4 @@ end)
 pcall(function() Window:SelectTab(PlayerTab) end)
 pcall(function() Window:SelectTab(1) end)
 
-WindUI:Notify({Title="DENJI•ALEX", Content="v21: Círculo a la altura de Rendimiento", Duration=4})
+WindUI:Notify({Title="DENJI•ALEX", Content="v22: Perfil en lista + foto al lado", Duration=4})
