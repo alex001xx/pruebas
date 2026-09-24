@@ -1422,6 +1422,8 @@ local function AbrirListaServidores()
         ScreenGui.Parent = game:GetService("CoreGui")
     end
     ServerListGui = ScreenGui
+    local SelectedServer = nil
+    local SelectedBtn = nil
 
     local Main = Instance.new("Frame")
     Main.Parent = ScreenGui
@@ -1479,7 +1481,7 @@ local function AbrirListaServidores()
     local List = Instance.new("ScrollingFrame")
     List.Parent = Main
     List.Position = UDim2.new(0, 10, 0, 38)
-    List.Size = UDim2.new(1, -20, 1, -48)
+    List.Size = UDim2.new(1, -20, 1, -90)
     List.BackgroundColor3 = Color3.fromRGB(255, 215, 175)
     List.BackgroundTransparency = 0.35
     List.BorderSizePixel = 0
@@ -1498,12 +1500,37 @@ local function AbrirListaServidores()
     Pad.PaddingBottom = UDim.new(0, 6)
 
     local function Hover(btn, normal, over)
-        btn.MouseEnter:Connect(function() TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = over}):Play() end)
-        btn.MouseLeave:Connect(function() TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = normal}):Play() end)
+        btn.MouseEnter:Connect(function() if not btn:GetAttribute("Selected") then TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = over}):Play() end end)
+        btn.MouseLeave:Connect(function() if not btn:GetAttribute("Selected") then TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = normal}):Play() end end)
     end
+
+    -- Boton de TP al servidor seleccionado (barra inferior)
+    local TPBtn = Instance.new("TextButton")
+    TPBtn.Parent = Main
+    TPBtn.Position = UDim2.new(0, 10, 1, -44)
+    TPBtn.Size = UDim2.new(1, -20, 0, 34)
+    TPBtn.BackgroundColor3 = Color3.fromRGB(50, 190, 90) -- verde intenso
+    TPBtn.BackgroundTransparency = 0.05
+    TPBtn.BorderSizePixel = 0
+    TPBtn.Font = Enum.Font.GothamBold
+    TPBtn.Text = "TP al Servidor Seleccionado"
+    TPBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    TPBtn.TextSize = 12
+    Instance.new("UICorner", TPBtn).CornerRadius = UDim.new(0, 8)
+    Hover(TPBtn, Color3.fromRGB(50, 190, 90), Color3.fromRGB(80, 230, 120))
+    TPBtn.MouseButton1Click:Connect(function()
+        if not SelectedServer then
+            pcall(function() WindUI:Notify({Title="Servidores", Content="Selecciona un servidor primero", Duration=2}) end)
+            return
+        end
+        pcall(function() WindUI:Notify({Title="Servidores", Content="Teletransportando al servidor seleccionado...", Duration=2}) end)
+        pcall(function() TeleportService:TeleportToPlaceInstance(game.PlaceId, SelectedServer.Id, LocalPlayer) end)
+    end)
 
     local function LoadServers()
         if not ServerListGui then return end
+        SelectedServer = nil; SelectedBtn = nil
+        if TPBtn then TPBtn.Text = "TP al Servidor Seleccionado" end
         for _, c in ipairs(List:GetChildren()) do if c:IsA("TextButton") or c:IsA("TextLabel") then c:Destroy() end end
         local Loading = Instance.new("TextLabel")
         Loading.Parent = List
@@ -1539,7 +1566,20 @@ local function AbrirListaServidores()
                     Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
                     Hover(btn, Color3.fromRGB(255, 225, 190), Color3.fromRGB(255, 190, 140))
                     btn.MouseButton1Click:Connect(function()
-                        pcall(function() TeleportService:TeleportToPlaceInstance(game.PlaceId, srv.id, LocalPlayer) end)
+                        -- quitar resaltado al servidor anterior
+                        if SelectedBtn then
+                            SelectedBtn:SetAttribute("Selected", false)
+                            SelectedBtn.BackgroundColor3 = Color3.fromRGB(255, 225, 190)
+                            SelectedBtn.BackgroundTransparency = 0.15
+                            SelectedBtn.TextColor3 = Color3.fromRGB(80, 45, 15)
+                        end
+                        SelectedServer = {Id=tostring(srv.id), Players=srv.playing or 0, Max=srv.maxPlayers or 0, Ping=srv.ping or 0}
+                        SelectedBtn = btn
+                        btn:SetAttribute("Selected", true)
+                        btn.BackgroundColor3 = Color3.fromRGB(255, 110, 30) -- naranja intenso (seleccionado)
+                        btn.BackgroundTransparency = 0
+                        btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+                        if TPBtn then TPBtn.Text = "TP: " .. SelectedServer.Players .. "/" .. SelectedServer.Max .. " jugadores" end
                     end)
                 end
             end
@@ -1872,4 +1912,4 @@ end)
 pcall(function() Window:SelectTab(PlayerTab) end)
 pcall(function() Window:SelectTab(1) end)
 
-WindUI:Notify({Title="DENJI•ALEX", Content="v23: Config se guarda y restaura al ejecutar", Duration=4})
+WindUI:Notify({Title="DENJI•ALEX", Content="v24: Servidores: seleccion + boton TP", Duration=4})
