@@ -47,12 +47,6 @@ local AntiFlingEnabled, AntiFreezeEnabled, AntiReportEnabled = false, false, fal
 local AntiKickHooked = false
 local OldNameCall = nil
 
--- 🎙️ ANTI-VC ULTRA (integrado como escudo)
-local AntiVCEnabled = false
-local AntiVCConn, AntiVCFastConn = nil, nil
-local VoiceChatService = nil
-pcall(function() VoiceChatService = game:GetService("VoiceChatService") end)
-
 -- 🎯 MODULO TARGET (integrado a WindUI)
 local TargetToggles = {Fling=false, View=false, Focus=false, Bang=false, HeadSit=false, Stand=false, Backpack=false, Doggy=false, Drag=false}
 local TargetedPlayerName = nil
@@ -571,50 +565,6 @@ local function SetAntiReport(s)
     pcall(function() StarterGui:SetCore("ReportAbusePageEnabled", not s) end)
 end
 
-local function AntiVCForceReconnect()
-    pcall(function()
-        if VoiceChatService and VoiceChatService.JoinVoice then VoiceChatService:JoinVoice() end
-    end)
-    pcall(function()
-        local internal = game:GetService("VoiceChatInternal")
-        if internal and internal.JoinVoice then internal:JoinVoice() end
-    end)
-    pcall(function()
-        if VoiceChatService and VoiceChatService.SetVoiceChatEnabled then
-            VoiceChatService:SetVoiceChatEnabled(true)
-        end
-    end)
-end
-
-local function SetAntiVC(s)
-    AntiVCEnabled = s
-    if s then
-        if not AntiVCConn then
-            AntiVCConn = RunService.Heartbeat:Connect(function()
-                if not AntiVCEnabled then return end
-                AntiVCForceReconnect()
-            end)
-        end
-        if not AntiVCFastConn then
-            AntiVCFastConn = RunService.RenderStepped:Connect(function()
-                if not AntiVCEnabled then return end
-                AntiVCForceReconnect()
-            end)
-        end
-        task.spawn(function()
-            for i = 1, 8 do
-                if not AntiVCEnabled then break end
-                task.wait(0.1)
-                AntiVCForceReconnect()
-            end
-        end)
-        WindUI:Notify({Title="Anti-VC", Content="Anti-VC Ultra activado", Duration=3})
-    else
-        if AntiVCConn then AntiVCConn:Disconnect(); AntiVCConn = nil end
-        if AntiVCFastConn then AntiVCFastConn:Disconnect(); AntiVCFastConn = nil end
-    end
-end
-
 -- ============================================================
 -- 🎯 FUNCIONES DEL MODULO TARGET (integradas)
 -- ============================================================
@@ -862,7 +812,6 @@ getgenv().TargetModule = _G.TargetModule
 -- ============================================================
 local ConfigFileName = "DENJI_ALEX_Config.json"
 local Saved = {}
-local SaveNotified = false
 local function Get(key, def)
     if Saved[key] ~= nil then return Saved[key] end
     return def
@@ -916,19 +865,14 @@ local function GuardarConfiguracion(silent)
         AntiFlingEnabled = AntiFlingEnabled,
         AntiFreezeEnabled = AntiFreezeEnabled,
         AntiReportEnabled = AntiReportEnabled,
-        AntiVCEnabled = AntiVCEnabled,
     }
-    local ok, err = pcall(function()
+    pcall(function()
         local Http = game:GetService("HttpService")
         writefile(ConfigFileName, Http:JSONEncode(Config))
         if not silent then
             WindUI:Notify({Title="Configuración", Content="Guardada correctamente", Duration=3})
         end
     end)
-    if not ok and not SaveNotified then
-        SaveNotified = true
-        pcall(function() WindUI:Notify({Title="Configuración", Content="Tu executor NO soporta writefile: no se puede guardar la config", Duration=5}) end)
-    end
 end
 
 local Dirty = false
@@ -949,7 +893,6 @@ local function AS(fn)
     return function(...)
         if fn then fn(...) end
         MarkDirty()
-        pcall(function() GuardarConfiguracion(true) end) -- guardado inmediato al cambiar cualquier opcion
     end
 end
 
@@ -969,62 +912,60 @@ local function CargarConfiguracion()
 end
 
 local function AplicarConfiguracion()
-    if not next(Saved) then return end
-    local function Try(fn) pcall(fn) end
-    Try(function() if Humanoid and Saved.WalkSpeed then Humanoid.WalkSpeed = Saved.WalkSpeed end end)
-    Try(function() if Humanoid and Saved.JumpPower then Humanoid.JumpPower = Saved.JumpPower end end)
-    Try(function() if Humanoid and Saved.GravityScale then Humanoid.GravityScale = Saved.GravityScale end end)
-    Try(function() if Humanoid and Saved.AnimationSpeed then pcall(function() Humanoid.AnimationSpeed = Saved.AnimationSpeed end) end end)
-    Try(function()
-        if Humanoid and Saved.BodyScale then
-            pcall(function()
-                Humanoid.BodyHeightScale=Saved.BodyScale; Humanoid.BodyWidthScale=Saved.BodyScale; Humanoid.BodyDepthScale=Saved.BodyScale
-                if Humanoid.HeadScale then Humanoid.HeadScale=Saved.BodyScale end
-            end)
+    pcall(function()
+        if not next(Saved) then return end
+        if Humanoid then
+            if Saved.WalkSpeed then Humanoid.WalkSpeed = Saved.WalkSpeed end
+            if Saved.JumpPower then Humanoid.JumpPower = Saved.JumpPower end
+            if Saved.GravityScale then Humanoid.GravityScale = Saved.GravityScale end
+            if Saved.AnimationSpeed then pcall(function() Humanoid.AnimationSpeed = Saved.AnimationSpeed end) end
+            if Saved.BodyScale then
+                pcall(function()
+                    Humanoid.BodyHeightScale=Saved.BodyScale; Humanoid.BodyWidthScale=Saved.BodyScale; Humanoid.BodyDepthScale=Saved.BodyScale
+                    if Humanoid.HeadScale then Humanoid.HeadScale=Saved.BodyScale end
+                end)
+            end
         end
-    end)
-    Try(function() if Saved.FOV then pcall(function() workspace.CurrentCamera.FieldOfView = Saved.FOV end) end end)
-    Try(function() if Saved.ClockTime then Lighting.ClockTime = Saved.ClockTime end end)
-    Try(function()
+        if Saved.FOV then pcall(function() workspace.CurrentCamera.FieldOfView = Saved.FOV end) end
+        if Saved.ClockTime then Lighting.ClockTime = Saved.ClockTime end
         if Saved.InvisibleEnabled and Character then
             for _,v in pairs(Character:GetDescendants()) do if v:IsA("BasePart") then v.LocalTransparencyModifier=1 end end
             InvisibleEnabled = true
         end
+        if Saved.FlashAttackEnabled then SetFlashAttack(true) end
+        if Saved.TPWalkEnabled then SetTPWalk(true) end
+        if Saved.FlyEnabled then StartFly() end
+        if Saved.NoclipEnabled then SetNoclip(true) end
+        if Saved.InfJumpEnabled then SetInfJump(true) end
+        if Saved.AutoWalkEnabled then SetAutoWalk(true) end
+        if Saved.FullbrightEnabled then SetFullbright(true) end
+        if Saved.ESPEnabled then SetESP(true) end
+        if Saved.FpsBoostEnabled then SetFpsBoost(true) end
+        if Saved.ClickTPEnabled then SetClickTP(true) end
+        if Saved.SpinBotEnabled then SetSpinBot(true) end
+        if Saved.SitProtectorEnabled then SetSitProtector(true) end
+        if Saved.AutoClickerEnabled then SetAutoClicker(true) end
+        if Saved.NoFallDamageEnabled then SetNoFallDamage(true) end
+        if Saved.AntiAFKEnabled then SetAntiAFK(true) end
+        if Saved.FreezePositionEnabled and RootPart then pcall(function() RootPart.Anchored=true end); FreezePositionEnabled=true end
+        if Saved.NoFrictionEnabled~=nil then NoFrictionEnabled=Saved.NoFrictionEnabled end
+        if Saved.NoPushEnabled~=nil then NoPushEnabled=Saved.NoPushEnabled end
+        if Saved.NoKnockbackEnabled~=nil then NoKnockbackEnabled=Saved.NoKnockbackEnabled end
+        if Saved.AntiVoidEnabled~=nil then AntiVoidEnabled=Saved.AntiVoidEnabled end
+        if Saved.AntiRagdollEnabled~=nil then AntiRagdollEnabled=Saved.AntiRagdollEnabled end
+        if Saved.GodModeEnabled~=nil then GodModeEnabled=Saved.GodModeEnabled end
+        if Saved.AutoRejoinEnabled~=nil then AutoRejoinEnabled=Saved.AutoRejoinEnabled end
+        if Saved.InstantRespawnEnabled~=nil then InstantRespawnEnabled=Saved.InstantRespawnEnabled end
+        if Saved.FollowPlayerEnabled~=nil then FollowPlayerEnabled=Saved.FollowPlayerEnabled end
+        if Saved.AutoJumpEnabled~=nil then AutoJumpEnabled=Saved.AutoJumpEnabled end
+        if Saved.WalkOnWaterEnabled~=nil then WalkOnWaterEnabled=Saved.WalkOnWaterEnabled end
+        if Saved.AntiKickEnabled then SetAntiKick(true) end
+        if Saved.AntiResetEnabled then SetAntiReset(true) end
+        if Saved.AntiReportEnabled then SetAntiReport(true) end
+        if Saved.AntiSitEnabled~=nil then AntiSitEnabled=Saved.AntiSitEnabled end
+        if Saved.AntiFlingEnabled~=nil then AntiFlingEnabled=Saved.AntiFlingEnabled end
+        if Saved.AntiFreezeEnabled~=nil then AntiFreezeEnabled=Saved.AntiFreezeEnabled end
     end)
-    Try(function() if Saved.FlashAttackEnabled then SetFlashAttack(true) end end)
-    Try(function() if Saved.TPWalkEnabled then SetTPWalk(true) end end)
-    Try(function() if Saved.FlyEnabled then StartFly() end end)
-    Try(function() if Saved.NoclipEnabled then SetNoclip(true) end end)
-    Try(function() if Saved.InfJumpEnabled then SetInfJump(true) end end)
-    Try(function() if Saved.AutoWalkEnabled then SetAutoWalk(true) end end)
-    Try(function() if Saved.FullbrightEnabled then SetFullbright(true) end end)
-    Try(function() if Saved.ESPEnabled then SetESP(true) end end)
-    Try(function() if Saved.FpsBoostEnabled then SetFpsBoost(true) end end)
-    Try(function() if Saved.ClickTPEnabled then SetClickTP(true) end end)
-    Try(function() if Saved.SpinBotEnabled then SetSpinBot(true) end end)
-    Try(function() if Saved.SitProtectorEnabled then SetSitProtector(true) end end)
-    Try(function() if Saved.AutoClickerEnabled then SetAutoClicker(true) end end)
-    Try(function() if Saved.NoFallDamageEnabled then SetNoFallDamage(true) end end)
-    Try(function() if Saved.AntiAFKEnabled then SetAntiAFK(true) end end)
-    Try(function() if Saved.FreezePositionEnabled and RootPart then pcall(function() RootPart.Anchored=true end); FreezePositionEnabled=true end end)
-    Try(function() if Saved.NoFrictionEnabled~=nil then NoFrictionEnabled=Saved.NoFrictionEnabled end end)
-    Try(function() if Saved.NoPushEnabled~=nil then NoPushEnabled=Saved.NoPushEnabled end end)
-    Try(function() if Saved.NoKnockbackEnabled~=nil then NoKnockbackEnabled=Saved.NoKnockbackEnabled end end)
-    Try(function() if Saved.AntiVoidEnabled~=nil then AntiVoidEnabled=Saved.AntiVoidEnabled end end)
-    Try(function() if Saved.AntiRagdollEnabled~=nil then AntiRagdollEnabled=Saved.AntiRagdollEnabled end end)
-    Try(function() if Saved.GodModeEnabled~=nil then GodModeEnabled=Saved.GodModeEnabled end end)
-    Try(function() if Saved.AutoRejoinEnabled~=nil then AutoRejoinEnabled=Saved.AutoRejoinEnabled end end)
-    Try(function() if Saved.InstantRespawnEnabled~=nil then InstantRespawnEnabled=Saved.InstantRespawnEnabled end end)
-    Try(function() if Saved.FollowPlayerEnabled~=nil then FollowPlayerEnabled=Saved.FollowPlayerEnabled end end)
-    Try(function() if Saved.AutoJumpEnabled~=nil then AutoJumpEnabled=Saved.AutoJumpEnabled end end)
-    Try(function() if Saved.WalkOnWaterEnabled~=nil then WalkOnWaterEnabled=Saved.WalkOnWaterEnabled end end)
-    Try(function() if Saved.AntiKickEnabled then SetAntiKick(true) end end)
-    Try(function() if Saved.AntiResetEnabled then SetAntiReset(true) end end)
-    Try(function() if Saved.AntiReportEnabled then SetAntiReport(true) end end)
-    Try(function() if Saved.AntiVCEnabled then SetAntiVC(true) end end)
-    Try(function() if Saved.AntiSitEnabled~=nil then AntiSitEnabled=Saved.AntiSitEnabled end end)
-    Try(function() if Saved.AntiFlingEnabled~=nil then AntiFlingEnabled=Saved.AntiFlingEnabled end end)
-    Try(function() if Saved.AntiFreezeEnabled~=nil then AntiFreezeEnabled=Saved.AntiFreezeEnabled end end)
 end
 
 CargarConfiguracion()
@@ -1422,8 +1363,6 @@ local function AbrirListaServidores()
         ScreenGui.Parent = game:GetService("CoreGui")
     end
     ServerListGui = ScreenGui
-    local SelectedServer = nil
-    local SelectedBtn = nil
 
     local Main = Instance.new("Frame")
     Main.Parent = ScreenGui
@@ -1481,7 +1420,7 @@ local function AbrirListaServidores()
     local List = Instance.new("ScrollingFrame")
     List.Parent = Main
     List.Position = UDim2.new(0, 10, 0, 38)
-    List.Size = UDim2.new(1, -20, 1, -90)
+    List.Size = UDim2.new(1, -20, 1, -48)
     List.BackgroundColor3 = Color3.fromRGB(255, 215, 175)
     List.BackgroundTransparency = 0.35
     List.BorderSizePixel = 0
@@ -1500,37 +1439,12 @@ local function AbrirListaServidores()
     Pad.PaddingBottom = UDim.new(0, 6)
 
     local function Hover(btn, normal, over)
-        btn.MouseEnter:Connect(function() if not btn:GetAttribute("Selected") then TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = over}):Play() end end)
-        btn.MouseLeave:Connect(function() if not btn:GetAttribute("Selected") then TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = normal}):Play() end end)
+        btn.MouseEnter:Connect(function() TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = over}):Play() end)
+        btn.MouseLeave:Connect(function() TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = normal}):Play() end)
     end
-
-    -- Boton de TP al servidor seleccionado (barra inferior)
-    local TPBtn = Instance.new("TextButton")
-    TPBtn.Parent = Main
-    TPBtn.Position = UDim2.new(0, 10, 1, -44)
-    TPBtn.Size = UDim2.new(1, -20, 0, 34)
-    TPBtn.BackgroundColor3 = Color3.fromRGB(50, 190, 90) -- verde intenso
-    TPBtn.BackgroundTransparency = 0.05
-    TPBtn.BorderSizePixel = 0
-    TPBtn.Font = Enum.Font.GothamBold
-    TPBtn.Text = "TP al Servidor Seleccionado"
-    TPBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    TPBtn.TextSize = 12
-    Instance.new("UICorner", TPBtn).CornerRadius = UDim.new(0, 8)
-    Hover(TPBtn, Color3.fromRGB(50, 190, 90), Color3.fromRGB(80, 230, 120))
-    TPBtn.MouseButton1Click:Connect(function()
-        if not SelectedServer then
-            pcall(function() WindUI:Notify({Title="Servidores", Content="Selecciona un servidor primero", Duration=2}) end)
-            return
-        end
-        pcall(function() WindUI:Notify({Title="Servidores", Content="Teletransportando al servidor seleccionado...", Duration=2}) end)
-        pcall(function() TeleportService:TeleportToPlaceInstance(game.PlaceId, SelectedServer.Id, LocalPlayer) end)
-    end)
 
     local function LoadServers()
         if not ServerListGui then return end
-        SelectedServer = nil; SelectedBtn = nil
-        if TPBtn then TPBtn.Text = "TP al Servidor Seleccionado" end
         for _, c in ipairs(List:GetChildren()) do if c:IsA("TextButton") or c:IsA("TextLabel") then c:Destroy() end end
         local Loading = Instance.new("TextLabel")
         Loading.Parent = List
@@ -1566,20 +1480,7 @@ local function AbrirListaServidores()
                     Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
                     Hover(btn, Color3.fromRGB(255, 225, 190), Color3.fromRGB(255, 190, 140))
                     btn.MouseButton1Click:Connect(function()
-                        -- quitar resaltado al servidor anterior
-                        if SelectedBtn then
-                            SelectedBtn:SetAttribute("Selected", false)
-                            SelectedBtn.BackgroundColor3 = Color3.fromRGB(255, 225, 190)
-                            SelectedBtn.BackgroundTransparency = 0.15
-                            SelectedBtn.TextColor3 = Color3.fromRGB(80, 45, 15)
-                        end
-                        SelectedServer = {Id=tostring(srv.id), Players=srv.playing or 0, Max=srv.maxPlayers or 0, Ping=srv.ping or 0}
-                        SelectedBtn = btn
-                        btn:SetAttribute("Selected", true)
-                        btn.BackgroundColor3 = Color3.fromRGB(255, 110, 30) -- naranja intenso (seleccionado)
-                        btn.BackgroundTransparency = 0
-                        btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-                        if TPBtn then TPBtn.Text = "TP: " .. SelectedServer.Players .. "/" .. SelectedServer.Max .. " jugadores" end
+                        pcall(function() TeleportService:TeleportToPlaceInstance(game.PlaceId, srv.id, LocalPlayer) end)
                     end)
                 end
             end
@@ -1654,12 +1555,6 @@ shieldPair("God Mode (Local)", function(s) GodModeEnabled = s end, Get("GodModeE
            "Auto-Rejoin al Morir", function(s) AutoRejoinEnabled = s end, Get("AutoRejoinEnabled", false))
 shieldPair("Anti-Report (Oculta UI)", SetAntiReport, Get("AntiReportEnabled", false),
            "No Fall Damage", SetNoFallDamage, Get("NoFallDamageEnabled", false))
-
--- 🎙️ ANTI-VC ULTRA (toggle integrado directamente en Escudos)
-local GAntiVC = EscudosTab:Group({})
-GAntiVC:Toggle({Title="Anti-VC Ultra", Desc="Spam reconexion de voz (anti-VC agresivo)", Def=Get("AntiVCEnabled", false), Callback=AS(SetAntiVC)})
-EscudosTab:Space({Size=8})
-
 EscudosTab:Space({Size=12})
 
 -- 8. CONFIGURACIÓN
@@ -1851,8 +1746,6 @@ pcall(function()
 end)
 
 AplicarConfiguracion()
--- Reintento 1.5s despues: por si WindUI o el personaje aun no estaban listos del todo
-task.spawn(function() task.wait(1.5); pcall(AplicarConfiguracion) end)
 
 -- === CÍRCULO CON FOTO DE PERFIL DENTRO DE LA PESTAÑA PLAYER (naranja pastel) ===
 task.spawn(function()
@@ -1872,7 +1765,7 @@ task.spawn(function()
         Circulo.Parent = Contenedor
         Circulo.BackgroundColor3 = Color3.fromRGB(255, 210, 150) -- Naranja pastel clarito
         Circulo.BackgroundTransparency = 0
-        Circulo.Position = UDim2.new(0, 10, 0, 6)
+        Circulo.Position = UDim2.new(1, -108, 0, 8)
         Circulo.Size = UDim2.new(0, 100, 0, 100)
         Circulo.ZIndex = 50
         Circulo.Active = false
@@ -1912,4 +1805,4 @@ end)
 pcall(function() Window:SelectTab(PlayerTab) end)
 pcall(function() Window:SelectTab(1) end)
 
-WindUI:Notify({Title="DENJI•ALEX", Content="v24: Servidores: seleccion + boton TP", Duration=4})
+WindUI:Notify({Title="DENJI•ALEX", Content="v20: Círculo al lado del nombre", Duration=4})
