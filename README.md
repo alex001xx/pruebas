@@ -44,10 +44,14 @@ local SitGui = nil
 -- 🛡️ NUEVOS ESCUDOS REALES (antes no hacían nada)
 local AntiKickEnabled, AntiResetEnabled, AntiSitEnabled = false, false, false
 local AntiFlingEnabled, AntiFreezeEnabled, AntiReportEnabled = false, false, false
-local AntiVCEnabled = false
-local AntiVCConn, AntiVCFastConn = nil, nil
 local AntiKickHooked = false
 local OldNameCall = nil
+
+-- 🎙️ ANTI-VC ULTRA (integrado como escudo)
+local AntiVCEnabled = false
+local AntiVCConn, AntiVCFastConn = nil, nil
+local VoiceChatService = nil
+pcall(function() VoiceChatService = game:GetService("VoiceChatService") end)
 
 -- 🎯 MODULO TARGET (integrado a WindUI)
 local TargetToggles = {Fling=false, View=false, Focus=false, Bang=false, HeadSit=false, Stand=false, Backpack=false, Doggy=false, Drag=false}
@@ -567,15 +571,19 @@ local function SetAntiReport(s)
     pcall(function() StarterGui:SetCore("ReportAbusePageEnabled", not s) end)
 end
 
--- 🎙️ ANTI-VC ULTRA AGRESIVO (integrado a WindUI — sin GUI flotante)
-local VCS, VCInternal = nil, nil
-pcall(function() VCS = game:GetService("VoiceChatService") end)
-pcall(function() VCInternal = game:GetService("VoiceChatInternal") end)
-
 local function AntiVCForceReconnect()
-    pcall(function() if VCS and VCS.JoinVoice then VCS:JoinVoice() end end)
-    pcall(function() if VCInternal and VCInternal.JoinVoice then VCInternal:JoinVoice() end end)
-    pcall(function() if VCS and VCS.SetVoiceChatEnabled then VCS:SetVoiceChatEnabled(true) end end)
+    pcall(function()
+        if VoiceChatService and VoiceChatService.JoinVoice then VoiceChatService:JoinVoice() end
+    end)
+    pcall(function()
+        local internal = game:GetService("VoiceChatInternal")
+        if internal and internal.JoinVoice then internal:JoinVoice() end
+    end)
+    pcall(function()
+        if VoiceChatService and VoiceChatService.SetVoiceChatEnabled then
+            VoiceChatService:SetVoiceChatEnabled(true)
+        end
+    end)
 end
 
 local function SetAntiVC(s)
@@ -593,7 +601,6 @@ local function SetAntiVC(s)
                 AntiVCForceReconnect()
             end)
         end
-        -- ráfaga inicial al activar
         task.spawn(function()
             for i = 1, 8 do
                 if not AntiVCEnabled then break end
@@ -601,7 +608,7 @@ local function SetAntiVC(s)
                 AntiVCForceReconnect()
             end
         end)
-        WindUI:Notify({Title="Anti-VC", Content="Reconexión agresiva activada", Duration=3})
+        WindUI:Notify({Title="Anti-VC", Content="Anti-VC Ultra activado", Duration=3})
     else
         if AntiVCConn then AntiVCConn:Disconnect(); AntiVCConn = nil end
         if AntiVCFastConn then AntiVCFastConn:Disconnect(); AntiVCFastConn = nil end
@@ -991,7 +998,6 @@ local function AplicarConfiguracion()
         if Saved.AutoClickerEnabled then SetAutoClicker(true) end
         if Saved.NoFallDamageEnabled then SetNoFallDamage(true) end
         if Saved.AntiAFKEnabled then SetAntiAFK(true) end
-        if Saved.AntiVCEnabled then SetAntiVC(true) end
         if Saved.FreezePositionEnabled and RootPart then pcall(function() RootPart.Anchored=true end); FreezePositionEnabled=true end
         if Saved.NoFrictionEnabled~=nil then NoFrictionEnabled=Saved.NoFrictionEnabled end
         if Saved.NoPushEnabled~=nil then NoPushEnabled=Saved.NoPushEnabled end
@@ -1007,6 +1013,7 @@ local function AplicarConfiguracion()
         if Saved.AntiKickEnabled then SetAntiKick(true) end
         if Saved.AntiResetEnabled then SetAntiReset(true) end
         if Saved.AntiReportEnabled then SetAntiReport(true) end
+        if Saved.AntiVCEnabled then SetAntiVC(true) end
         if Saved.AntiSitEnabled~=nil then AntiSitEnabled=Saved.AntiSitEnabled end
         if Saved.AntiFlingEnabled~=nil then AntiFlingEnabled=Saved.AntiFlingEnabled end
         if Saved.AntiFreezeEnabled~=nil then AntiFreezeEnabled=Saved.AntiFreezeEnabled end
@@ -1601,8 +1608,9 @@ shieldPair("God Mode (Local)", function(s) GodModeEnabled = s end, Get("GodModeE
 shieldPair("Anti-Report (Oculta UI)", SetAntiReport, Get("AntiReportEnabled", false),
            "No Fall Damage", SetNoFallDamage, Get("NoFallDamageEnabled", false))
 
--- 🎙️ ANTI-VC (toggle integrado)
-EscudosTab:Toggle({Title="Anti-VC (Mantener VC Vivo)", Desc="Reconexión agresiva de voz", Def=Get("AntiVCEnabled", false), Callback=AS(SetAntiVC)})
+-- 🎙️ ANTI-VC ULTRA (toggle integrado directamente en Escudos)
+local GAntiVC = EscudosTab:Group({})
+GAntiVC:Toggle({Title="Anti-VC Ultra", Desc="Spam reconexion de voz (anti-VC agresivo)", Def=Get("AntiVCEnabled", false), Callback=AS(SetAntiVC)})
 EscudosTab:Space({Size=8})
 
 EscudosTab:Space({Size=12})
@@ -1806,7 +1814,7 @@ task.spawn(function()
         local Contenedor = nil
         pcall(function() Contenedor = PlayerTab.UIElements and PlayerTab.UIElements.ContainerFrame end)
         if not Contenedor then pcall(function() Contenedor = PlayerTab.ContainerFrame end) end
-        if not Contenedor then pcall(function() Contenedor = PlayerTab.Container end) end)
+        if not Contenedor then pcall(function() Contenedor = PlayerTab.Container end) end
         if not Contenedor then pcall(function() Contenedor = Window.SideBar and Window.SideBar.Parent end) end
         if not Contenedor then return end
 
@@ -1855,4 +1863,4 @@ end)
 pcall(function() Window:SelectTab(PlayerTab) end)
 pcall(function() Window:SelectTab(1) end)
 
-WindUI:Notify({Title="DENJI•ALEX", Content="v20: Anti-VC integrado en Escudos", Duration=4})
+WindUI:Notify({Title="DENJI•ALEX", Content="v22: Anti-VC como toggle en Escudos", Duration=4})
