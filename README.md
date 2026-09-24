@@ -917,6 +917,7 @@ local function GuardarConfiguracion(silent)
         AntiFreezeEnabled = AntiFreezeEnabled,
         AntiReportEnabled = AntiReportEnabled,
         AntiVCEnabled = AntiVCEnabled,
+        ServidoresVisitados = ServidoresVisitados,
     }
     local ok, err = pcall(function()
         local Http = game:GetService("HttpService")
@@ -964,6 +965,7 @@ local function CargarConfiguracion()
         if Saved.FlySpeed then FlySpeed = Saved.FlySpeed end
         if Saved.FallSpeedCap then FallSpeedCap = Saved.FallSpeedCap end
         if Saved.AutoClickerCPS then AutoClickerCPS = Saved.AutoClickerCPS end
+        if Saved.ServidoresVisitados then ServidoresVisitados = Saved.ServidoresVisitados end
         WindUI:Notify({Title="Configuración", Content="Cargada correctamente", Duration=3})
     end)
 end
@@ -1326,6 +1328,7 @@ local RJTab = Window:Tab({Title="RJ=New.SV", Icon="globe"})
 local AutoOn = false
 local AutoCoroutine = nil
 local ServerList = {}
+local ServidoresVisitados = {}
 local RJLimit = 1 -- reemplaza a LimitBox.Text
 local RJStatus, RJCounter = nil, nil
 local ServerListGui = nil -- ventana independiente de la lista
@@ -1371,6 +1374,7 @@ local function JoinBest()
         if S.Players <= Limit then table.insert(Candidates, S) end
     end
     local Target = #Candidates > 0 and Candidates[math.random(#Candidates)] or Servers[math.random(#Servers)]
+    ServidoresVisitados[Target.Id] = true; MarkDirty()
     if RJStatus and RJStatus.SetDesc then RJStatus:SetDesc("Teletransportando...") end
     pcall(function() TeleportService:TeleportToPlaceInstance(game.PlaceId, Target.Id, LocalPlayer) end)
 end
@@ -1517,6 +1521,7 @@ local function AbrirListaServidores()
             pcall(function() WindUI:Notify({Title="Servidores", Content="Selecciona un servidor primero", Duration=2}) end)
             return
         end
+        pcall(function() ServidoresVisitados[SelectedServer.Id] = true; GuardarConfiguracion(true) end)
         pcall(function() WindUI:Notify({Title="Servidores", Content="Teletransportando al servidor seleccionado...", Duration=2}) end)
         pcall(function() TeleportService:TeleportToPlaceInstance(game.PlaceId, SelectedServer.Id, LocalPlayer) end)
     end)
@@ -1565,10 +1570,15 @@ local function AbrirListaServidores()
                         btn.TextColor3 = Color3.fromRGB(90, 60, 0)
                         btn.Text = string.format("  (AQUI ESTAS) %d/%d jugadores  •  Ping: %dms", srv.playing or 0, srv.maxPlayers or 0, srv.ping or 0)
                     else
-                        btn.BackgroundColor3 = Color3.fromRGB(255, 225, 190)
-                        btn.TextColor3 = Color3.fromRGB(80, 45, 15)
-                        btn.Text = string.format("  %d/%d jugadores  •  Ping: %dms", srv.playing or 0, srv.maxPlayers or 0, srv.ping or 0)
-                        Hover(btn, Color3.fromRGB(255, 225, 190), Color3.fromRGB(255, 190, 140))
+                        local visitado = ServidoresVisitados[tostring(srv.id)]
+                        local baseColor = visitado and Color3.fromRGB(100, 180, 255) or Color3.fromRGB(255, 225, 190)
+                        local overColor = visitado and Color3.fromRGB(70, 150, 230) or Color3.fromRGB(255, 190, 140)
+                        local textoColor = visitado and Color3.fromRGB(10, 35, 70) or Color3.fromRGB(80, 45, 15)
+                        local prefijo = visitado and "  (visitado) " or "  "
+                        btn.BackgroundColor3 = baseColor
+                        btn.TextColor3 = textoColor
+                        btn.Text = string.format(prefijo.."%d/%d jugadores  •  Ping: %dms", srv.playing or 0, srv.maxPlayers or 0, srv.ping or 0)
+                        Hover(btn, baseColor, overColor)
                         btn.MouseButton1Click:Connect(function()
                             -- quitar resaltado al servidor anterior
                             if SelectedBtn then
@@ -1887,6 +1897,29 @@ task.spawn(function()
         BordeBox.Color = Color3.fromRGB(60, 60, 75)
         BordeBox.Transparency = 0.3
 
+        -- Copiar el estilo exacto de los demas cuadros (Grupos) de WindUI
+        pcall(function()
+            local Ref = nil
+            pcall(function() Ref = StatsGroup.UIElements and StatsGroup.UIElements.ContainerFrame end)
+            if not Ref then pcall(function() Ref = StatsGroup.ContainerFrame end) end
+            if not Ref then pcall(function() Ref = StatsGroup.Container end) end
+            if Ref then
+                Box.BackgroundColor3 = Ref.BackgroundColor3
+                Box.BackgroundTransparency = Ref.BackgroundTransparency
+                local st = Ref:FindFirstChildOfClass("UIStroke")
+                if st then
+                    BordeBox.Color = st.Color
+                    BordeBox.Thickness = st.Thickness
+                    BordeBox.Transparency = st.Transparency
+                end
+                local cor = Ref:FindFirstChildOfClass("UICorner")
+                if cor then
+                    local miCor = Box:FindFirstChildOfClass("UICorner")
+                    if miCor then miCor.CornerRadius = cor.CornerRadius end
+                end
+            end
+        end)
+
         -- Foto de perfil (tamano ORIGINAL 100x100) dentro del cuadro, lado derecho
         local Circulo = Instance.new("Frame")
         Circulo.Name = "CirculoPerfil"
@@ -1938,13 +1971,13 @@ task.spawn(function()
             lbl.TextTruncate = Enum.TextTruncate.AtEnd
             return lbl
         end
-        HacerTexto(14, DisplayName, 19, true, Color3.fromRGB(255, 255, 255))
-        HacerTexto(44, "@"..PlayerName, 14, false, Color3.fromRGB(200, 200, 210))
-        HacerTexto(68, "ID: "..tostring(UserId), 14, false, Color3.fromRGB(170, 170, 185))
+        HacerTexto(14, DisplayName, 19, true, Color3.fromRGB(245, 245, 250))
+        HacerTexto(44, "@"..PlayerName, 14, false, Color3.fromRGB(245, 245, 250))
+        HacerTexto(68, "ID: "..tostring(UserId), 14, false, Color3.fromRGB(245, 245, 250))
     end)
 end)
 
 pcall(function() Window:SelectTab(PlayerTab) end)
 pcall(function() Window:SelectTab(1) end)
 
-WindUI:Notify({Title="DENJI•ALEX", Content="v26: Perfil en cuadro unico con foto 100x100 a la derecha", Duration=4})
+WindUI:Notify({Title="DENJI•ALEX", Content="v27: Perfil color uniforme + servidores visitados en celeste", Duration=4})
