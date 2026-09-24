@@ -862,6 +862,7 @@ getgenv().TargetModule = _G.TargetModule
 -- ============================================================
 local ConfigFileName = "DENJI_ALEX_Config.json"
 local Saved = {}
+local SaveNotified = false
 local function Get(key, def)
     if Saved[key] ~= nil then return Saved[key] end
     return def
@@ -917,13 +918,17 @@ local function GuardarConfiguracion(silent)
         AntiReportEnabled = AntiReportEnabled,
         AntiVCEnabled = AntiVCEnabled,
     }
-    pcall(function()
+    local ok, err = pcall(function()
         local Http = game:GetService("HttpService")
         writefile(ConfigFileName, Http:JSONEncode(Config))
         if not silent then
             WindUI:Notify({Title="Configuración", Content="Guardada correctamente", Duration=3})
         end
     end)
+    if not ok and not SaveNotified then
+        SaveNotified = true
+        pcall(function() WindUI:Notify({Title="Configuración", Content="Tu executor NO soporta writefile: no se puede guardar la config", Duration=5}) end)
+    end
 end
 
 local Dirty = false
@@ -944,6 +949,7 @@ local function AS(fn)
     return function(...)
         if fn then fn(...) end
         MarkDirty()
+        pcall(function() GuardarConfiguracion(true) end) -- guardado inmediato al cambiar cualquier opcion
     end
 end
 
@@ -963,61 +969,62 @@ local function CargarConfiguracion()
 end
 
 local function AplicarConfiguracion()
-    pcall(function()
-        if not next(Saved) then return end
-        if Humanoid then
-            if Saved.WalkSpeed then Humanoid.WalkSpeed = Saved.WalkSpeed end
-            if Saved.JumpPower then Humanoid.JumpPower = Saved.JumpPower end
-            if Saved.GravityScale then Humanoid.GravityScale = Saved.GravityScale end
-            if Saved.AnimationSpeed then pcall(function() Humanoid.AnimationSpeed = Saved.AnimationSpeed end) end
-            if Saved.BodyScale then
-                pcall(function()
-                    Humanoid.BodyHeightScale=Saved.BodyScale; Humanoid.BodyWidthScale=Saved.BodyScale; Humanoid.BodyDepthScale=Saved.BodyScale
-                    if Humanoid.HeadScale then Humanoid.HeadScale=Saved.BodyScale end
-                end)
-            end
+    if not next(Saved) then return end
+    local function Try(fn) pcall(fn) end
+    Try(function() if Humanoid and Saved.WalkSpeed then Humanoid.WalkSpeed = Saved.WalkSpeed end end)
+    Try(function() if Humanoid and Saved.JumpPower then Humanoid.JumpPower = Saved.JumpPower end end)
+    Try(function() if Humanoid and Saved.GravityScale then Humanoid.GravityScale = Saved.GravityScale end end)
+    Try(function() if Humanoid and Saved.AnimationSpeed then pcall(function() Humanoid.AnimationSpeed = Saved.AnimationSpeed end) end end)
+    Try(function()
+        if Humanoid and Saved.BodyScale then
+            pcall(function()
+                Humanoid.BodyHeightScale=Saved.BodyScale; Humanoid.BodyWidthScale=Saved.BodyScale; Humanoid.BodyDepthScale=Saved.BodyScale
+                if Humanoid.HeadScale then Humanoid.HeadScale=Saved.BodyScale end
+            end)
         end
-        if Saved.FOV then pcall(function() workspace.CurrentCamera.FieldOfView = Saved.FOV end) end
-        if Saved.ClockTime then Lighting.ClockTime = Saved.ClockTime end
+    end)
+    Try(function() if Saved.FOV then pcall(function() workspace.CurrentCamera.FieldOfView = Saved.FOV end) end end)
+    Try(function() if Saved.ClockTime then Lighting.ClockTime = Saved.ClockTime end end)
+    Try(function()
         if Saved.InvisibleEnabled and Character then
             for _,v in pairs(Character:GetDescendants()) do if v:IsA("BasePart") then v.LocalTransparencyModifier=1 end end
             InvisibleEnabled = true
         end
-        if Saved.FlashAttackEnabled then SetFlashAttack(true) end
-        if Saved.TPWalkEnabled then SetTPWalk(true) end
-        if Saved.FlyEnabled then StartFly() end
-        if Saved.NoclipEnabled then SetNoclip(true) end
-        if Saved.InfJumpEnabled then SetInfJump(true) end
-        if Saved.AutoWalkEnabled then SetAutoWalk(true) end
-        if Saved.FullbrightEnabled then SetFullbright(true) end
-        if Saved.ESPEnabled then SetESP(true) end
-        if Saved.FpsBoostEnabled then SetFpsBoost(true) end
-        if Saved.ClickTPEnabled then SetClickTP(true) end
-        if Saved.SpinBotEnabled then SetSpinBot(true) end
-        if Saved.SitProtectorEnabled then SetSitProtector(true) end
-        if Saved.AutoClickerEnabled then SetAutoClicker(true) end
-        if Saved.NoFallDamageEnabled then SetNoFallDamage(true) end
-        if Saved.AntiAFKEnabled then SetAntiAFK(true) end
-        if Saved.FreezePositionEnabled and RootPart then pcall(function() RootPart.Anchored=true end); FreezePositionEnabled=true end
-        if Saved.NoFrictionEnabled~=nil then NoFrictionEnabled=Saved.NoFrictionEnabled end
-        if Saved.NoPushEnabled~=nil then NoPushEnabled=Saved.NoPushEnabled end
-        if Saved.NoKnockbackEnabled~=nil then NoKnockbackEnabled=Saved.NoKnockbackEnabled end
-        if Saved.AntiVoidEnabled~=nil then AntiVoidEnabled=Saved.AntiVoidEnabled end
-        if Saved.AntiRagdollEnabled~=nil then AntiRagdollEnabled=Saved.AntiRagdollEnabled end
-        if Saved.GodModeEnabled~=nil then GodModeEnabled=Saved.GodModeEnabled end
-        if Saved.AutoRejoinEnabled~=nil then AutoRejoinEnabled=Saved.AutoRejoinEnabled end
-        if Saved.InstantRespawnEnabled~=nil then InstantRespawnEnabled=Saved.InstantRespawnEnabled end
-        if Saved.FollowPlayerEnabled~=nil then FollowPlayerEnabled=Saved.FollowPlayerEnabled end
-        if Saved.AutoJumpEnabled~=nil then AutoJumpEnabled=Saved.AutoJumpEnabled end
-        if Saved.WalkOnWaterEnabled~=nil then WalkOnWaterEnabled=Saved.WalkOnWaterEnabled end
-        if Saved.AntiKickEnabled then SetAntiKick(true) end
-        if Saved.AntiResetEnabled then SetAntiReset(true) end
-        if Saved.AntiReportEnabled then SetAntiReport(true) end
-        if Saved.AntiVCEnabled then SetAntiVC(true) end
-        if Saved.AntiSitEnabled~=nil then AntiSitEnabled=Saved.AntiSitEnabled end
-        if Saved.AntiFlingEnabled~=nil then AntiFlingEnabled=Saved.AntiFlingEnabled end
-        if Saved.AntiFreezeEnabled~=nil then AntiFreezeEnabled=Saved.AntiFreezeEnabled end
     end)
+    Try(function() if Saved.FlashAttackEnabled then SetFlashAttack(true) end end)
+    Try(function() if Saved.TPWalkEnabled then SetTPWalk(true) end end)
+    Try(function() if Saved.FlyEnabled then StartFly() end end)
+    Try(function() if Saved.NoclipEnabled then SetNoclip(true) end end)
+    Try(function() if Saved.InfJumpEnabled then SetInfJump(true) end end)
+    Try(function() if Saved.AutoWalkEnabled then SetAutoWalk(true) end end)
+    Try(function() if Saved.FullbrightEnabled then SetFullbright(true) end end)
+    Try(function() if Saved.ESPEnabled then SetESP(true) end end)
+    Try(function() if Saved.FpsBoostEnabled then SetFpsBoost(true) end end)
+    Try(function() if Saved.ClickTPEnabled then SetClickTP(true) end end)
+    Try(function() if Saved.SpinBotEnabled then SetSpinBot(true) end end)
+    Try(function() if Saved.SitProtectorEnabled then SetSitProtector(true) end end)
+    Try(function() if Saved.AutoClickerEnabled then SetAutoClicker(true) end end)
+    Try(function() if Saved.NoFallDamageEnabled then SetNoFallDamage(true) end end)
+    Try(function() if Saved.AntiAFKEnabled then SetAntiAFK(true) end end)
+    Try(function() if Saved.FreezePositionEnabled and RootPart then pcall(function() RootPart.Anchored=true end); FreezePositionEnabled=true end end)
+    Try(function() if Saved.NoFrictionEnabled~=nil then NoFrictionEnabled=Saved.NoFrictionEnabled end end)
+    Try(function() if Saved.NoPushEnabled~=nil then NoPushEnabled=Saved.NoPushEnabled end end)
+    Try(function() if Saved.NoKnockbackEnabled~=nil then NoKnockbackEnabled=Saved.NoKnockbackEnabled end end)
+    Try(function() if Saved.AntiVoidEnabled~=nil then AntiVoidEnabled=Saved.AntiVoidEnabled end end)
+    Try(function() if Saved.AntiRagdollEnabled~=nil then AntiRagdollEnabled=Saved.AntiRagdollEnabled end end)
+    Try(function() if Saved.GodModeEnabled~=nil then GodModeEnabled=Saved.GodModeEnabled end end)
+    Try(function() if Saved.AutoRejoinEnabled~=nil then AutoRejoinEnabled=Saved.AutoRejoinEnabled end end)
+    Try(function() if Saved.InstantRespawnEnabled~=nil then InstantRespawnEnabled=Saved.InstantRespawnEnabled end end)
+    Try(function() if Saved.FollowPlayerEnabled~=nil then FollowPlayerEnabled=Saved.FollowPlayerEnabled end end)
+    Try(function() if Saved.AutoJumpEnabled~=nil then AutoJumpEnabled=Saved.AutoJumpEnabled end end)
+    Try(function() if Saved.WalkOnWaterEnabled~=nil then WalkOnWaterEnabled=Saved.WalkOnWaterEnabled end end)
+    Try(function() if Saved.AntiKickEnabled then SetAntiKick(true) end end)
+    Try(function() if Saved.AntiResetEnabled then SetAntiReset(true) end end)
+    Try(function() if Saved.AntiReportEnabled then SetAntiReport(true) end end)
+    Try(function() if Saved.AntiVCEnabled then SetAntiVC(true) end end)
+    Try(function() if Saved.AntiSitEnabled~=nil then AntiSitEnabled=Saved.AntiSitEnabled end end)
+    Try(function() if Saved.AntiFlingEnabled~=nil then AntiFlingEnabled=Saved.AntiFlingEnabled end end)
+    Try(function() if Saved.AntiFreezeEnabled~=nil then AntiFreezeEnabled=Saved.AntiFreezeEnabled end end)
 end
 
 CargarConfiguracion()
@@ -1804,6 +1811,8 @@ pcall(function()
 end)
 
 AplicarConfiguracion()
+-- Reintento 1.5s despues: por si WindUI o el personaje aun no estaban listos del todo
+task.spawn(function() task.wait(1.5); pcall(AplicarConfiguracion) end)
 
 -- === CÍRCULO CON FOTO DE PERFIL DENTRO DE LA PESTAÑA PLAYER (naranja pastel) ===
 task.spawn(function()
@@ -1863,4 +1872,4 @@ end)
 pcall(function() Window:SelectTab(PlayerTab) end)
 pcall(function() Window:SelectTab(1) end)
 
-WindUI:Notify({Title="DENJI•ALEX", Content="v22: Anti-VC como toggle en Escudos", Duration=4})
+WindUI:Notify({Title="DENJI•ALEX", Content="v23: Config se guarda y restaura al ejecutar", Duration=4})
