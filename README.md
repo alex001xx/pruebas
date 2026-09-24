@@ -1886,39 +1886,19 @@ task.spawn(function()
         Box.Parent = Contenedor
         Box.LayoutOrder = -100
         Box.Size = UDim2.new(1, -16, 0, 116)
-        Box.BackgroundColor3 = Color3.fromRGB(32, 32, 40)
-        Box.BackgroundTransparency = 0.12
+        Box.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        Box.BackgroundTransparency = 0.86
         Box.BorderSizePixel = 0
         Box.Active = false
         Instance.new("UICorner", Box).CornerRadius = UDim.new(0, 10)
+        -- Cuadro BLANCO TRANSPARENTE (igual que los demas: Rendimiento, etc.)
+        Box.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        Box.BackgroundTransparency = 0.86
         local BordeBox = Instance.new("UIStroke")
         BordeBox.Parent = Box
         BordeBox.Thickness = 1
-        BordeBox.Color = Color3.fromRGB(60, 60, 75)
-        BordeBox.Transparency = 0.3
-
-        -- Copiar el estilo exacto de los demas cuadros (Grupos) de WindUI
-        pcall(function()
-            local Ref = nil
-            pcall(function() Ref = StatsGroup.UIElements and StatsGroup.UIElements.ContainerFrame end)
-            if not Ref then pcall(function() Ref = StatsGroup.ContainerFrame end) end
-            if not Ref then pcall(function() Ref = StatsGroup.Container end) end
-            if Ref then
-                Box.BackgroundColor3 = Ref.BackgroundColor3
-                Box.BackgroundTransparency = Ref.BackgroundTransparency
-                local st = Ref:FindFirstChildOfClass("UIStroke")
-                if st then
-                    BordeBox.Color = st.Color
-                    BordeBox.Thickness = st.Thickness
-                    BordeBox.Transparency = st.Transparency
-                end
-                local cor = Ref:FindFirstChildOfClass("UICorner")
-                if cor then
-                    local miCor = Box:FindFirstChildOfClass("UICorner")
-                    if miCor then miCor.CornerRadius = cor.CornerRadius end
-                end
-            end
-        end)
+        BordeBox.Color = Color3.fromRGB(220, 220, 230)
+        BordeBox.Transparency = 0.55
 
         -- Foto de perfil (tamano ORIGINAL 100x100) dentro del cuadro, lado derecho
         local Circulo = Instance.new("Frame")
@@ -1980,4 +1960,4 @@ end)
 pcall(function() Window:SelectTab(PlayerTab) end)
 pcall(function() Window:SelectTab(1) end)
 
-WindUI:Notify({Title="DENJI•ALEX", Content="v27: Perfil color uniforme + servidores visitados en celeste", Duration=4})
+WindUI:Notify({Title="DENJI•ALEX", Content="v28: Perfil cuadro blanco transparente", Duration=4})
