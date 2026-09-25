@@ -935,25 +935,9 @@ local function GuardarConfiguracion(silent)
     end
 end
 
-local Dirty = false
-local function MarkDirty() Dirty = true end
-task.spawn(function()
-    while task.wait(2) do
-        if Dirty then
-            Dirty = false
-            GuardarConfiguracion(true)
-        end
-    end
-end)
-pcall(function()
-    game:BindToClose(function() GuardarConfiguracion(true) end)
-end)
-
 local function AS(fn)
     return function(...)
         if fn then fn(...) end
-        MarkDirty()
-        pcall(function() GuardarConfiguracion(true) end) -- guardado inmediato al cambiar cualquier opcion
     end
 end
 
@@ -966,8 +950,6 @@ local function AplicarColor(c)
     pcall(function() if RefTPBtn then RefTPBtn.BackgroundColor3 = c end end)
     pcall(function() if Window and Window.SetAccent then Window:SetAccent(c) end end)
     pcall(function() if Window and Window.SetThemeColor then Window:SetThemeColor(c) end end)
-    MarkDirty()
-    pcall(function() GuardarConfiguracion(true) end)
 end
 
 local function CargarConfiguracion()
@@ -1391,7 +1373,7 @@ local function JoinBest()
         if S.Players <= Limit then table.insert(Candidates, S) end
     end
     local Target = #Candidates > 0 and Candidates[math.random(#Candidates)] or Servers[math.random(#Servers)]
-    ServidoresVisitados[Target.Id] = true; MarkDirty()
+    ServidoresVisitados[Target.Id] = true
     if RJStatus and RJStatus.SetDesc then RJStatus:SetDesc("Teletransportando...") end
     pcall(function() TeleportService:TeleportToPlaceInstance(game.PlaceId, Target.Id, LocalPlayer) end)
 end
@@ -1539,7 +1521,7 @@ local function AbrirListaServidores()
             pcall(function() WindUI:Notify({Title="Servidores", Content="Selecciona un servidor primero", Duration=2}) end)
             return
         end
-        pcall(function() ServidoresVisitados[SelectedServer.Id] = true; GuardarConfiguracion(true) end)
+        pcall(function() ServidoresVisitados[SelectedServer.Id] = true end)
         pcall(function() WindUI:Notify({Title="Servidores", Content="Teletransportando al servidor seleccionado...", Duration=2}) end)
         pcall(function() TeleportService:TeleportToPlaceInstance(game.PlaceId, SelectedServer.Id, LocalPlayer) end)
     end)
@@ -1715,6 +1697,28 @@ BotonColor("Azul Celeste", 100, 180, 255); Paleta:Space({Size=6})
 BotonColor("Morado", 160, 80, 255); Paleta:Space({Size=6})
 BotonColor("Rosa", 255, 100, 180); Paleta:Space({Size=6})
 BotonColor("Blanco", 240, 240, 245)
+ConfigsTab:Space({Size=12})
+
+ConfigsTab:Section({Title="Ajustes del Menú", TextSize=18}); ConfigsTab:Space({Size=6})
+local CMen = ConfigsTab:Group({})
+CMen:Button({Title="Cerrar Menú", Icon="x", Justify="Center", Callback=function() Window:Close() end}); CMen:Space({Size=6})
+CMen:Button({Title="Reiniciar Personaje", Icon="refresh-cw", Justify="Center", Callback=function() if Character then Humanoid.Health=0 end end}); CMen:Space({Size=6})
+CMen:Button({Title="Rejoin (Mismo Server)", Icon="refresh-cw", Justify="Center", Callback=function() TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId) end})
+ConfigsTab:Space({Size=10})
+
+ConfigsTab:Section({Title="Guardado Manual", TextSize=18}); ConfigsTab:Space({Size=6})
+local CGuard = ConfigsTab:Group({})
+CGuard:Button({Title="Guardar Configuración", Icon="save", Justify="Center", Callback=function() GuardarConfiguracion(false) end}); CGuard:Space({Size=6})
+CGuard:Button({Title="Cargar Configuración", Icon="refresh-cw", Justify="Center", Callback=function() CargarConfiguracion(); AplicarConfiguracion(); WindUI:Notify({Title="Configuración", Content="Cargada y aplicada", Duration=2}) end}); CGuard:Space({Size=6})
+CGuard:Button({Title="Borrar Configuración", Icon="x", Justify="Center", Callback=function() pcall(function() delfile(ConfigFileName) end); WindUI:Notify({Title="Configuración", Content="Archivo borrado (reinicia el script)", Duration=3}) end})
+ConfigsTab:Space({Size=10})
+
+ConfigsTab:Section({Title="Copiar", TextSize=18}); ConfigsTab:Space({Size=6})
+local CCop = ConfigsTab:Group({})
+CCop:Button({Title="Copiar UserID", Icon="clipboard", Justify="Center", Callback=function() setclipboard(tostring(UserId)); WindUI:Notify({Title="Copiado", Content="UserID copiado", Duration=2}) end}); CCop:Space({Size=6})
+CCop:Button({Title="Copiar Username", Icon="clipboard", Justify="Center", Callback=function() setclipboard("@"..PlayerName); WindUI:Notify({Title="Copiado", Content="Username copiado", Duration=2}) end}); CCop:Space({Size=6})
+CCop:Button({Title="Copiar JobID", Icon="clipboard", Justify="Center", Callback=function() setclipboard(tostring(game.JobId)); WindUI:Notify({Title="Copiado", Content="JobID copiado", Duration=2}) end}); CCop:Space({Size=6})
+CCop:Button({Title="Copiar Link del Servidor", Icon="link-2", Justify="Center", Callback=function() setclipboard("roblox://placeId="..tostring(game.PlaceId).."&jobId="..tostring(game.JobId)); WindUI:Notify({Title="Copiado", Content="Link copiado", Duration=2}) end})
 ConfigsTab:Space({Size=12})
 
 -- 9. HERRAMIENTAS
@@ -1982,4 +1986,4 @@ end)
 pcall(function() Window:SelectTab(PlayerTab) end)
 pcall(function() Window:SelectTab(1) end)
 
-WindUI:Notify({Title="DENJI•ALEX", Content="v29: Configuraciones con paleta de colores", Duration=4})
+WindUI:Notify({Title="DENJI•ALEX", Content="v30: Sin auto-save + Configuraciones completo", Duration=4})
