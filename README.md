@@ -860,8 +860,21 @@ getgenv().TargetModule = _G.TargetModule
 -- ============================================================
 -- 💾 CONFIGURACIÓN PERSISTENTE (guardado al cambiar, NO cada 10s)
 -- ============================================================
-local ConfigFileName = "DENJI_ALEX_Config.json"
 local Saved = {}
+-- Estado persistente en carpeta oculta de CoreGui (sobrevive a re-ejecutar el script, no necesita writefile)
+local StateFolder = nil
+local function GetStateFolder()
+    if StateFolder and StateFolder.Parent then return StateFolder end
+    local ok, hui = pcall(function() return gethui and gethui() end)
+    local parent = (ok and hui) or game:GetService("CoreGui")
+    StateFolder = parent:FindFirstChild("DENJI_ALEX_SavedState")
+    if not StateFolder then
+        StateFolder = Instance.new("Folder")
+        StateFolder.Name = "DENJI_ALEX_SavedState"
+        pcall(function() StateFolder.Parent = parent end)
+    end
+    return StateFolder
+end
 local SaveNotified = false
 local function Get(key, def)
     if Saved[key] ~= nil then return Saved[key] end
@@ -922,22 +935,27 @@ local function GuardarConfiguracion(silent)
         AccentG = math.floor(ColorAccent.G*255),
         AccentB = math.floor(ColorAccent.B*255),
     }
-    local ok, err = pcall(function()
-        local Http = game:GetService("HttpService")
-        writefile(ConfigFileName, Http:JSONEncode(Config))
+    pcall(function()
+        local f = GetStateFolder()
+        for k, v in pairs(Config) do
+            if type(v) == "table" then
+                local keys = {}
+                for kid in pairs(v) do keys[#keys+1] = tostring(kid) end
+                f:SetAttribute(k, table.concat(keys, ","))
+            else
+                f:SetAttribute(k, v)
+            end
+        end
         if not silent then
             WindUI:Notify({Title="Configuración", Content="Guardada correctamente", Duration=3})
         end
     end)
-    if not ok and not SaveNotified then
-        SaveNotified = true
-        pcall(function() WindUI:Notify({Title="Configuración", Content="Tu executor NO soporta writefile: no se puede guardar la config", Duration=5}) end)
-    end
 end
 
 local function AS(fn)
     return function(...)
         if fn then fn(...) end
+        pcall(function() GuardarConfiguracion(true) end) -- guardado instantaneo en CoreGui
     end
 end
 
@@ -950,22 +968,29 @@ local function AplicarColor(c)
     pcall(function() if RefTPBtn then RefTPBtn.BackgroundColor3 = c end end)
     pcall(function() if Window and Window.SetAccent then Window:SetAccent(c) end end)
     pcall(function() if Window and Window.SetThemeColor then Window:SetThemeColor(c) end end)
+    pcall(function() GuardarConfiguracion(true) end)
 end
 
 local function CargarConfiguracion()
     pcall(function()
-        if not isfile(ConfigFileName) then return end
-        local Http = game:GetService("HttpService")
-        local Config = Http:JSONDecode(readfile(ConfigFileName))
-        if Config then Saved = Config end
+        local ok, hui = pcall(function() return gethui and gethui() end)
+        local parent = (ok and hui) or game:GetService("CoreGui")
+        local f = parent:FindFirstChild("DENJI_ALEX_SavedState")
+        if not f then return end
+        local attrs = f:GetAttributes()
+        if attrs then Saved = attrs end
+        if Saved.ServidoresVisitados and type(Saved.ServidoresVisitados) == "string" then
+            local t = {}
+            for kid in string.gmatch(Saved.ServidoresVisitados, "[^,]+") do t[kid] = true end
+            ServidoresVisitados = t
+            Saved.ServidoresVisitados = t
+        end
         if Saved.FlashMultiplier then FlashMultiplier = Saved.FlashMultiplier end
         if Saved.TPWalkSpeed then TPWalkSpeed = Saved.TPWalkSpeed end
         if Saved.FlySpeed then FlySpeed = Saved.FlySpeed end
         if Saved.FallSpeedCap then FallSpeedCap = Saved.FallSpeedCap end
         if Saved.AutoClickerCPS then AutoClickerCPS = Saved.AutoClickerCPS end
-        if Saved.ServidoresVisitados then ServidoresVisitados = Saved.ServidoresVisitados end
         if Saved.AccentR then ColorAccent = Color3.fromRGB(Saved.AccentR, Saved.AccentG or 160, Saved.AccentB or 80) end
-        WindUI:Notify({Title="Configuración", Content="Cargada correctamente", Duration=3})
     end)
 end
 
@@ -1373,7 +1398,7 @@ local function JoinBest()
         if S.Players <= Limit then table.insert(Candidates, S) end
     end
     local Target = #Candidates > 0 and Candidates[math.random(#Candidates)] or Servers[math.random(#Servers)]
-    ServidoresVisitados[Target.Id] = true
+    ServidoresVisitados[Target.Id] = true; pcall(function() GuardarConfiguracion(true) end)
     if RJStatus and RJStatus.SetDesc then RJStatus:SetDesc("Teletransportando...") end
     pcall(function() TeleportService:TeleportToPlaceInstance(game.PlaceId, Target.Id, LocalPlayer) end)
 end
@@ -1521,7 +1546,7 @@ local function AbrirListaServidores()
             pcall(function() WindUI:Notify({Title="Servidores", Content="Selecciona un servidor primero", Duration=2}) end)
             return
         end
-        pcall(function() ServidoresVisitados[SelectedServer.Id] = true end)
+        pcall(function() ServidoresVisitados[SelectedServer.Id] = true; GuardarConfiguracion(true) end)
         pcall(function() WindUI:Notify({Title="Servidores", Content="Teletransportando al servidor seleccionado...", Duration=2}) end)
         pcall(function() TeleportService:TeleportToPlaceInstance(game.PlaceId, SelectedServer.Id, LocalPlayer) end)
     end)
@@ -1704,13 +1729,6 @@ local CMen = ConfigsTab:Group({})
 CMen:Button({Title="Cerrar Menú", Icon="x", Justify="Center", Callback=function() Window:Close() end}); CMen:Space({Size=6})
 CMen:Button({Title="Reiniciar Personaje", Icon="refresh-cw", Justify="Center", Callback=function() if Character then Humanoid.Health=0 end end}); CMen:Space({Size=6})
 CMen:Button({Title="Rejoin (Mismo Server)", Icon="refresh-cw", Justify="Center", Callback=function() TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId) end})
-ConfigsTab:Space({Size=10})
-
-ConfigsTab:Section({Title="Guardado Manual", TextSize=18}); ConfigsTab:Space({Size=6})
-local CGuard = ConfigsTab:Group({})
-CGuard:Button({Title="Guardar Configuración", Icon="save", Justify="Center", Callback=function() GuardarConfiguracion(false) end}); CGuard:Space({Size=6})
-CGuard:Button({Title="Cargar Configuración", Icon="refresh-cw", Justify="Center", Callback=function() CargarConfiguracion(); AplicarConfiguracion(); WindUI:Notify({Title="Configuración", Content="Cargada y aplicada", Duration=2}) end}); CGuard:Space({Size=6})
-CGuard:Button({Title="Borrar Configuración", Icon="x", Justify="Center", Callback=function() pcall(function() delfile(ConfigFileName) end); WindUI:Notify({Title="Configuración", Content="Archivo borrado (reinicia el script)", Duration=3}) end})
 ConfigsTab:Space({Size=10})
 
 ConfigsTab:Section({Title="Copiar", TextSize=18}); ConfigsTab:Space({Size=6})
@@ -1986,4 +2004,4 @@ end)
 pcall(function() Window:SelectTab(PlayerTab) end)
 pcall(function() Window:SelectTab(1) end)
 
-WindUI:Notify({Title="DENJI•ALEX", Content="v30: Sin auto-save + Configuraciones completo", Duration=4})
+WindUI:Notify({Title="DENJI•ALEX", Content="v31: Estado persistente en CoreGui (sin writefile)", Duration=4})
