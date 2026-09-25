@@ -1066,27 +1066,54 @@ local Window = WindUI:CreateWindow({
     OpenButton={Title="DENJI•ALEX", Icon="sword", Enabled=true, Draggable=true, OnlyMobile=false, CornerRadius=UDim.new(1,0), StrokeThickness=2, Scale=1},
 })
 
--- Cambiar fondo de la ventana (busca el ImageLabel del fondo en WindUI)
+-- Cambiar fondo de la ventana (robusto: encuentra la raiz y el fondo por ID actual)
 local function CambiarFondo(id, silent)
+    local viejoId = FondoId
     FondoId = id
     if not silent then pcall(function() GuardarConfiguracion(true) end) end
     local url = "rbxassetid://"..tostring(id)
     pcall(function() Window.Background = url end)
     pcall(function() if Window.SetBackground then Window:SetBackground(url) end end)
+    local cambiado = false
     pcall(function()
-        for _, key in ipairs({"UIElements","MainFrame","Container","Root","Frame","Main"}) do
-            local inst = Window[key]
-            if typeof(inst) == "Instance" then
-                for _, d in ipairs(inst:GetDescendants()) do
-                    if d:IsA("ImageLabel") and d.Image and d.Image:find("rbxassetid") then
-                        d.Image = url
-                    end
+        -- 1) Encontrar la instancia raiz de la ventana (cualquier Instance en la tabla Window)
+        local raiz = nil
+        if typeof(Window) == "Instance" then raiz = Window end
+        if not raiz then
+            for k, v in pairs(Window) do
+                if typeof(v) == "Instance" then raiz = v; break end
+            end
+        end
+        if not raiz then
+            for _, key in ipairs({"UIElements","MainFrame","Container","Root","Frame","Main","Holder","WindowFrame","GUI","RootFrame","ContainerFrame","Window"}) do
+                local inst = Window[key]
+                if typeof(inst) == "Instance" then raiz = inst; break end
+            end
+        end
+        if not raiz then return end
+        -- 2) Buscar el ImageLabel del fondo: coincide con el ID viejo, o llena toda la ventana
+        for _, d in ipairs(raiz:GetDescendants()) do
+            if d:IsA("ImageLabel") then
+                local esFondo = false
+                local img = d.Image or ""
+                if viejoId and img:find(tostring(viejoId)) then esFondo = true end
+                if not esFondo then
+                    local ok, sx, sy = pcall(function() return d.Size.X.Scale, d.Size.Y.Scale end)
+                    if ok and sx and sy and sx >= 0.9 and sy >= 0.9 then esFondo = true end
+                end
+                if esFondo then
+                    d.Image = url
+                    cambiado = true
                 end
             end
         end
     end)
     if not silent then
-        pcall(function() WindUI:Notify({Title="Fondo", Content="Fondo cambiado correctamente", Duration=2}) end)
+        if cambiado then
+            pcall(function() WindUI:Notify({Title="Fondo", Content="Fondo cambiado correctamente", Duration=2}) end)
+        else
+            pcall(function() WindUI:Notify({Title="Fondo", Content="No se encontro el fondo de WindUI", Duration=4}) end)
+        end
     end
 end
 pcall(function() CambiarFondo(FondoId, true) end) -- restaurar fondo guardado (sin notificar)
@@ -2043,4 +2070,4 @@ end)
 pcall(function() Window:SelectTab(PlayerTab) end)
 pcall(function() Window:SelectTab(1) end)
 
-WindUI:Notify({Title="DENJI•ALEX", Content="v32: Cambiar de fondos (persistente)", Duration=4})
+WindUI:Notify({Title="DENJI•ALEX", Content="v33: Fix cambio de fondos (busqueda robusta)", Duration=4})
