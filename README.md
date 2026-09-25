@@ -1059,11 +1059,11 @@ end
 CargarConfiguracion()
 
 local Window = WindUI:CreateWindow({
-    Title="DENJI•ALEX", Icon="sword", Author="DENJI•ALEX", Folder="DENJI•ALEX",
+    Title="DENJI•ALEX", Author="DENJI•ALEX", Folder="DENJI•ALEX",
     Size=UDim2.fromOffset(600,540), MinSize=Vector2.new(520,420), MaxSize=Vector2.new(850,680),
     Transparent=true, Theme="Dark", Resizable=true, SideBarWidth=160,
     Background="rbxassetid://118321081493035", BackgroundImageTransparency=0.35, HideSearchBar=true,
-    OpenButton={Title="DENJI•ALEX", Icon="sword", Enabled=true, Draggable=true, OnlyMobile=false, CornerRadius=UDim.new(1,0), StrokeThickness=2, Scale=1},
+    OpenButton={Title="DENJI•ALEX", Enabled=true, Draggable=true, OnlyMobile=false, CornerRadius=UDim.new(1,0), StrokeThickness=2, Scale=1},
 })
 
 -- Cambiar fondo de la ventana (robusto: encuentra la raiz y el fondo por ID actual)
@@ -1076,7 +1076,7 @@ local function CambiarFondo(id, silent)
     pcall(function() if Window.SetBackground then Window:SetBackground(url) end end)
     local cambiado = false
     pcall(function()
-        -- 1) Encontrar la instancia raiz de la ventana (cualquier Instance en la tabla Window)
+        -- 1. Encontrar la instancia raiz de la ventana (cualquier Instance en la tabla Window)
         local raiz = nil
         if typeof(Window) == "Instance" then raiz = Window end
         if not raiz then
@@ -1091,7 +1091,7 @@ local function CambiarFondo(id, silent)
             end
         end
         if not raiz then return end
-        -- 2) Buscar el ImageLabel del fondo: coincide con el ID viejo, o llena toda la ventana
+        -- 2. Buscar el ImageLabel del fondo: coincide con el ID viejo, o llena toda la ventana
         for _, d in ipairs(raiz:GetDescendants()) do
             if d:IsA("ImageLabel") then
                 local esFondo = false
@@ -1118,8 +1118,53 @@ local function CambiarFondo(id, silent)
 end
 pcall(function() CambiarFondo(FondoId, true) end) -- restaurar fondo guardado (sin notificar)
 
+-- Quitar el marco gris de fondo y redondear esquinas puntiagudas
+task.spawn(function()
+    task.wait(0.5)
+    pcall(function()
+        local raiz = nil
+        if typeof(Window) == "Instance" then raiz = Window end
+        if not raiz then
+            for k, v in pairs(Window) do
+                if typeof(v) == "Instance" then raiz = v; break end
+            end
+        end
+        if not raiz then return end
+        local function esGris(c)
+            return math.abs(c.R - c.G) < 0.05 and math.abs(c.G - c.B) < 0.05 and c.R < 0.65
+        end
+        local function arreglar(inst)
+            for _, d in ipairs(inst:GetChildren()) do
+                if d:IsA("Frame") and d.BackgroundTransparency < 1 then
+                    local gris = false
+                    pcall(function() gris = esGris(d.BackgroundColor3) end)
+                    if gris then
+                        d.BackgroundTransparency = 1 -- quitar el gris
+                        if not d:FindFirstChildOfClass("UICorner") then
+                            local uc = Instance.new("UICorner")
+                            uc.CornerRadius = UDim.new(0, 14)
+                            uc.Parent = d
+                        end
+                    end
+                end
+            end
+        end
+        arreglar(raiz)
+        if raiz:IsA("Frame") then
+            pcall(function()
+                if esGris(raiz.BackgroundColor3) and raiz.BackgroundTransparency < 1 then
+                    raiz.BackgroundTransparency = 1
+                    if not raiz:FindFirstChildOfClass("UICorner") then
+                        local uc = Instance.new("UICorner"); uc.CornerRadius = UDim.new(0, 14); uc.Parent = raiz
+                    end
+                end
+            end)
+        end
+    end)
+end)
+
 -- 1. PLAYER
-local PlayerTab = Window:Tab({Title="Player", Icon="user"})
+local PlayerTab = Window:Tab({Title="Player",})
 PlayerTab:Space({Size=6})
 local StatsGroup = PlayerTab:Group({})
 StatsGroup:Space({Size=10})
@@ -1134,19 +1179,20 @@ task.spawn(function()
     end
 end)
 
--- Cambiar de fondos (debajo de Rendimiento)
+-- Cambiar de fondos (debajo de Rendimiento) — lista desplegable
 PlayerTab:Space({Size=10})
 PlayerTab:Section({Title="Cambiar de Fondos", TextSize=18}); PlayerTab:Space({Size=6})
-local FondosGroup = PlayerTab:Group({})
-local FondosLista = {98894596916337, 130933405765958, 137839443431564, 128695652450090, 118321081493035, 96927193988709, 96508866299631}
-for i, id in ipairs(FondosLista) do
-    FondosGroup:Button({Title="Fondo "..i, Desc=tostring(id), Justify="Center", Callback=function() CambiarFondo(id) end})
-    if i < #FondosLista then FondosGroup:Space({Size=6}) end
-end
+local FondosLista = {98894596916337, 130933405765958, 137839443431564, 128695652450090, 118321081493035, 96927193988709, 96508866299631, 134811738874379}
+local FondosNombres = {}
+for i = 1, #FondosLista do FondosNombres[i] = "Fondo "..i end
+PlayerTab:Dropdown({Title="Elige un fondo", Values=FondosNombres, Value=1, Callback=function(s)
+    local n = tonumber(s:match("%d+"))
+    if n and FondosLista[n] then CambiarFondo(FondosLista[n]) end
+end})
 PlayerTab:Space({Size=8})
 
 -- 2. MAIN
-local MainTab = Window:Tab({Title="Main", Icon="home"})
+local MainTab = Window:Tab({Title="Main",})
 MainTab:Section({Title="Funciones Principales", TextSize=20}); MainTab:Space({Size=6})
 
 MainTab:Section({Title="⚔️ Ataque Rápido", TextSize=18}); MainTab:Space({Size=6})
@@ -1157,7 +1203,7 @@ FlashRow:Slider({Title="Multiplicador", Step=1, Value={Min=1,Max=30,Default=Get(
 MainTab:Space({Size=12})
 
 local MainRow1 = MainTab:Group({})
-MainRow1:Button({Title="Teleport a Ti", Icon="map-pin", Justify="Center", Callback=function() local m=LocalPlayer:GetMouse(); if RootPart then RootPart.CFrame=CFrame.new(m.Hit.Position+Vector3.new(0,3,0)) end end})
+MainRow1:Button({Title="Teleport a Ti", Justify="Center", Callback=function() local m=LocalPlayer:GetMouse(); if RootPart then RootPart.CFrame=CFrame.new(m.Hit.Position+Vector3.new(0,3,0)) end end})
 MainRow1:Space({Size=8})
 MainRow1:Toggle({Title="TPWalk (Bypass)", Def=Get("TPWalkEnabled", false), Callback=AS(SetTPWalk)})
 MainTab:Space({Size=8})
@@ -1185,30 +1231,30 @@ MainSliders:Toggle({Title="Auto-Caminar (Hacia Adelante)", Def=Get("AutoWalkEnab
 MainTab:Space({Size=12})
 MainTab:Section({Title="Acciones Rápidas", TextSize=18}); MainTab:Space({Size=6})
 local MainA1 = MainTab:Group({})
-MainA1:Button({Title="Server Hop", Icon="shuffle", Justify="Center", Callback=ServerHop}); MainA1:Space({Size=8})
-MainA1:Button({Title="Rejoin (Mismo Server)", Icon="refresh-cw", Justify="Center", Callback=function() TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId) end})
+MainA1:Button({Title="Server Hop", Justify="Center", Callback=ServerHop}); MainA1:Space({Size=8})
+MainA1:Button({Title="Rejoin (Mismo Server)", Justify="Center", Callback=function() TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId) end})
 MainTab:Space({Size=8})
 local MainA2 = MainTab:Group({})
-MainA2:Button({Title="Copiar Coordenadas", Icon="clipboard", Justify="Center", Callback=function() if RootPart then local p=RootPart.Position; setclipboard(math.floor(p.X)..", "..math.floor(p.Y)..", "..math.floor(p.Z)); WindUI:Notify({Title="Copiado", Content="Coordenadas copiadas", Duration=2}) end end})
+MainA2:Button({Title="Copiar Coordenadas", Justify="Center", Callback=function() if RootPart then local p=RootPart.Position; setclipboard(math.floor(p.X)..", "..math.floor(p.Y)..", "..math.floor(p.Z)); WindUI:Notify({Title="Copiado", Content="Coordenadas copiadas", Duration=2}) end end})
 MainA2:Space({Size=8})
-MainA2:Button({Title="TP desde Portapapeles", Icon="map-pin", Justify="Center", Callback=function() local clip=""; pcall(function() clip=getclipboard() end); if not clip or clip=="" then WindUI:Notify({Title="Error", Content="Portapapeles vacío", Duration=2}) else TeleportToCoords(clip) end end})
+MainA2:Button({Title="TP desde Portapapeles", Justify="Center", Callback=function() local clip=""; pcall(function() clip=getclipboard() end); if not clip or clip=="" then WindUI:Notify({Title="Error", Content="Portapapeles vacío", Duration=2}) else TeleportToCoords(clip) end end})
 MainTab:Space({Size=8})
 local MainA3 = MainTab:Group({})
-MainA3:Button({Title="Volver al Spawn", Icon="home", Justify="Center", Callback=function() if RootPart then RootPart.CFrame=SpawnCFrame; RootPart.Velocity=Vector3.new(0,0,0); WindUI:Notify({Title="Spawn", Content="Volviste al spawn", Duration=2}) end end})
+MainA3:Button({Title="Volver al Spawn", Justify="Center", Callback=function() if RootPart then RootPart.CFrame=SpawnCFrame; RootPart.Velocity=Vector3.new(0,0,0); WindUI:Notify({Title="Spawn", Content="Volviste al spawn", Duration=2}) end end})
 MainA3:Space({Size=8})
-MainA3:Button({Title="Reiniciar Personaje", Icon="refresh-cw", Justify="Center", Callback=function() if Character and Humanoid then Humanoid.Health=0 end end})
+MainA3:Button({Title="Reiniciar Personaje", Justify="Center", Callback=function() if Character and Humanoid then Humanoid.Health=0 end end})
 
 MainTab:Space({Size=12})
 MainTab:Section({Title="📦 Scripts Externos", TextSize=18}); MainTab:Space({Size=6})
 local ExtScripts = MainTab:Section({Title="", Box=true, BoxBorder=true, Opened=true})
-ExtScripts:Button({Title="Hitbox Boys", Desc="Ejecutar script", Icon="play", Justify="Left", Callback=function()
+ExtScripts:Button({Title="Hitbox Boys", Desc="Ejecutar script", Justify="Left", Callback=function()
     pcall(function()
         loadstring(game:HttpGet("https://pastebin.com/raw/4vL0qwVd"))()
         WindUI:Notify({Title="Hitbox Boys", Content="Script ejecutado", Duration=3})
     end)
 end})
 ExtScripts:Space({Size=10})
-ExtScripts:Button({Title="Hitbox Girls", Desc="Ejecutar script", Icon="play", Justify="Left", Callback=function()
+ExtScripts:Button({Title="Hitbox Girls", Desc="Ejecutar script", Justify="Left", Callback=function()
     pcall(function()
         loadstring(game:HttpGet("https://pastebin.com/raw/x9ivUUsh"))()
         WindUI:Notify({Title="Hitbox Girls", Content="Script ejecutado", Duration=3})
@@ -1216,10 +1262,10 @@ ExtScripts:Button({Title="Hitbox Girls", Desc="Ejecutar script", Icon="play", Ju
 end})
 
 -- 3. MIS SCRIPTS
-local MisScriptsTab = Window:Tab({Title="Mis Scripts", Icon="folder"})
+local MisScriptsTab = Window:Tab({Title="Mis Scripts",})
 MisScriptsTab:Section({Title="Scripts Guardados", TextSize=20}); MisScriptsTab:Space({Size=6})
 local ScriptsSection = MisScriptsTab:Section({Title="", Box=true, BoxBorder=true, Opened=true})
-ScriptsSection:Button({Title="AY1Amikas", Desc="Ejecutar script", Icon="play", Justify="Left", Callback=function()
+ScriptsSection:Button({Title="AY1Amikas", Desc="Ejecutar script", Justify="Left", Callback=function()
     pcall(function()
         loadstring(game:HttpGet("https://raw.githubusercontent.com/alex001xx/AY1AniChoco/refs/heads/main/README.md"))()
         WindUI:Notify({Title="AY1Amikas", Content="Script ejecutado", Duration=3})
@@ -1230,7 +1276,7 @@ ScriptsSection:Toggle({Title="Escudo", Desc="Sit siempre + Anti-abrazo", Def=Get
 MisScriptsTab:Space({Size=12})
 
 -- 4. TARGET (2 toggles por línea)
-local TargetTab = Window:Tab({Title="Target", Icon="crosshair"})
+local TargetTab = Window:Tab({Title="Target",})
 TargetTab:Section({Title="🎯 Seleccionar Objetivo", TextSize=20}); TargetTab:Space({Size=6})
 local TargetSel = TargetTab:Section({Title="", Box=true, BoxBorder=true, Opened=true})
 TargetAvatarImg = TargetSel:Image({Image="rbxassetid://10818605405", ImageSize=80})
@@ -1242,9 +1288,9 @@ pcall(function()
 end)
 TargetSel:Space({Size=6})
 local TargetBtnRow = TargetSel:Group({})
-TargetBtnRow:Button({Title="Seleccionar por Nombre", Icon="user-check", Justify="Center", Callback=function() TargetSelect(TargetNameInput or "") end})
+TargetBtnRow:Button({Title="Seleccionar por Nombre", Justify="Center", Callback=function() TargetSelect(TargetNameInput or "") end})
 TargetBtnRow:Space({Size=8})
-TargetBtnRow:Button({Title="Herramienta de Clic", Icon="mouse-pointer", Justify="Center", Callback=function()
+TargetBtnRow:Button({Title="Herramienta de Clic", Justify="Center", Callback=function()
     pcall(function()
         local tool = Instance.new("Tool")
         tool.Name = "TargetSelector"; tool.RequiresHandle = false
@@ -1264,7 +1310,7 @@ TargetBtnRow:Button({Title="Herramienta de Clic", Icon="mouse-pointer", Justify=
     end)
 end})
 TargetSel:Space({Size=6})
-TargetSel:Button({Title="Recargar Lista de Jugadores", Icon="refresh-cw", Justify="Center", Callback=function()
+TargetSel:Button({Title="Recargar Lista de Jugadores", Justify="Center", Callback=function()
     pcall(function() if TargetDropdown then TargetDropdown:Refresh(GetPlayerNames(false)) end end)
     WindUI:Notify({Title="Target", Content="Lista recargada", Duration=2})
 end})
@@ -1306,7 +1352,7 @@ TargetTab:Space({Size=10})
 TargetTab:Section({Title="⚡ Acciones (una vez)", TextSize=18}); TargetTab:Space({Size=6})
 local TargetAct = TargetTab:Section({Title="", Box=true, BoxBorder=true, Opened=true})
 local TAR1 = TargetAct:Group({})
-TAR1:Button({Title="Empujar (1x)", Icon="arrow-up-right", Justify="Center", Callback=function()
+TAR1:Button({Title="Empujar (1x)", Justify="Center", Callback=function()
     local t = TargetCurrent(); if not t then WindUI:Notify({Title="Target", Content="Sin objetivo", Duration=2}); return end
     local r = TargetGetRoot(LocalPlayer); if not r then return end
     local cf = r.CFrame
@@ -1316,12 +1362,12 @@ TAR1:Button({Title="Empujar (1x)", Icon="arrow-up-right", Justify="Center", Call
     r.CFrame = cf
 end})
 TAR1:Space({Size=8})
-TAR1:Button({Title="TP al Objetivo", Icon="map-pin", Justify="Center", Callback=function()
+TAR1:Button({Title="TP al Objetivo", Justify="Center", Callback=function()
     local t = TargetCurrent(); if t then TargetTeleportTo(t) else WindUI:Notify({Title="Target", Content="Sin objetivo", Duration=2}) end
 end})
 TargetAct:Space({Size=6})
 local TAR2 = TargetAct:Group({})
-TAR2:Button({Title="Lista Blanca (agregar/quitar)", Icon="shield-check", Justify="Center", Callback=function()
+TAR2:Button({Title="Lista Blanca (agregar/quitar)", Justify="Center", Callback=function()
     local t = TargetCurrent(); if not t then WindUI:Notify({Title="Target", Content="Sin objetivo", Duration=2}); return end
     local id = t.UserId
     local idx = table.find(TargetWhitelist, id)
@@ -1334,11 +1380,11 @@ TAR2:Button({Title="Lista Blanca (agregar/quitar)", Icon="shield-check", Justify
     end
 end})
 TAR2:Space({Size=8})
-TAR2:Button({Title="Limpiar Objetivo", Icon="x", Justify="Center", Callback=function() TargetSelect(nil) end})
+TAR2:Button({Title="Limpiar Objetivo", Justify="Center", Callback=function() TargetSelect(nil) end})
 TargetTab:Space({Size=12})
 
 -- 5. GAME (FUNCIONES UNIVERSALES)
-local GameTab = Window:Tab({Title="Game", Icon="gamepad-2"})
+local GameTab = Window:Tab({Title="Game",})
 GameTab:Section({Title="Funciones Universales", TextSize=20}); GameTab:Space({Size=6})
 
 GameTab:Section({Title="🚀 Movimiento", TextSize=18}); GameTab:Space({Size=6})
@@ -1363,9 +1409,9 @@ GVis:Toggle({Title="Fullbright", Def=Get("FullbrightEnabled", false), Callback=A
 GVis:Toggle({Title="FPS Boost", Def=Get("FpsBoostEnabled", false), Callback=AS(SetFpsBoost)}); GVis:Space({Size=6})
 GVis:Slider({Title="FOV de Cámara", Step=1, Value={Min=60,Max=120,Default=Get("FOV",70)}, Callback=AS(function(v) pcall(function() workspace.CurrentCamera.FieldOfView=v end) end)}); GVis:Space({Size=6})
 local GVisB = GVis:Group({})
-GVisB:Button({Title="Desbloquear Zoom", Icon="zoom-in", Justify="Center", Callback=function() pcall(function() workspace.CurrentCamera.CameraMaxZoomDistance=1000; workspace.CurrentCamera.CameraMinZoomDistance=0.5 end); WindUI:Notify({Title="Zoom", Content="Desbloqueado", Duration=2}) end})
+GVisB:Button({Title="Desbloquear Zoom", Justify="Center", Callback=function() pcall(function() workspace.CurrentCamera.CameraMaxZoomDistance=1000; workspace.CurrentCamera.CameraMinZoomDistance=0.5 end); WindUI:Notify({Title="Zoom", Content="Desbloqueado", Duration=2}) end})
 GVisB:Space({Size=8})
-GVisB:Button({Title="Eliminar Partículas", Icon="trash-2", Justify="Center", Callback=RemoveParticles})
+GVisB:Button({Title="Eliminar Partículas", Justify="Center", Callback=RemoveParticles})
 GameTab:Space({Size=10})
 
 GameTab:Section({Title="🛡️ Protección", TextSize=18}); GameTab:Space({Size=6})
@@ -1384,26 +1430,26 @@ local GUtil = GameTab:Section({Title="", Box=true, BoxBorder=true, Opened=true})
 GUtil:Toggle({Title="Auto-Clicker", Def=Get("AutoClickerEnabled", false), Callback=AS(SetAutoClicker)}); GUtil:Space({Size=6})
 GUtil:Slider({Title="CPS del Auto-Clicker", Step=1, Value={Min=1,Max=20,Default=Get("AutoClickerCPS",10)}, Callback=AS(function(v) AutoClickerCPS=v end)}); GUtil:Space({Size=8})
 local GU1 = GUtil:Group({})
-GU1:Button({Title="TP All a Mí", Icon="users", Justify="Center", Callback=TPAllToMe}); GU1:Space({Size=8})
-GU1:Button({Title="Rejoin", Icon="refresh-cw", Justify="Center", Callback=function() TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId) end})
+GU1:Button({Title="TP All a Mí", Justify="Center", Callback=TPAllToMe}); GU1:Space({Size=8})
+GU1:Button({Title="Rejoin", Justify="Center", Callback=function() TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId) end})
 GUtil:Space({Size=6})
 local GU2 = GUtil:Group({})
-GU2:Button({Title="Server Hop", Icon="shuffle", Justify="Center", Callback=ServerHop}); GU2:Space({Size=8})
-GU2:Button({Title="Copiar JobID", Icon="clipboard", Justify="Center", Callback=function() setclipboard(tostring(game.JobId)); WindUI:Notify({Title="Copiado", Content="JobID copiado", Duration=2}) end})
+GU2:Button({Title="Server Hop", Justify="Center", Callback=ServerHop}); GU2:Space({Size=8})
+GU2:Button({Title="Copiar JobID", Justify="Center", Callback=function() setclipboard(tostring(game.JobId)); WindUI:Notify({Title="Copiado", Content="JobID copiado", Duration=2}) end})
 GUtil:Space({Size=6})
-GUtil:Button({Title="Copiar Link del Juego", Icon="link", Justify="Center", Callback=function() setclipboard("https://www.roblox.com/games/"..tostring(game.PlaceId)); WindUI:Notify({Title="Copiado", Content="Link copiado", Duration=2}) end})
+GUtil:Button({Title="Copiar Link del Juego", Justify="Center", Callback=function() setclipboard("https://www.roblox.com/games/"..tostring(game.PlaceId)); WindUI:Notify({Title="Copiado", Content="Link copiado", Duration=2}) end})
 GameTab:Space({Size=10})
 
 GameTab:Section({Title="📦 Scripts Universales", TextSize=18}); GameTab:Space({Size=6})
 local GScr = GameTab:Section({Title="", Box=true, BoxBorder=true, Opened=true})
-GScr:Button({Title="Infinite Yield (Admin Universal)", Desc="Ejecutar", Icon="play", Justify="Left", Callback=function()
+GScr:Button({Title="Infinite Yield (Admin Universal)", Desc="Ejecutar", Justify="Left", Callback=function()
     pcall(function()
         loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))()
         WindUI:Notify({Title="Infinite Yield", Content="Script ejecutado", Duration=3})
     end)
 end})
 GScr:Space({Size=10})
-GScr:Button({Title="Dex Explorer", Desc="Ejecutar", Icon="play", Justify="Left", Callback=function()
+GScr:Button({Title="Dex Explorer", Desc="Ejecutar", Justify="Left", Callback=function()
     pcall(function()
         loadstring(game:HttpGet("https://raw.githubusercontent.com/infyiff/backup/main/dex.lua"))()
         WindUI:Notify({Title="Dex Explorer", Content="Script ejecutado", Duration=3})
@@ -1412,7 +1458,7 @@ end})
 GameTab:Space({Size=12})
 
 -- 6. RJ=New.SV (Private Server Finder — lista en ventana independiente)
-local RJTab = Window:Tab({Title="RJ=New.SV", Icon="globe"})
+local RJTab = Window:Tab({Title="RJ=New.SV",})
 
 -- ██ LÓGICA (idéntica, sin cambios) ██
 local AutoOn = false
@@ -1717,11 +1763,11 @@ pcall(function()
 end)
 RJTab:Space({Size=8})
 local RJBtnRow = RJTab:Group({})
-RJBtnRow:Button({Title="BUSCAR Y UNIR", Icon="send", Justify="Center", Callback=function() task.spawn(JoinBest) end})
+RJBtnRow:Button({Title="BUSCAR Y UNIR", Justify="Center", Callback=function() task.spawn(JoinBest) end})
 RJBtnRow:Space({Size=8})
 RJBtnRow:Toggle({Title="Auto Hop", Def=false, Callback=function(s) SetAutoHop(s) end})
 RJTab:Space({Size=8})
-RJTab:Button({Title="Abrir / Cerrar Lista de Servidores", Icon="globe", Justify="Center", Callback=ToggleListaServidores})
+RJTab:Button({Title="Abrir / Cerrar Lista de Servidores", Justify="Center", Callback=ToggleListaServidores})
 RJTab:Space({Size=12})
 
 -- Contador en tiempo real
@@ -1734,7 +1780,7 @@ task.spawn(function()
 end)
 
 -- 7. ESCUDOS (ARREGLADO — AHORA SÍ FUNCIONAN)
-local EscudosTab = Window:Tab({Title="Escudos", Icon="shield"})
+local EscudosTab = Window:Tab({Title="Escudos",})
 EscudosTab:Section({Title="🛡️ Protección y Defensas (reales)", TextSize=20}); EscudosTab:Space({Size=6})
 EscudosTab:Paragraph({Title="Nota", Desc="Anti-Kick solo bloquea kicks de scripts locales. Un kick del servidor no se puede bloquear del lado del cliente.", Image="info", ImageSize=14})
 EscudosTab:Space({Size=8})
@@ -1769,7 +1815,7 @@ EscudosTab:Space({Size=8})
 EscudosTab:Space({Size=12})
 
 -- 8. CONFIGURACIONES (paleta de colores)
-local ConfigsTab = Window:Tab({Title="Configuraciones", Icon="settings"})
+local ConfigsTab = Window:Tab({Title="Configuraciones",})
 ConfigsTab:Section({Title="Paleta de Colores", TextSize=20}); ConfigsTab:Space({Size=6})
 ConfigsTab:Paragraph({Title="Color del acento", Desc="Cambia el color del borde de tu perfil, la foto y el boton de TP. Se guarda solo.", Image="palette", ImageSize=14})
 ConfigsTab:Space({Size=8})
@@ -1792,21 +1838,21 @@ ConfigsTab:Space({Size=12})
 
 ConfigsTab:Section({Title="Ajustes del Menú", TextSize=18}); ConfigsTab:Space({Size=6})
 local CMen = ConfigsTab:Group({})
-CMen:Button({Title="Cerrar Menú", Icon="x", Justify="Center", Callback=function() Window:Close() end}); CMen:Space({Size=6})
-CMen:Button({Title="Reiniciar Personaje", Icon="refresh-cw", Justify="Center", Callback=function() if Character then Humanoid.Health=0 end end}); CMen:Space({Size=6})
-CMen:Button({Title="Rejoin (Mismo Server)", Icon="refresh-cw", Justify="Center", Callback=function() TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId) end})
+CMen:Button({Title="Cerrar Menú", Justify="Center", Callback=function() Window:Close() end}); CMen:Space({Size=6})
+CMen:Button({Title="Reiniciar Personaje", Justify="Center", Callback=function() if Character then Humanoid.Health=0 end end}); CMen:Space({Size=6})
+CMen:Button({Title="Rejoin (Mismo Server)", Justify="Center", Callback=function() TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId) end})
 ConfigsTab:Space({Size=10})
 
 ConfigsTab:Section({Title="Copiar", TextSize=18}); ConfigsTab:Space({Size=6})
 local CCop = ConfigsTab:Group({})
-CCop:Button({Title="Copiar UserID", Icon="clipboard", Justify="Center", Callback=function() setclipboard(tostring(UserId)); WindUI:Notify({Title="Copiado", Content="UserID copiado", Duration=2}) end}); CCop:Space({Size=6})
-CCop:Button({Title="Copiar Username", Icon="clipboard", Justify="Center", Callback=function() setclipboard("@"..PlayerName); WindUI:Notify({Title="Copiado", Content="Username copiado", Duration=2}) end}); CCop:Space({Size=6})
-CCop:Button({Title="Copiar JobID", Icon="clipboard", Justify="Center", Callback=function() setclipboard(tostring(game.JobId)); WindUI:Notify({Title="Copiado", Content="JobID copiado", Duration=2}) end}); CCop:Space({Size=6})
-CCop:Button({Title="Copiar Link del Servidor", Icon="link-2", Justify="Center", Callback=function() setclipboard("roblox://placeId="..tostring(game.PlaceId).."&jobId="..tostring(game.JobId)); WindUI:Notify({Title="Copiado", Content="Link copiado", Duration=2}) end})
+CCop:Button({Title="Copiar UserID", Justify="Center", Callback=function() setclipboard(tostring(UserId)); WindUI:Notify({Title="Copiado", Content="UserID copiado", Duration=2}) end}); CCop:Space({Size=6})
+CCop:Button({Title="Copiar Username", Justify="Center", Callback=function() setclipboard("@"..PlayerName); WindUI:Notify({Title="Copiado", Content="Username copiado", Duration=2}) end}); CCop:Space({Size=6})
+CCop:Button({Title="Copiar JobID", Justify="Center", Callback=function() setclipboard(tostring(game.JobId)); WindUI:Notify({Title="Copiado", Content="JobID copiado", Duration=2}) end}); CCop:Space({Size=6})
+CCop:Button({Title="Copiar Link del Servidor", Justify="Center", Callback=function() setclipboard("roblox://placeId="..tostring(game.PlaceId).."&jobId="..tostring(game.JobId)); WindUI:Notify({Title="Copiado", Content="Link copiado", Duration=2}) end})
 ConfigsTab:Space({Size=12})
 
 -- 9. HERRAMIENTAS
-local H = Window:Tab({Title="Herramientas", Icon="wrench"})
+local H = Window:Tab({Title="Herramientas",})
 H:Section({Title="Movimiento", TextSize=20}); H:Space({Size=6})
 local Mov = H:Section({Title="Controles de Movimiento", Box=true, BoxBorder=true, Opened=true})
 Mov:Toggle({Title="Fly (Volar)", Def=Get("FlyEnabled", false), Callback=AS(function(s) if s then StartFly() else StopFly() end end)}); Mov:Space({Size=6})
@@ -1823,7 +1869,7 @@ Vis:Toggle({Title="Fullbright", Def=Get("FullbrightEnabled", false), Callback=AS
 Vis:Toggle({Title="ESP Jugadores", Def=Get("ESPEnabled", false), Callback=AS(SetESP)}); Vis:Space({Size=6})
 Vis:Toggle({Title="FPS Boost", Def=Get("FpsBoostEnabled", false), Callback=AS(SetFpsBoost)}); Vis:Space({Size=6})
 Vis:Slider({Title="FOV de Cámara", Step=1, Value={Min=60,Max=120,Default=Get("FOV", 70)}, Callback=AS(function(v) pcall(function() workspace.CurrentCamera.FieldOfView=v end) end)}); Vis:Space({Size=6})
-Vis:Button({Title="Desbloquear Zoom", Icon="zoom-in", Justify="Center", Callback=function() pcall(function() workspace.CurrentCamera.CameraMaxZoomDistance=1000; workspace.CurrentCamera.CameraMinZoomDistance=0.5 end); WindUI:Notify({Title="Zoom", Content="Zoom desbloqueado", Duration=2}) end})
+Vis:Button({Title="Desbloquear Zoom", Justify="Center", Callback=function() pcall(function() workspace.CurrentCamera.CameraMaxZoomDistance=1000; workspace.CurrentCamera.CameraMinZoomDistance=0.5 end); WindUI:Notify({Title="Zoom", Content="Zoom desbloqueado", Duration=2}) end})
 H:Space({Size=10})
 H:Section({Title="Utilidades", TextSize=20}); H:Space({Size=6})
 local Uti = H:Section({Title="Herramientas Universales", Box=true, BoxBorder=true, Opened=true})
@@ -1833,41 +1879,41 @@ Uti:Toggle({Title="Anti-Ragdoll", Def=Get("AntiRagdollEnabled", false), Callback
 SpectateDropdown = Uti:Dropdown({Title="Jugador a Espectear", Values=GetPlayerNames(true), Value=1, Callback=function(s) SpectateName=s end})
 Uti:Space({Size=6})
 local SpR=Uti:Group({})
-SpR:Button({Title="Espectear", Icon="eye", Justify="Center", Callback=function()
+SpR:Button({Title="Espectear", Justify="Center", Callback=function()
     if not SpectateName or SpectateName=="Nadie (detener)" or SpectateName=="No hay jugadores" then pcall(function() workspace.CurrentCamera.CameraSubject=Humanoid end); WindUI:Notify({Title="Espectear", Content="Selecciona un jugador", Duration=2}); return end
     local t=Players:FindFirstChild(SpectateName)
     if t and t.Character and t.Character:FindFirstChild("Humanoid") then workspace.CurrentCamera.CameraSubject=t.Character.Humanoid; WindUI:Notify({Title="Especteando", Content="A "..SpectateName, Duration=2})
     else WindUI:Notify({Title="Error", Content="Jugador no disponible", Duration=2}) end
 end})
 SpR:Space({Size=8})
-SpR:Button({Title="Detener", Icon="eye-off", Justify="Center", Callback=function() pcall(function() workspace.CurrentCamera.CameraSubject=Humanoid end); WindUI:Notify({Title="Espectear", Content="Detenido", Duration=2}) end})
+SpR:Button({Title="Detener", Justify="Center", Callback=function() pcall(function() workspace.CurrentCamera.CameraSubject=Humanoid end); WindUI:Notify({Title="Espectear", Content="Detenido", Duration=2}) end})
 Uti:Space({Size=8})
 TPPlayerDropdown = Uti:Dropdown({Title="TP a Jugador", Values=GetPlayerNames(false), Value=1, Callback=function(s) TPPlayerName=s end})
 Uti:Space({Size=6})
-Uti:Button({Title="Teletransportar a Jugador", Icon="map-pin", Justify="Center", Callback=function()
+Uti:Button({Title="Teletransportar a Jugador", Justify="Center", Callback=function()
     if not TPPlayerName or TPPlayerName=="No hay jugadores" then WindUI:Notify({Title="TP", Content="Selecciona un jugador", Duration=2}); return end
     local t=Players:FindFirstChild(TPPlayerName)
     if t and t.Character and t.Character:FindFirstChild("HumanoidRootPart") and RootPart then RootPart.CFrame=t.Character.HumanoidRootPart.CFrame*CFrame.new(0,0,4); WindUI:Notify({Title="TP", Content="A "..TPPlayerName, Duration=2})
     else WindUI:Notify({Title="Error", Content="Jugador no disponible", Duration=2}) end
 end})
 Uti:Space({Size=6})
-Uti:Button({Title="Recargar Listas de Jugadores", Icon="refresh-cw", Justify="Center", Callback=function()
+Uti:Button({Title="Recargar Listas de Jugadores", Justify="Center", Callback=function()
     pcall(function() SpectateDropdown:Refresh(GetPlayerNames(true)) end)
     pcall(function() TPPlayerDropdown:Refresh(GetPlayerNames(false)) end)
     pcall(function() if TargetDropdown then TargetDropdown:Refresh(GetPlayerNames(false)) end end)
     WindUI:Notify({Title="Listas", Content="Jugadores recargados", Duration=2})
 end})
 Uti:Space({Size=8})
-Uti:Button({Title="Server Hop", Icon="shuffle", Justify="Center", Callback=ServerHop}); Uti:Space({Size=6})
+Uti:Button({Title="Server Hop", Justify="Center", Callback=ServerHop}); Uti:Space({Size=6})
 local UB1=Uti:Group({})
-UB1:Button({Title="Copiar Link del Juego", Icon="link", Justify="Center", Callback=function() setclipboard("https://www.roblox.com/games/"..tostring(game.PlaceId)); WindUI:Notify({Title="Copiado", Content="Link copiado", Duration=2}) end})
+UB1:Button({Title="Copiar Link del Juego", Justify="Center", Callback=function() setclipboard("https://www.roblox.com/games/"..tostring(game.PlaceId)); WindUI:Notify({Title="Copiado", Content="Link copiado", Duration=2}) end})
 UB1:Space({Size=8})
-UB1:Button({Title="Copiar Link del Servidor", Icon="link-2", Justify="Center", Callback=function() setclipboard("roblox://placeId="..tostring(game.PlaceId).."&jobId="..tostring(game.JobId)); WindUI:Notify({Title="Copiado", Content="Link copiado", Duration=2}) end})
+UB1:Button({Title="Copiar Link del Servidor", Justify="Center", Callback=function() setclipboard("roblox://placeId="..tostring(game.PlaceId).."&jobId="..tostring(game.JobId)); WindUI:Notify({Title="Copiado", Content="Link copiado", Duration=2}) end})
 Uti:Space({Size=6})
 local UB2=Uti:Group({})
-UB2:Button({Title="Rejoin", Icon="refresh-cw", Justify="Center", Callback=function() TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId) end})
+UB2:Button({Title="Rejoin", Justify="Center", Callback=function() TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId) end})
 UB2:Space({Size=8})
-UB2:Button({Title="Volver al Spawn", Icon="home", Justify="Center", Callback=function() if RootPart then RootPart.CFrame=SpawnCFrame; RootPart.Velocity=Vector3.new(0,0,0); WindUI:Notify({Title="Spawn", Content="Volviste", Duration=2}) end end})
+UB2:Button({Title="Volver al Spawn", Justify="Center", Callback=function() if RootPart then RootPart.CFrame=SpawnCFrame; RootPart.Velocity=Vector3.new(0,0,0); WindUI:Notify({Title="Spawn", Content="Volviste", Duration=2}) end end})
 Uti:Space({Size=8})
 CoordsParagraph = Uti:Paragraph({Title="Coordenadas Actuales", Desc="X: 0  Y: 0  Z: 0", Image="map", ImageSize=14})
 H:Space({Size=10})
@@ -1885,7 +1931,7 @@ H:Section({Title="Visual Extra", TextSize=20}); H:Space({Size=6})
 local VE=H:Section({Title="Efectos Adicionales", Box=true, BoxBorder=true, Opened=true})
 VE:Slider({Title="Velocidad de Animación", Step=0.1, Value={Min=0.1,Max=5,Default=Get("AnimationSpeed", 1)}, Callback=AS(function(v) if Humanoid then pcall(function() Humanoid.AnimationSpeed=v end) end end)}); VE:Space({Size=6})
 VE:Slider({Title="Hora del Día (ClockTime)", Step=1, Value={Min=0,Max=24,Default=Get("ClockTime", 14)}, Callback=AS(function(v) Lighting.ClockTime=v end)}); VE:Space({Size=6})
-VE:Button({Title="Eliminar Partículas/Efectos", Icon="trash-2", Justify="Center", Callback=RemoveParticles})
+VE:Button({Title="Eliminar Partículas/Efectos", Justify="Center", Callback=RemoveParticles})
 H:Space({Size=10})
 H:Section({Title="Utilidades Extra", TextSize=20}); H:Space({Size=6})
 local UE=H:Section({Title="Herramientas Adicionales", Box=true, BoxBorder=true, Opened=true})
@@ -1894,15 +1940,15 @@ UE:Toggle({Title="Auto-Respawn Instantáneo", Def=Get("InstantRespawnEnabled", f
 UE:Toggle({Title="Seguir Jugador (Follow)", Def=Get("FollowPlayerEnabled", false), Callback=AS(function(s) FollowPlayerEnabled=s end)}); UE:Space({Size=8})
 pcall(function() UE:TextBox({Title="Coordenadas (X, Y, Z)", PlaceholderText="0, 10, 0", Callback=function(t) CoordsText=t end}) end)
 UE:Space({Size=6})
-UE:Button({Title="TP a Coordenadas", Icon="map-pin", Justify="Center", Callback=function() TeleportToCoords(CoordsText) end}); UE:Space({Size=6})
+UE:Button({Title="TP a Coordenadas", Justify="Center", Callback=function() TeleportToCoords(CoordsText) end}); UE:Space({Size=6})
 local SvR=UE:Group({})
-SvR:Button({Title="Guardar Posición", Icon="save", Justify="Center", Callback=function() if RootPart then SavedPosition=RootPart.CFrame end; WindUI:Notify({Title="Guardado", Content="Posición guardada", Duration=2}) end})
+SvR:Button({Title="Guardar Posición", Justify="Center", Callback=function() if RootPart then SavedPosition=RootPart.CFrame end; WindUI:Notify({Title="Guardado", Content="Posición guardada", Duration=2}) end})
 SvR:Space({Size=8})
-SvR:Button({Title="Volver a Posición", Icon="home", Justify="Center", Callback=function() if SavedPosition and RootPart then RootPart.CFrame=SavedPosition; RootPart.Velocity=Vector3.new(0,0,0); WindUI:Notify({Title="TP", Content="Volviste", Duration=2}) else WindUI:Notify({Title="Error", Content="No hay posición guardada", Duration=2}) end end})
+SvR:Button({Title="Volver a Posición", Justify="Center", Callback=function() if SavedPosition and RootPart then RootPart.CFrame=SavedPosition; RootPart.Velocity=Vector3.new(0,0,0); WindUI:Notify({Title="TP", Content="Volviste", Duration=2}) else WindUI:Notify({Title="Error", Content="No hay posición guardada", Duration=2}) end end})
 H:Space({Size=12})
 
 -- 10. CRÉDITOS
-local Cr = Window:Tab({Title="Créditos", Icon="award"})
+local Cr = Window:Tab({Title="Créditos",})
 Cr:Section({Title="Agradecimientos", TextSize=20}); Cr:Space({Size=6})
 local CG=Cr:Group({})
 CG:Paragraph({Title="Creador", Desc="ALAN_FF168\n© 2026", Image="code", ImageSize=16}); CG:Space({Size=10})
@@ -2070,4 +2116,4 @@ end)
 pcall(function() Window:SelectTab(PlayerTab) end)
 pcall(function() Window:SelectTab(1) end)
 
-WindUI:Notify({Title="DENJI•ALEX", Content="v33: Fix cambio de fondos (busqueda robusta)", Duration=4})
+WindUI:Notify({Title="DENJI•ALEX", Content="v34: Sin iconos, fondos en lista, marco gris quitado", Duration=4})
