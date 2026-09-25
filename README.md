@@ -918,6 +918,9 @@ local function GuardarConfiguracion(silent)
         AntiReportEnabled = AntiReportEnabled,
         AntiVCEnabled = AntiVCEnabled,
         ServidoresVisitados = ServidoresVisitados,
+        AccentR = math.floor(ColorAccent.R*255),
+        AccentG = math.floor(ColorAccent.G*255),
+        AccentB = math.floor(ColorAccent.B*255),
     }
     local ok, err = pcall(function()
         local Http = game:GetService("HttpService")
@@ -954,6 +957,19 @@ local function AS(fn)
     end
 end
 
+local ColorAccent = Color3.fromRGB(255, 160, 80)
+local RefBordeCirculo, RefBordePerfil, RefTPBtn = nil, nil, nil
+local function AplicarColor(c)
+    ColorAccent = c
+    pcall(function() if RefBordeCirculo then RefBordeCirculo.Color = c end end)
+    pcall(function() if RefBordePerfil then RefBordePerfil.Color = c end end)
+    pcall(function() if RefTPBtn then RefTPBtn.BackgroundColor3 = c end end)
+    pcall(function() if Window and Window.SetAccent then Window:SetAccent(c) end end)
+    pcall(function() if Window and Window.SetThemeColor then Window:SetThemeColor(c) end end)
+    MarkDirty()
+    pcall(function() GuardarConfiguracion(true) end)
+end
+
 local function CargarConfiguracion()
     pcall(function()
         if not isfile(ConfigFileName) then return end
@@ -966,6 +982,7 @@ local function CargarConfiguracion()
         if Saved.FallSpeedCap then FallSpeedCap = Saved.FallSpeedCap end
         if Saved.AutoClickerCPS then AutoClickerCPS = Saved.AutoClickerCPS end
         if Saved.ServidoresVisitados then ServidoresVisitados = Saved.ServidoresVisitados end
+        if Saved.AccentR then ColorAccent = Color3.fromRGB(Saved.AccentR, Saved.AccentG or 160, Saved.AccentB or 80) end
         WindUI:Notify({Title="Configuración", Content="Cargada correctamente", Duration=3})
     end)
 end
@@ -1507,7 +1524,7 @@ local function AbrirListaServidores()
     TPBtn.Parent = Main
     TPBtn.Position = UDim2.new(0, 10, 1, -44)
     TPBtn.Size = UDim2.new(1, -20, 0, 34)
-    TPBtn.BackgroundColor3 = Color3.fromRGB(50, 190, 90) -- verde intenso
+    TPBtn.BackgroundColor3 = ColorAccent
     TPBtn.BackgroundTransparency = 0.05
     TPBtn.BorderSizePixel = 0
     TPBtn.Font = Enum.Font.GothamBold
@@ -1515,7 +1532,8 @@ local function AbrirListaServidores()
     TPBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     TPBtn.TextSize = 12
     Instance.new("UICorner", TPBtn).CornerRadius = UDim.new(0, 8)
-    Hover(TPBtn, Color3.fromRGB(50, 190, 90), Color3.fromRGB(80, 230, 120))
+    Hover(TPBtn, ColorAccent, ColorAccent)
+    RefTPBtn = TPBtn
     TPBtn.MouseButton1Click:Connect(function()
         if not SelectedServer then
             pcall(function() WindUI:Notify({Title="Servidores", Content="Selecciona un servidor primero", Duration=2}) end)
@@ -1677,25 +1695,27 @@ EscudosTab:Space({Size=8})
 
 EscudosTab:Space({Size=12})
 
--- 8. CONFIGURACIÓN
-local ConfigTab = Window:Tab({Title="Configuración", Icon="settings"})
-ConfigTab:Section({Title="Ajustes del Menú", TextSize=20}); ConfigTab:Space({Size=6})
-local C1=ConfigTab:Group({})
-C1:Button({Title="Cerrar Menú", Icon="x", Justify="Center", Callback=function() Window:Close() end}); C1:Space({Size=8})
-C1:Button({Title="Reiniciar", Icon="refresh-cw", Justify="Center", Callback=function() if Character then Humanoid.Health=0 end end})
-ConfigTab:Space({Size=8})
-local C2=ConfigTab:Group({})
-C2:Button({Title="Copiar UserID", Icon="clipboard", Justify="Center", Callback=function() setclipboard(tostring(UserId)); WindUI:Notify({Title="Copiado", Content="UserID copiado", Duration=2}) end}); C2:Space({Size=8})
-C2:Button({Title="Copiar Username", Icon="clipboard", Justify="Center", Callback=function() setclipboard("@"..PlayerName); WindUI:Notify({Title="Copiado", Content="Username copiado", Duration=2}) end})
-ConfigTab:Space({Size=12})
-ConfigTab:Section({Title="Guardado (automático al cambiar opciones)", TextSize=18}); ConfigTab:Space({Size=6})
-local CFGRow=ConfigTab:Group({})
-CFGRow:Button({Title="Guardar Configuración", Icon="save", Justify="Center", Callback=function() GuardarConfiguracion(false) end})
-CFGRow:Space({Size=8})
-CFGRow:Button({Title="Cargar Configuración", Icon="refresh-cw", Justify="Center", Callback=function() CargarConfiguracion(); AplicarConfiguracion(); WindUI:Notify({Title="Configuración", Content="Aplicada", Duration=2}) end})
-ConfigTab:Space({Size=6})
-ConfigTab:Paragraph({Title="Cómo funciona", Desc="Cada toggle/slider que cambies se guarda solo (sin spam). Al ejecutar de nuevo, todo queda como lo dejaste.", Image="info", ImageSize=14})
-ConfigTab:Space({Size=12})
+-- 8. CONFIGURACIONES (paleta de colores)
+local ConfigsTab = Window:Tab({Title="Configuraciones", Icon="settings"})
+ConfigsTab:Section({Title="Paleta de Colores", TextSize=20}); ConfigsTab:Space({Size=6})
+ConfigsTab:Paragraph({Title="Color del acento", Desc="Cambia el color del borde de tu perfil, la foto y el boton de TP. Se guarda solo.", Image="palette", ImageSize=14})
+ConfigsTab:Space({Size=8})
+local Paleta = ConfigsTab:Group({})
+local function BotonColor(nombre, r, g, b)
+    Paleta:Button({Title=nombre, Justify="Center", Callback=function()
+        AplicarColor(Color3.fromRGB(r, g, b))
+        WindUI:Notify({Title="Color", Content="Acento: "..nombre, Duration=2})
+    end})
+end
+BotonColor("Naranja", 255, 160, 80); Paleta:Space({Size=6})
+BotonColor("Rojo", 255, 60, 60); Paleta:Space({Size=6})
+BotonColor("Amarillo", 255, 215, 0); Paleta:Space({Size=6})
+BotonColor("Verde", 60, 200, 90); Paleta:Space({Size=6})
+BotonColor("Azul Celeste", 100, 180, 255); Paleta:Space({Size=6})
+BotonColor("Morado", 160, 80, 255); Paleta:Space({Size=6})
+BotonColor("Rosa", 255, 100, 180); Paleta:Space({Size=6})
+BotonColor("Blanco", 240, 240, 245)
+ConfigsTab:Space({Size=12})
 
 -- 9. HERRAMIENTAS
 local H = Window:Tab({Title="Herramientas", Icon="wrench"})
@@ -1897,8 +1917,9 @@ task.spawn(function()
         local BordeBox = Instance.new("UIStroke")
         BordeBox.Parent = Box
         BordeBox.Thickness = 1
-        BordeBox.Color = Color3.fromRGB(220, 220, 230)
-        BordeBox.Transparency = 0.55
+        BordeBox.Color = ColorAccent
+        BordeBox.Transparency = 0.35
+        RefBordePerfil = BordeBox
 
         -- Foto de perfil (tamano ORIGINAL 100x100) dentro del cuadro, lado derecho
         local Circulo = Instance.new("Frame")
@@ -1913,8 +1934,9 @@ task.spawn(function()
         Instance.new("UICorner", Circulo).CornerRadius = UDim.new(1, 0)
         local Borde = Instance.new("UIStroke")
         Borde.Thickness = 3
-        Borde.Color = Color3.fromRGB(255, 180, 100)
+        Borde.Color = ColorAccent
         Borde.Parent = Circulo
+        RefBordeCirculo = Borde
 
         local Foto = Instance.new("ImageLabel")
         Foto.Name = "Foto"
@@ -1960,4 +1982,4 @@ end)
 pcall(function() Window:SelectTab(PlayerTab) end)
 pcall(function() Window:SelectTab(1) end)
 
-WindUI:Notify({Title="DENJI•ALEX", Content="v28: Perfil cuadro blanco transparente", Duration=4})
+WindUI:Notify({Title="DENJI•ALEX", Content="v29: Configuraciones con paleta de colores", Duration=4})
