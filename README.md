@@ -934,6 +934,7 @@ local function GuardarConfiguracion(silent)
         AccentR = math.floor(ColorAccent.R*255),
         AccentG = math.floor(ColorAccent.G*255),
         AccentB = math.floor(ColorAccent.B*255),
+        FondoId = FondoId,
     }
     pcall(function()
         local f = GetStateFolder()
@@ -960,6 +961,7 @@ local function AS(fn)
 end
 
 local ColorAccent = Color3.fromRGB(255, 160, 80)
+local FondoId = 118321081493035
 local RefBordeCirculo, RefBordePerfil, RefTPBtn = nil, nil, nil
 local function AplicarColor(c)
     ColorAccent = c
@@ -991,6 +993,7 @@ local function CargarConfiguracion()
         if Saved.FallSpeedCap then FallSpeedCap = Saved.FallSpeedCap end
         if Saved.AutoClickerCPS then AutoClickerCPS = Saved.AutoClickerCPS end
         if Saved.AccentR then ColorAccent = Color3.fromRGB(Saved.AccentR, Saved.AccentG or 160, Saved.AccentB or 80) end
+        if Saved.FondoId then FondoId = Saved.FondoId end
     end)
 end
 
@@ -1063,6 +1066,31 @@ local Window = WindUI:CreateWindow({
     OpenButton={Title="DENJI•ALEX", Icon="sword", Enabled=true, Draggable=true, OnlyMobile=false, CornerRadius=UDim.new(1,0), StrokeThickness=2, Scale=1},
 })
 
+-- Cambiar fondo de la ventana (busca el ImageLabel del fondo en WindUI)
+local function CambiarFondo(id, silent)
+    FondoId = id
+    if not silent then pcall(function() GuardarConfiguracion(true) end) end
+    local url = "rbxassetid://"..tostring(id)
+    pcall(function() Window.Background = url end)
+    pcall(function() if Window.SetBackground then Window:SetBackground(url) end end)
+    pcall(function()
+        for _, key in ipairs({"UIElements","MainFrame","Container","Root","Frame","Main"}) do
+            local inst = Window[key]
+            if typeof(inst) == "Instance" then
+                for _, d in ipairs(inst:GetDescendants()) do
+                    if d:IsA("ImageLabel") and d.Image and d.Image:find("rbxassetid") then
+                        d.Image = url
+                    end
+                end
+            end
+        end
+    end)
+    if not silent then
+        pcall(function() WindUI:Notify({Title="Fondo", Content="Fondo cambiado correctamente", Duration=2}) end)
+    end
+end
+pcall(function() CambiarFondo(FondoId, true) end) -- restaurar fondo guardado (sin notificar)
+
 -- 1. PLAYER
 local PlayerTab = Window:Tab({Title="Player", Icon="user"})
 PlayerTab:Space({Size=6})
@@ -1078,6 +1106,17 @@ task.spawn(function()
         if StatsParagraph and StatsParagraph.SetDesc then StatsParagraph:SetDesc("Ping: "..(ps and (Ping.." ms") or "N/A").."\nFPS: "..FPS.."\nMemoria: "..Memory.." MB") end
     end
 end)
+
+-- Cambiar de fondos (debajo de Rendimiento)
+PlayerTab:Space({Size=10})
+PlayerTab:Section({Title="Cambiar de Fondos", TextSize=18}); PlayerTab:Space({Size=6})
+local FondosGroup = PlayerTab:Group({})
+local FondosLista = {98894596916337, 130933405765958, 137839443431564, 128695652450090, 118321081493035, 96927193988709, 96508866299631}
+for i, id in ipairs(FondosLista) do
+    FondosGroup:Button({Title="Fondo "..i, Desc=tostring(id), Justify="Center", Callback=function() CambiarFondo(id) end})
+    if i < #FondosLista then FondosGroup:Space({Size=6}) end
+end
+PlayerTab:Space({Size=8})
 
 -- 2. MAIN
 local MainTab = Window:Tab({Title="Main", Icon="home"})
@@ -2004,4 +2043,4 @@ end)
 pcall(function() Window:SelectTab(PlayerTab) end)
 pcall(function() Window:SelectTab(1) end)
 
-WindUI:Notify({Title="DENJI•ALEX", Content="v31: Estado persistente en CoreGui (sin writefile)", Duration=4})
+WindUI:Notify({Title="DENJI•ALEX", Content="v32: Cambiar de fondos (persistente)", Duration=4})
