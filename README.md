@@ -962,9 +962,10 @@ end
 
 local function AS(fn)
     return function(...)
-        -- FIX: aunque el callback falle, el guardado se ejecuta igual
-        pcall(function() if fn then fn(...) end end)
-        pcall(function() GuardarConfiguracion(true) end) -- guardado instantaneo en CoreGui
+        -- FIX: aunque el callback falle, el guardado se ejecuta igual.
+        -- NO envolver fn(...) en function() anidado: '...' no es visible ahí y rompe la sintaxis.
+        if fn then pcall(fn, ...) end
+        pcall(GuardarConfiguracion, true) -- guardado instantaneo en CoreGui
     end
 end
 
@@ -1069,7 +1070,7 @@ local Window = WindUI:CreateWindow({
     Title="DENJI•ALEX", Icon="sword", Author="DENJI•ALEX", Folder="DENJI•ALEX",
     Size=UDim2.fromOffset(600,540), MinSize=Vector2.new(520,420), MaxSize=Vector2.new(850,680),
     Transparent=true, Theme="Dark", Resizable=true, SideBarWidth=160,
-    Background="rbxassetid://95704712331700", BackgroundImageTransparency=0.35, HideSearchBar=true,
+    Background="rbxassetid://136613867395193", BackgroundImageTransparency=0.35, HideSearchBar=true,
     OpenButton={Title="DENJI•ALEX", Icon="sword", Enabled=true, Draggable=true, OnlyMobile=false, CornerRadius=UDim.new(1,0), StrokeThickness=2, Scale=1},
 })
 
@@ -1929,9 +1930,9 @@ task.spawn(function()
         if not PlayerTab then return end
         local Contenedor = nil
         pcall(function() Contenedor = PlayerTab.UIElements and PlayerTab.UIElements.ContainerFrame end)
-        if not Contenedor then pcall(function() Contenedor = PlayerTab.ContainerFrame end) end)
-        if not Contenedor then pcall(function() Contenedor = PlayerTab.Container end) end)
-        if not Contenedor then pcall(function() Contenedor = Window.SideBar and Window.SideBar.Parent end) end)
+        if not Contenedor then pcall(function() Contenedor = PlayerTab.ContainerFrame end) end
+        if not Contenedor then pcall(function() Contenedor = PlayerTab.Container end) end
+        if not Contenedor then pcall(function() Contenedor = Window.SideBar and Window.SideBar.Parent end) end
         if not Contenedor then return end
 
         local Box = Instance.new("Frame")
@@ -2015,4 +2016,4 @@ end)
 pcall(function() Window:SelectTab(PlayerTab) end)
 pcall(function() Window:SelectTab(1) end)
 
-WindUI:Notify({Title="DENJI•ALEX", Content="v32: Fix guardado config (orden de declaraciones) + fondo nuevo", Duration=4})
+WindUI:Notify({Title="DENJI•ALEX", Content="v33: Fix sintaxis (AS + perfil) + fondo 136613867395193", Duration=4})
