@@ -1923,6 +1923,24 @@ AplicarConfiguracion()
 -- Reintento 1.5s despues: por si WindUI o el personaje aun no estaban listos del todo
 task.spawn(function() task.wait(1.5); pcall(AplicarConfiguracion) end)
 
+-- 🎨 COLOR PERSONALIZADO: botones rosado ligero / sliders amarillo suave.
+-- En WindUI (tema Dark): los botones usan la etiqueta de tema "Button" y el relleno
+-- del slider usa "Primary". Solo se cambia el color; la transparencia se mantiene.
+task.spawn(function()
+    task.wait(0.9)
+    pcall(function()
+        local RosaLigero = Color3.fromRGB(255, 192, 208)
+        local AmarilloSuave = Color3.fromRGB(255, 236, 150)
+        if Window and Window.Themes and Window.Themes["Dark"] then
+            local Tema = Window.Themes["Dark"]
+            Tema.Button = RosaLigero      -- botones del menú (y toggles, que comparten etiqueta)
+            Tema.Primary = AmarilloSuave  -- relleno de los sliders
+            Tema.Slider = AmarilloSuave   -- etiqueta directa (por si acaso)
+            pcall(function() Window:SetTheme("Dark") end) -- re-aplicar a lo ya creado
+        end
+    end)
+end)
+
 -- === CUADRO DE PERFIL: foto 100x100 a la DERECHA, nombre + ID en lista a la IZQUIERDA ===
 task.spawn(function()
     pcall(function()
@@ -1981,16 +1999,8 @@ task.spawn(function()
         Foto.ZIndex = 52
         Instance.new("UICorner", Foto).CornerRadius = UDim.new(1, 0)
 
-        local Cargar = pcall(function()
-            Foto.Image = Players:GetUserThumbnailAsync(
-                UserId,
-                Enum.ThumbnailType.HeadShot,
-                Enum.ThumbnailSize.Size420x420
-            )
-        end)
-        if not Cargar then
-            Foto.Image = "rbxassetid://6026588573" -- Imagen de respaldo
-        end
+        -- Foto de perfil fija (la que pediste). Antes usaba GetUserThumbnailAsync y no cargaba.
+        Foto.Image = "rbxassetid://95704712331700"
 
         -- Nombre + ID en forma de lista, lado izquierdo del cuadro
         local function HacerTexto(y, texto, tamano, bold, color)
@@ -2016,4 +2026,4 @@ end)
 pcall(function() Window:SelectTab(PlayerTab) end)
 pcall(function() Window:SelectTab(1) end)
 
-WindUI:Notify({Title="DENJI•ALEX", Content="v33: Fix sintaxis (AS + perfil) + fondo 136613867395193", Duration=4})
+WindUI:Notify({Title="DENJI•ALEX", Content="v34: Botones rosado / sliders amarillo / foto perfil fija", Duration=4})
