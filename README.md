@@ -860,13 +860,6 @@ getgenv().TargetModule = _G.TargetModule
 -- ============================================================
 -- 💾 CONFIGURACIÓN PERSISTENTE (guardado al cambiar, NO cada 10s)
 -- ============================================================
--- ⚠️ FIX CRÍTICO: ColorAccent y ServidoresVisitados DEBEN declararse ANTES de
--- GuardarConfiguracion. En la versión anterior se declaraban DESPUÉS, así que
--- dentro de GuardarConfiguracion 'ColorAccent' era una global nil ->
--- math.floor(ColorAccent.R*255) lanzaba error -> el pcall lo tragaba EN SILENCIO
--- y NO SE GUARDABA NADA. Ese era el bug de "las configuraciones no se guardan".
-local ColorAccent = Color3.fromRGB(255, 160, 80)
-local ServidoresVisitados = {}
 local Saved = {}
 -- Estado persistente en carpeta oculta de CoreGui (sobrevive a re-ejecutar el script, no necesita writefile)
 local StateFolder = nil
@@ -938,10 +931,9 @@ local function GuardarConfiguracion(silent)
         AntiReportEnabled = AntiReportEnabled,
         AntiVCEnabled = AntiVCEnabled,
         ServidoresVisitados = ServidoresVisitados,
-        -- nil-safe: si por algo ColorAccent fuera nil no se rompe el guardado
-        AccentR = ColorAccent and math.floor(ColorAccent.R*255) or 255,
-        AccentG = ColorAccent and math.floor(ColorAccent.G*255) or 160,
-        AccentB = ColorAccent and math.floor(ColorAccent.B*255) or 80,
+        AccentR = math.floor(ColorAccent.R*255),
+        AccentG = math.floor(ColorAccent.G*255),
+        AccentB = math.floor(ColorAccent.B*255),
     }
     pcall(function()
         local f = GetStateFolder()
@@ -962,15 +954,12 @@ end
 
 local function AS(fn)
     return function(...)
-        -- FIX: aunque el callback falle, el guardado se ejecuta igual.
-        -- NO envolver fn(...) en function() anidado: '...' no es visible ahí y rompe la sintaxis.
-        if fn then pcall(fn, ...) end
-        pcall(GuardarConfiguracion, true) -- guardado instantaneo en CoreGui
+        if fn then fn(...) end
+        pcall(function() GuardarConfiguracion(true) end) -- guardado instantaneo en CoreGui
     end
 end
 
--- ColorAccent YA fue declarado arriba (y puede haber sido cargado desde config guardada).
--- No redeclarar con 'local' aquí: crearía una variable nueva sombra y perdería el color guardado.
+local ColorAccent = Color3.fromRGB(255, 160, 80)
 local RefBordeCirculo, RefBordePerfil, RefTPBtn = nil, nil, nil
 local function AplicarColor(c)
     ColorAccent = c
@@ -1070,7 +1059,7 @@ local Window = WindUI:CreateWindow({
     Title="DENJI•ALEX", Icon="sword", Author="DENJI•ALEX", Folder="DENJI•ALEX",
     Size=UDim2.fromOffset(600,540), MinSize=Vector2.new(520,420), MaxSize=Vector2.new(850,680),
     Transparent=true, Theme="Dark", Resizable=true, SideBarWidth=160,
-    Background="rbxassetid://136613867395193", BackgroundImageTransparency=0.35, HideSearchBar=true,
+    Background="rbxassetid://118321081493035", BackgroundImageTransparency=0.35, HideSearchBar=true,
     OpenButton={Title="DENJI•ALEX", Icon="sword", Enabled=true, Draggable=true, OnlyMobile=false, CornerRadius=UDim.new(1,0), StrokeThickness=2, Scale=1},
 })
 
@@ -1363,8 +1352,7 @@ local RJTab = Window:Tab({Title="RJ=New.SV", Icon="globe"})
 local AutoOn = false
 local AutoCoroutine = nil
 local ServerList = {}
--- ServidoresVisitados YA está declarado arriba (sección config) y puede tener datos cargados.
--- NO reiniciar con {} aquí: borraría los visitados guardados.
+local ServidoresVisitados = {}
 local RJLimit = 1 -- reemplaza a LimitBox.Text
 local RJStatus, RJCounter = nil, nil
 local ServerListGui = nil -- ventana independiente de la lista
@@ -1923,24 +1911,6 @@ AplicarConfiguracion()
 -- Reintento 1.5s despues: por si WindUI o el personaje aun no estaban listos del todo
 task.spawn(function() task.wait(1.5); pcall(AplicarConfiguracion) end)
 
--- 🎨 COLOR PERSONALIZADO: botones rosado ligero / sliders amarillo suave.
--- En WindUI (tema Dark): los botones usan la etiqueta de tema "Button" y el relleno
--- del slider usa "Primary". Solo se cambia el color; la transparencia se mantiene.
-task.spawn(function()
-    task.wait(0.9)
-    pcall(function()
-        local RosaLigero = Color3.fromRGB(255, 192, 208)
-        local AmarilloSuave = Color3.fromRGB(255, 236, 150)
-        if Window and Window.Themes and Window.Themes["Dark"] then
-            local Tema = Window.Themes["Dark"]
-            Tema.Button = RosaLigero      -- botones del menú (y toggles, que comparten etiqueta)
-            Tema.Primary = AmarilloSuave  -- relleno de los sliders
-            Tema.Slider = AmarilloSuave   -- etiqueta directa (por si acaso)
-            pcall(function() Window:SetTheme("Dark") end) -- re-aplicar a lo ya creado
-        end
-    end)
-end)
-
 -- === CUADRO DE PERFIL: foto 100x100 a la DERECHA, nombre + ID en lista a la IZQUIERDA ===
 task.spawn(function()
     pcall(function()
@@ -1999,7 +1969,6 @@ task.spawn(function()
         Foto.ZIndex = 52
         Instance.new("UICorner", Foto).CornerRadius = UDim.new(1, 0)
 
-        -- Foto de perfil fija (la que pediste). Antes usaba GetUserThumbnailAsync y no cargaba.
         Foto.Image = "rbxassetid://95704712331700"
 
         -- Nombre + ID en forma de lista, lado izquierdo del cuadro
@@ -2026,4 +1995,67 @@ end)
 pcall(function() Window:SelectTab(PlayerTab) end)
 pcall(function() Window:SelectTab(1) end)
 
-WindUI:Notify({Title="DENJI•ALEX", Content="v34: Botones rosado / sliders amarillo / foto perfil fija", Duration=4})
+-- 🎨 COLOR PERSONALIZADO: Botones rosado ligero (transparente) + Sliders amarillo suave
+task.spawn(function()
+    task.wait(2) -- esperar a que WindUI termine de construir todo
+    pcall(function()
+        local Rosa = Color3.fromRGB(255, 192, 203)      -- rosado ligero (botones)
+        local Amarillo = Color3.fromRGB(255, 235, 150)  -- amarillo suave (sliders)
+        local Trans = 0.25                               -- transparencia (ajustable: 0=opaco, 1=invisible)
+
+        local raiz = nil
+        pcall(function()
+            local f = Window and Window.SideBar and Window.SideBar.Parent
+            if f then raiz = f:FindFirstAncestorWhichIsA("ScreenGui") or f end
+        end)
+        if not raiz then
+            pcall(function() raiz = (gethui and gethui()) or game:GetService("CoreGui") end)
+        end
+        if not raiz then return end
+
+        local RefsBotones, RefsSliders = {}, {}
+        local Vistos = {}
+
+        local function Cercano(c, r, g, b, tol)
+            return math.abs(c.R*255 - r) <= tol and math.abs(c.G*255 - g) <= tol and math.abs(c.B*255 - b) <= tol
+        end
+
+        local function Probar(v)
+            if not v or not v:IsA("ImageLabel") then return end
+            if Vistos[v] then return end
+            local c = v.ImageColor3
+            -- Botones WindUI (tema Dark): gris #52525b = (82,82,91)
+            if Cercano(c, 82, 82, 91, 20) then
+                Vistos[v] = true
+                v.ImageColor3 = Rosa; v.ImageTransparency = Trans
+                table.insert(RefsBotones, v)
+            -- Relleno de Sliders: azul Primary #0091FF = (0,145,255)
+            elseif Cercano(c, 0, 145, 255, 20) then
+                Vistos[v] = true
+                v.ImageColor3 = Amarillo; v.ImageTransparency = Trans
+                table.insert(RefsSliders, v)
+            end
+        end
+
+        local function Escanear()
+            for _, v in ipairs(raiz:GetDescendants()) do Probar(v) end
+        end
+
+        Escanear()
+        pcall(function() raiz.DescendantAdded:Connect(Probar) end)
+
+        -- Reafirmar colores cada 0.5s (contra tweens de hover / reaplicación de tema)
+        -- y re-escanear cada 3s para capturar dropdowns que se abren dinámicamente
+        task.spawn(function()
+            local tick = 0
+            while task.wait(0.5) do
+                tick = tick + 1
+                for _, v in ipairs(RefsBotones) do if v and v.Parent then v.ImageColor3 = Rosa; v.ImageTransparency = Trans end end
+                for _, v in ipairs(RefsSliders) do if v and v.Parent then v.ImageColor3 = Amarillo; v.ImageTransparency = Trans end end
+                if tick % 6 == 0 then pcall(Escanear) end
+            end
+        end)
+    end)
+end)
+
+WindUI:Notify({Title="DENJI•ALEX", Content="v31: Estado persistente en CoreGui (sin writefile)", Duration=4})
