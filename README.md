@@ -865,8 +865,7 @@ local Saved = {}
 local StateFolder = nil
 local function GetStateFolder()
     if StateFolder and StateFolder.Parent then return StateFolder end
-    local ok, hui = pcall(function() return gethui and gethui() end)
-    local parent = (ok and hui) or game:GetService("CoreGui")
+    local parent = game:GetService("CoreGui") -- siempre CoreGui
     StateFolder = parent:FindFirstChild("DENJI_ALEX_SavedState")
     if not StateFolder then
         StateFolder = Instance.new("Folder")
@@ -875,6 +874,24 @@ local function GetStateFolder()
     end
     return StateFolder
 end
+
+-- Persistencia por internet (sobrevive aunque el executor borre CoreGui)
+local StateBucket = "denji_alex_" .. tostring(UserId)
+local function HttpSave(jsonStr)
+    pcall(function()
+        local req = (syn and syn.request) or http_request or request or (http and http.request)
+        if req then req({Url="https://kvdb.io/"..StateBucket.."/state", Method="PUT", Body=jsonStr}) end
+    end)
+end
+local function HttpLoad()
+    local ok, raw = pcall(function() return game:HttpGet("https://kvdb.io/"..StateBucket.."/state") end)
+    if ok and raw and #raw > 2 then
+        local ok2, tbl = pcall(function() return game:GetService("HttpService"):JSONDecode(raw) end)
+        if ok2 and tbl then return tbl end
+    end
+    return nil
+end
+
 local SaveNotified = false
 local function Get(key, def)
     if Saved[key] ~= nil then return Saved[key] end
@@ -936,6 +953,10 @@ local function GuardarConfiguracion(silent)
         AccentB = math.floor(ColorAccent.B*255),
     }
     pcall(function()
+        local Http = game:GetService("HttpService")
+        HttpSave(Http:JSONEncode(Config))
+    end)
+    pcall(function()
         local f = GetStateFolder()
         for k, v in pairs(Config) do
             if type(v) == "table" then
@@ -946,20 +967,6 @@ local function GuardarConfiguracion(silent)
                 f:SetAttribute(k, v)
             end
         end
-        -- Guardado extra por portapapeles (funciona en casi cualquier executor)
-        pcall(function()
-            if readclipboard and setclipboard then
-                local Http = game:GetService("HttpService")
-                setclipboard("DENJI_ALEX_CFG:" .. Http:JSONEncode(Config))
-            end
-        end)
-        -- Guardado extra por archivo (si el executor lo soporta)
-        pcall(function()
-            if writefile then
-                local Http = game:GetService("HttpService")
-                writefile("DENJI_ALEX_Config.json", Http:JSONEncode(Config))
-            end
-        end)
         if not silent then
             WindUI:Notify({Title="Configuración", Content="Guardada correctamente", Duration=3})
         end
@@ -987,12 +994,17 @@ end
 
 local function CargarConfiguracion()
     pcall(function()
-        local ok, hui = pcall(function() return gethui and gethui() end)
-        local parent = (ok and hui) or game:GetService("CoreGui")
-        local f = parent:FindFirstChild("DENJI_ALEX_SavedState")
-        if not f then return end
-        local attrs = f:GetAttributes()
-        if attrs then Saved = attrs end
+        local fromHttp = HttpLoad()
+        if fromHttp then
+            Saved = fromHttp
+        else
+            local parent = game:GetService("CoreGui")
+            local f = parent:FindFirstChild("DENJI_ALEX_SavedState")
+            if f then
+                local attrs = f:GetAttributes()
+                if attrs then Saved = attrs end
+            end
+        end
         if Saved.ServidoresVisitados and type(Saved.ServidoresVisitados) == "string" then
             local t = {}
             for kid in string.gmatch(Saved.ServidoresVisitados, "[^,]+") do t[kid] = true end
@@ -1005,35 +1017,7 @@ local function CargarConfiguracion()
         if Saved.FallSpeedCap then FallSpeedCap = Saved.FallSpeedCap end
         if Saved.AutoClickerCPS then AutoClickerCPS = Saved.AutoClickerCPS end
         if Saved.AccentR then ColorAccent = Color3.fromRGB(Saved.AccentR, Saved.AccentG or 160, Saved.AccentB or 80) end
-        -- Cargar desde portapapeles (si el executor lo soporta)
-        pcall(function()
-            if readclipboard then
-                local cb = readclipboard()
-                if cb and type(cb) == "string" and cb:sub(1, 14) == "DENJI_ALEX_CFG:" then
-                    local Http = game:GetService("HttpService")
-                    local ok, cfg = pcall(function() return Http:JSONDecode(cb:sub(15)) end)
-                    if ok and cfg then for k, v in pairs(cfg) do Saved[k] = v end end
-                end
-            end
-        end)
-        -- Cargar desde archivo (si el executor lo soporta)
-        pcall(function()
-            if isfile and readfile and isfile("DENJI_ALEX_Config.json") then
-                local Http = game:GetService("HttpService")
-                local ok, cfg = pcall(function() return Http:JSONDecode(readfile("DENJI_ALEX_Config.json")) end)
-                if ok and cfg then for k, v in pairs(cfg) do Saved[k] = v end end
-            end
-        end)
-        -- ServidoresVisitados puede venir como tabla (archivo/portapapeles) o como string (CoreGui)
-        if Saved.ServidoresVisitados then
-            if type(Saved.ServidoresVisitados) == "table" then
-                ServidoresVisitados = Saved.ServidoresVisitados
-            elseif type(Saved.ServidoresVisitados) == "string" then
-                local t = {}
-                for kid in string.gmatch(Saved.ServidoresVisitados, "[^,]+") do t[kid] = true end
-                ServidoresVisitados = t
-            end
-        end
+        if next(Saved) then pcall(function() WindUI:Notify({Title="Estado", Content="Configuracion restaurada", Duration=2}) end) end
     end)
 end
 
@@ -1102,7 +1086,7 @@ local Window = WindUI:CreateWindow({
     Title="DENJI•ALEX", Icon="sword", Author="DENJI•ALEX", Folder="DENJI•ALEX",
     Size=UDim2.fromOffset(600,540), MinSize=Vector2.new(520,420), MaxSize=Vector2.new(850,680),
     Transparent=true, Theme="Dark", Resizable=true, SideBarWidth=160,
-    Background="rbxassetid://95704712331700", BackgroundImageTransparency=0.35, HideSearchBar=true,
+    Background="rbxassetid://136613867395193", BackgroundImageTransparency=0.35, HideSearchBar=true,
     OpenButton={Title="DENJI•ALEX", Icon="sword", Enabled=true, Draggable=true, OnlyMobile=false, CornerRadius=UDim.new(1,0), StrokeThickness=2, Scale=1},
 })
 
@@ -2047,4 +2031,4 @@ end)
 pcall(function() Window:SelectTab(PlayerTab) end)
 pcall(function() Window:SelectTab(1) end)
 
-WindUI:Notify({Title="DENJI•ALEX", Content="v32: Guardado triple + fondo nuevo", Duration=4})
+WindUI:Notify({Title="DENJI•ALEX", Content="v32: Persistencia total (internet + CoreGui) + foto nueva", Duration=4})
