@@ -946,6 +946,20 @@ local function GuardarConfiguracion(silent)
                 f:SetAttribute(k, v)
             end
         end
+        -- Guardado extra por portapapeles (funciona en casi cualquier executor)
+        pcall(function()
+            if readclipboard and setclipboard then
+                local Http = game:GetService("HttpService")
+                setclipboard("DENJI_ALEX_CFG:" .. Http:JSONEncode(Config))
+            end
+        end)
+        -- Guardado extra por archivo (si el executor lo soporta)
+        pcall(function()
+            if writefile then
+                local Http = game:GetService("HttpService")
+                writefile("DENJI_ALEX_Config.json", Http:JSONEncode(Config))
+            end
+        end)
         if not silent then
             WindUI:Notify({Title="Configuración", Content="Guardada correctamente", Duration=3})
         end
@@ -991,6 +1005,35 @@ local function CargarConfiguracion()
         if Saved.FallSpeedCap then FallSpeedCap = Saved.FallSpeedCap end
         if Saved.AutoClickerCPS then AutoClickerCPS = Saved.AutoClickerCPS end
         if Saved.AccentR then ColorAccent = Color3.fromRGB(Saved.AccentR, Saved.AccentG or 160, Saved.AccentB or 80) end
+        -- Cargar desde portapapeles (si el executor lo soporta)
+        pcall(function()
+            if readclipboard then
+                local cb = readclipboard()
+                if cb and type(cb) == "string" and cb:sub(1, 14) == "DENJI_ALEX_CFG:" then
+                    local Http = game:GetService("HttpService")
+                    local ok, cfg = pcall(function() return Http:JSONDecode(cb:sub(15)) end)
+                    if ok and cfg then for k, v in pairs(cfg) do Saved[k] = v end end
+                end
+            end
+        end)
+        -- Cargar desde archivo (si el executor lo soporta)
+        pcall(function()
+            if isfile and readfile and isfile("DENJI_ALEX_Config.json") then
+                local Http = game:GetService("HttpService")
+                local ok, cfg = pcall(function() return Http:JSONDecode(readfile("DENJI_ALEX_Config.json")) end)
+                if ok and cfg then for k, v in pairs(cfg) do Saved[k] = v end end
+            end
+        end)
+        -- ServidoresVisitados puede venir como tabla (archivo/portapapeles) o como string (CoreGui)
+        if Saved.ServidoresVisitados then
+            if type(Saved.ServidoresVisitados) == "table" then
+                ServidoresVisitados = Saved.ServidoresVisitados
+            elseif type(Saved.ServidoresVisitados) == "string" then
+                local t = {}
+                for kid in string.gmatch(Saved.ServidoresVisitados, "[^,]+") do t[kid] = true end
+                ServidoresVisitados = t
+            end
+        end
     end)
 end
 
@@ -1059,7 +1102,7 @@ local Window = WindUI:CreateWindow({
     Title="DENJI•ALEX", Icon="sword", Author="DENJI•ALEX", Folder="DENJI•ALEX",
     Size=UDim2.fromOffset(600,540), MinSize=Vector2.new(520,420), MaxSize=Vector2.new(850,680),
     Transparent=true, Theme="Dark", Resizable=true, SideBarWidth=160,
-    Background="rbxassetid://118321081493035", BackgroundImageTransparency=0.35, HideSearchBar=true,
+    Background="rbxassetid://95704712331700", BackgroundImageTransparency=0.35, HideSearchBar=true,
     OpenButton={Title="DENJI•ALEX", Icon="sword", Enabled=true, Draggable=true, OnlyMobile=false, CornerRadius=UDim.new(1,0), StrokeThickness=2, Scale=1},
 })
 
@@ -1969,7 +2012,16 @@ task.spawn(function()
         Foto.ZIndex = 52
         Instance.new("UICorner", Foto).CornerRadius = UDim.new(1, 0)
 
-        Foto.Image = "rbxassetid://95704712331700"
+        local Cargar = pcall(function()
+            Foto.Image = Players:GetUserThumbnailAsync(
+                UserId,
+                Enum.ThumbnailType.HeadShot,
+                Enum.ThumbnailSize.Size420x420
+            )
+        end)
+        if not Cargar then
+            Foto.Image = "rbxassetid://6026588573" -- Imagen de respaldo
+        end
 
         -- Nombre + ID en forma de lista, lado izquierdo del cuadro
         local function HacerTexto(y, texto, tamano, bold, color)
@@ -1995,67 +2047,4 @@ end)
 pcall(function() Window:SelectTab(PlayerTab) end)
 pcall(function() Window:SelectTab(1) end)
 
--- 🎨 COLOR PERSONALIZADO: Botones rosado ligero (transparente) + Sliders amarillo suave
-task.spawn(function()
-    task.wait(2) -- esperar a que WindUI termine de construir todo
-    pcall(function()
-        local Rosa = Color3.fromRGB(255, 192, 203)      -- rosado ligero (botones)
-        local Amarillo = Color3.fromRGB(255, 235, 150)  -- amarillo suave (sliders)
-        local Trans = 0.25                               -- transparencia (ajustable: 0=opaco, 1=invisible)
-
-        local raiz = nil
-        pcall(function()
-            local f = Window and Window.SideBar and Window.SideBar.Parent
-            if f then raiz = f:FindFirstAncestorWhichIsA("ScreenGui") or f end
-        end)
-        if not raiz then
-            pcall(function() raiz = (gethui and gethui()) or game:GetService("CoreGui") end)
-        end
-        if not raiz then return end
-
-        local RefsBotones, RefsSliders = {}, {}
-        local Vistos = {}
-
-        local function Cercano(c, r, g, b, tol)
-            return math.abs(c.R*255 - r) <= tol and math.abs(c.G*255 - g) <= tol and math.abs(c.B*255 - b) <= tol
-        end
-
-        local function Probar(v)
-            if not v or not v:IsA("ImageLabel") then return end
-            if Vistos[v] then return end
-            local c = v.ImageColor3
-            -- Botones WindUI (tema Dark): gris #52525b = (82,82,91)
-            if Cercano(c, 82, 82, 91, 20) then
-                Vistos[v] = true
-                v.ImageColor3 = Rosa; v.ImageTransparency = Trans
-                table.insert(RefsBotones, v)
-            -- Relleno de Sliders: azul Primary #0091FF = (0,145,255)
-            elseif Cercano(c, 0, 145, 255, 20) then
-                Vistos[v] = true
-                v.ImageColor3 = Amarillo; v.ImageTransparency = Trans
-                table.insert(RefsSliders, v)
-            end
-        end
-
-        local function Escanear()
-            for _, v in ipairs(raiz:GetDescendants()) do Probar(v) end
-        end
-
-        Escanear()
-        pcall(function() raiz.DescendantAdded:Connect(Probar) end)
-
-        -- Reafirmar colores cada 0.5s (contra tweens de hover / reaplicación de tema)
-        -- y re-escanear cada 3s para capturar dropdowns que se abren dinámicamente
-        task.spawn(function()
-            local tick = 0
-            while task.wait(0.5) do
-                tick = tick + 1
-                for _, v in ipairs(RefsBotones) do if v and v.Parent then v.ImageColor3 = Rosa; v.ImageTransparency = Trans end end
-                for _, v in ipairs(RefsSliders) do if v and v.Parent then v.ImageColor3 = Amarillo; v.ImageTransparency = Trans end end
-                if tick % 6 == 0 then pcall(Escanear) end
-            end
-        end)
-    end)
-end)
-
-WindUI:Notify({Title="DENJI•ALEX", Content="v31: Estado persistente en CoreGui (sin writefile)", Duration=4})
+WindUI:Notify({Title="DENJI•ALEX", Content="v32: Guardado triple + fondo nuevo", Duration=4})
