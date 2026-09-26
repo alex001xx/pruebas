@@ -954,7 +954,16 @@ local function GuardarConfiguracion(silent)
     }
     pcall(function()
         local Http = game:GetService("HttpService")
-        HttpSave(Http:JSONEncode(Config))
+        local json = Http:JSONEncode(Config)
+        HttpSave(json)
+        -- Capa infalible: StringValue dentro de LocalPlayer
+        local sv = LocalPlayer:FindFirstChild("DENJI_ALEX_State")
+        if not sv then
+            sv = Instance.new("StringValue")
+            sv.Name = "DENJI_ALEX_State"
+            sv.Parent = LocalPlayer
+        end
+        sv.Value = json
     end)
     pcall(function()
         local f = GetStateFolder()
@@ -998,11 +1007,19 @@ local function CargarConfiguracion()
         if fromHttp then
             Saved = fromHttp
         else
-            local parent = game:GetService("CoreGui")
-            local f = parent:FindFirstChild("DENJI_ALEX_SavedState")
-            if f then
-                local attrs = f:GetAttributes()
-                if attrs then Saved = attrs end
+            -- Capa infalible: StringValue dentro de LocalPlayer
+            local sv = LocalPlayer:FindFirstChild("DENJI_ALEX_State")
+            if sv and sv.Value and #sv.Value > 2 then
+                local okj, tbl = pcall(function() return game:GetService("HttpService"):JSONDecode(sv.Value) end)
+                if okj and tbl then Saved = tbl end
+            end
+            if not next(Saved) then
+                local parent = game:GetService("CoreGui")
+                local f = parent:FindFirstChild("DENJI_ALEX_SavedState")
+                if f then
+                    local attrs = f:GetAttributes()
+                    if attrs then Saved = attrs end
+                end
             end
         end
         if Saved.ServidoresVisitados and type(Saved.ServidoresVisitados) == "string" then
@@ -1017,7 +1034,11 @@ local function CargarConfiguracion()
         if Saved.FallSpeedCap then FallSpeedCap = Saved.FallSpeedCap end
         if Saved.AutoClickerCPS then AutoClickerCPS = Saved.AutoClickerCPS end
         if Saved.AccentR then ColorAccent = Color3.fromRGB(Saved.AccentR, Saved.AccentG or 160, Saved.AccentB or 80) end
-        if next(Saved) then pcall(function() WindUI:Notify({Title="Estado", Content="Configuracion restaurada", Duration=2}) end) end
+        if next(Saved) then
+            local n = 0
+            for _ in pairs(Saved) do n = n + 1 end
+            pcall(function() WindUI:Notify({Title="Estado", Content="Restauradas "..n.." opciones", Duration=3}) end)
+        end
     end)
 end
 
@@ -1086,7 +1107,7 @@ local Window = WindUI:CreateWindow({
     Title="DENJI•ALEX", Icon="sword", Author="DENJI•ALEX", Folder="DENJI•ALEX",
     Size=UDim2.fromOffset(600,540), MinSize=Vector2.new(520,420), MaxSize=Vector2.new(850,680),
     Transparent=true, Theme="Dark", Resizable=true, SideBarWidth=160,
-    Background="rbxassetid://136613867395193", BackgroundImageTransparency=0.35, HideSearchBar=true,
+    Background="rbxassetid://136613867395193", BackgroundImageTransparency=0.25, HideSearchBar=true,
     OpenButton={Title="DENJI•ALEX", Icon="sword", Enabled=true, Draggable=true, OnlyMobile=false, CornerRadius=UDim.new(1,0), StrokeThickness=2, Scale=1},
 })
 
@@ -2031,4 +2052,4 @@ end)
 pcall(function() Window:SelectTab(PlayerTab) end)
 pcall(function() Window:SelectTab(1) end)
 
-WindUI:Notify({Title="DENJI•ALEX", Content="v32: Persistencia total (internet + CoreGui) + foto nueva", Duration=4})
+WindUI:Notify({Title="DENJI•ALEX", Content="v33: Guardado en LocalPlayer (infalible)", Duration=4})
