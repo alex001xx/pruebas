@@ -144,171 +144,17 @@ local function SetInfJump(state)
 end
 -- ==============================================
 -- TPWalk + Anti-Rubberband + SHIFT LOCK + JOYSTICK ARREGLADO
--- ✅ Cámara normal | ✅ Shift Lock OK | ✅ Joystick correcto
+-- (controles integrados en la pestana Main; el motor no se toca)
 -- ==============================================
 do
     local Players = game:GetService("Players")
     local RunService = game:GetService("RunService")
     local UserInputService = game:GetService("UserInputService")
     local Workspace = game:GetService("Workspace")
-
     local player = Players.LocalPlayer
-    local playerGui = player:WaitForChild("PlayerGui")
 
     getgenv().TPWalkEnabled = false
     getgenv().TPWalkSpeed = 0.30
-
-    local guiName = "TPWalk_" .. tostring(math.random(100000, 999999))
-
-    local ScreenGui = Instance.new("ScreenGui")
-    ScreenGui.Name = guiName
-    ScreenGui.ResetOnSpawn = false
-    ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    if gethui then
-        pcall(function() ScreenGui.Parent = gethui() end)
-    end
-    if not ScreenGui.Parent then ScreenGui.Parent = playerGui end
-
-    local MainFrame = Instance.new("Frame")
-    MainFrame.Size = UDim2.new(0, 240, 0, 160)
-    MainFrame.Position = UDim2.new(0.5, -120, 0.25, 0)
-    MainFrame.BackgroundColor3 = Color3.fromRGB(22, 22, 28)
-    MainFrame.Active = true
-    MainFrame.Draggable = true
-    MainFrame.Parent = ScreenGui
-
-    local UICorner = Instance.new("UICorner")
-    UICorner.CornerRadius = UDim.new(0, 12)
-    UICorner.Parent = MainFrame
-
-    local Title = Instance.new("TextLabel")
-    Title.Size = UDim2.new(1, -40, 0, 30)
-    Title.Position = UDim2.new(0, 10, 0, 5)
-    Title.BackgroundTransparency = 1
-    Title.Text = "TPWalk + Joystick OK"
-    Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-    Title.Font = Enum.Font.GothamBold
-    Title.TextSize = 15
-    Title.TextXAlignment = Enum.TextXAlignment.Left
-    Title.Parent = MainFrame
-
-    local CloseBtn = Instance.new("TextButton")
-    CloseBtn.Size = UDim2.new(0, 26, 0, 26)
-    CloseBtn.Position = UDim2.new(1, -32, 0, 6)
-    CloseBtn.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
-    CloseBtn.Text = "X"
-    CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    CloseBtn.Font = Enum.Font.GothamBold
-    CloseBtn.Parent = MainFrame
-
-    local CloseCorner = Instance.new("UICorner")
-    CloseCorner.CornerRadius = UDim.new(0, 6)
-    CloseCorner.Parent = CloseBtn
-
-    CloseBtn.MouseButton1Click:Connect(function()
-        getgenv().TPWalkEnabled = false
-        ScreenGui:Destroy()
-    end)
-
-    local ToggleButton = Instance.new("TextButton")
-    ToggleButton.Size = UDim2.new(0, 200, 0, 36)
-    ToggleButton.Position = UDim2.new(0.5, -100, 0, 42)
-    ToggleButton.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
-    ToggleButton.Text = "ACTIVAR"
-    ToggleButton.TextColor3 = Color3.fromRGB(255, 90, 90)
-    ToggleButton.Font = Enum.Font.GothamBold
-    ToggleButton.Parent = MainFrame
-
-    local ToggleCorner = Instance.new("UICorner")
-    ToggleCorner.CornerRadius = UDim.new(0, 8)
-    ToggleCorner.Parent = ToggleButton
-
-    local SliderBack = Instance.new("Frame")
-    SliderBack.Size = UDim2.new(0, 200, 0, 8)
-    SliderBack.Position = UDim2.new(0.5, -100, 0, 100)
-    SliderBack.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
-    SliderBack.Parent = MainFrame
-
-    local SliderCorner = Instance.new("UICorner")
-    SliderCorner.CornerRadius = UDim.new(1, 0)
-    SliderCorner.Parent = SliderBack
-
-    local SliderFill = Instance.new("Frame")
-    SliderFill.Size = UDim2.new(0.0145, 0, 1, 0)
-    SliderFill.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
-    SliderFill.Parent = SliderBack
-
-    local FillCorner = Instance.new("UICorner")
-    FillCorner.CornerRadius = UDim.new(1, 0)
-    FillCorner.Parent = SliderFill
-
-    local SliderButton = Instance.new("TextButton")
-    SliderButton.Size = UDim2.new(0, 16, 0, 16)
-    SliderButton.Position = UDim2.new(0.0145, -8, 0.5, -8)
-    SliderButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    SliderButton.Text = ""
-    SliderButton.Parent = SliderBack
-
-    local SliderBtnCorner = Instance.new("UICorner")
-    SliderBtnCorner.CornerRadius = UDim.new(1, 0)
-    SliderBtnCorner.Parent = SliderButton
-
-    local SpeedLabel = Instance.new("TextLabel")
-    SpeedLabel.Size = UDim2.new(1, 0, 0, 22)
-    SpeedLabel.Position = UDim2.new(0, 0, 0, 120)
-    SpeedLabel.BackgroundTransparency = 1
-    SpeedLabel.Text = "Velocidad: 0.30"
-    SpeedLabel.TextColor3 = Color3.fromRGB(190, 190, 190)
-    SpeedLabel.Font = Enum.Font.Gotham
-    SpeedLabel.Parent = MainFrame
-
-    local dragging = false
-    local minSpeed = 0.01
-    local maxSpeed = 20
-
-    local function updateSpeed(value)
-        getgenv().TPWalkSpeed = math.clamp(tonumber(string.format("%.2f", value)), minSpeed, maxSpeed)
-        SpeedLabel.Text = "Velocidad: " .. string.format("%.2f", getgenv().TPWalkSpeed)
-        local percent = (getgenv().TPWalkSpeed - minSpeed) / (maxSpeed - minSpeed)
-        SliderFill.Size = UDim2.new(percent, 0, 1, 0)
-        SliderButton.Position = UDim2.new(percent, -8, 0.5, -8)
-    end
-
-    SliderButton.MouseButton1Down:Connect(function() dragging = true end)
-    UserInputService.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = false
-        end
-    end)
-    UserInputService.InputChanged:Connect(function(input)
-        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-            local mousePos = UserInputService:GetMouseLocation()
-            local relativeX = mousePos.X - SliderBack.AbsolutePosition.X
-            local percent = math.clamp(relativeX / SliderBack.AbsoluteSize.X, 0, 1)
-            updateSpeed(minSpeed + (maxSpeed - minSpeed) * percent)
-        end
-    end)
-    SliderBack.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            local relativeX = input.Position.X - SliderBack.AbsolutePosition.X
-            local percent = math.clamp(relativeX / SliderBack.AbsoluteSize.X, 0, 1)
-            updateSpeed(minSpeed + (maxSpeed - minSpeed) * percent)
-            dragging = true
-        end
-    end)
-
-    ToggleButton.MouseButton1Click:Connect(function()
-        getgenv().TPWalkEnabled = not getgenv().TPWalkEnabled
-        if getgenv().TPWalkEnabled then
-            ToggleButton.Text = "ACTIVADO ✅"
-            ToggleButton.TextColor3 = Color3.fromRGB(80, 255, 120)
-            ToggleButton.BackgroundColor3 = Color3.fromRGB(25, 70, 40)
-        else
-            ToggleButton.Text = "ACTIVAR"
-            ToggleButton.TextColor3 = Color3.fromRGB(255, 90, 90)
-            ToggleButton.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
-        end
-    end)
 
     RunService.RenderStepped:Connect(function()
         if not getgenv().TPWalkEnabled then return end
@@ -345,157 +191,6 @@ do
             )
         end
     end)
-
-    player.CharacterAdded:Connect(function()
-        task.wait(0.2)
-        if ScreenGui and ScreenGui.Parent then
-            local pg = player:FindFirstChild("PlayerGui")
-            if pg then ScreenGui.Parent = pg end
-        end
-    end)
-end
-
--- ⚔️ FUNCIÓN ATAQUE RÁPIDO
-local function SetFlashAttack(s)
-    FlashAttackEnabled = s
-    if s then
-        if not FlashConn then
-            FlashConn = RunService.Heartbeat:Connect(function()
-                if not FlashAttackEnabled or not Character then return end
-                local tool = Character:FindFirstChildWhichIsA("Tool")
-                if not tool then return end
-                pcall(function()
-                    for _ = 1, FlashMultiplier do
-                        tool:Activate()
-                    end
-                    for _, v in pairs(tool:GetDescendants()) do
-                        if v:IsA("NumberValue") or v:IsA("IntValue") then
-                            local name = v.Name:lower()
-                            if name:find("cooldown") or name:find("delay") or name:find("rate") or name:find("time") then
-                                v.Value = 0
-                            end
-                        end
-                    end
-                end)
-            end)
-        end
-    else
-        if FlashConn then FlashConn:Disconnect(); FlashConn = nil end
-    end
-end
-
--- 🛡️ FUNCIÓN SIT PROTECTOR (Escudo)
-local function GuardarEstadosOriginalesSit(Personaje)
-    if not Personaje then return end
-    local Hum = Personaje:FindFirstChildWhichIsA("Humanoid")
-    if not Hum then return end
-    SitEstadosOriginales = {
-        Sit = false,
-        PlatformStand = false,
-        AutoRotate = true,
-        Seated = Hum:GetStateEnabled(Enum.HumanoidStateType.Seated),
-        FallingDown = Hum:GetStateEnabled(Enum.HumanoidStateType.FallingDown),
-        Ragdoll = Hum:GetStateEnabled(Enum.HumanoidStateType.Ragdoll),
-        PlatformStanding = Hum:GetStateEnabled(Enum.HumanoidStateType.PlatformStanding),
-    }
-end
-
-local function RestaurarTodoNormalSit()
-    local Pj = LocalPlayer.Character
-    if not Pj then return end
-    local Hum = Pj:FindFirstChildWhichIsA("Humanoid")
-    local Raiz = Pj:FindFirstChild("HumanoidRootPart")
-    if not Hum then return end
-    Hum.Sit = SitEstadosOriginales.Sit
-    Hum.PlatformStand = SitEstadosOriginales.PlatformStand
-    Hum.AutoRotate = SitEstadosOriginales.AutoRotate
-    Hum:SetStateEnabled(Enum.HumanoidStateType.Seated, SitEstadosOriginales.Seated)
-    Hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, SitEstadosOriginales.FallingDown)
-    Hum:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, SitEstadosOriginales.Ragdoll)
-    Hum:SetStateEnabled(Enum.HumanoidStateType.PlatformStanding, SitEstadosOriginales.PlatformStanding)
-end
-
-local function CrearSitGui()
-    if SitGui then return end
-    local Gui = Instance.new("ScreenGui")
-    Gui.Name = "SitProtector"
-    Gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
-    Gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    Gui.ResetOnSpawn = false
-
-    local Marco = Instance.new("Frame")
-    Marco.Size = UDim2.new(0, 120, 0, 55)
-    Marco.Position = UDim2.new(0.02, 0, 0.02, 0)
-    Marco.BackgroundColor3 = Color3.fromRGB(250, 235, 170)
-    Marco.BorderColor3 = Color3.fromRGB(245, 210, 90)
-    Marco.BorderSizePixel = 2
-    Marco.Active = true
-    Marco.Draggable = true
-    Marco.Parent = Gui
-
-    local Boton = Instance.new("TextButton")
-    Boton.Size = UDim2.new(0, 90, 0, 35)
-    Boton.Position = UDim2.new(0.5, -45, 0.5, -17)
-    Boton.BackgroundColor3 = Color3.fromRGB(245, 210, 90)
-    Boton.TextColor3 = Color3.fromRGB(70, 60, 40)
-    Boton.Font = Enum.Font.GothamBold
-    Boton.TextSize = 12
-    Boton.Text = "OFF"
-    Boton.AutoLocalize = false
-    Boton.Parent = Marco
-
-    SitGui = {Gui=Gui, Marco=Marco, Boton=Boton}
-end
-
-local function SetSitProtector(s)
-    if s and SitProtectorEnabled then return end
-    SitProtectorEnabled = s
-    CrearSitGui()
-
-    if s then
-        SitGui.Boton.Text = "ON"
-        SitGui.Boton.BackgroundColor3 = Color3.fromRGB(170, 245, 180)
-        GuardarEstadosOriginalesSit(LocalPlayer.Character)
-
-        SitConexiones.Bucle = RunService.Heartbeat:Connect(function()
-            local Pj = LocalPlayer.Character
-            if not Pj then return end
-            local Hum = Pj:FindFirstChildWhichIsA("Humanoid")
-            local Raiz = Pj:FindFirstChild("HumanoidRootPart")
-            if not Hum or not Raiz then return end
-
-            Hum.Sit = true
-            Hum:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
-            Hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
-            Hum:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
-            Hum:SetStateEnabled(Enum.HumanoidStateType.PlatformStanding, false)
-            Hum.AutoRotate = true
-            Hum.PlatformStand = false
-
-            if math.abs(Raiz.RotVelocity.Y) > 8 then
-                Raiz.RotVelocity = Vector3.new(0, math.sign(Raiz.RotVelocity.Y) * 8, 0)
-            end
-
-            for _, Pieza in Pj:GetChildren() do
-                if Pieza:IsA("Weld") or Pieza:IsA("WeldConstraint") or Pieza:IsA("Motor6D") then
-                    if Pieza.Name ~= "RootJoint" and Pieza.Name ~= "Neck" and Pieza.Name ~= "Waist"
-                    and not Pieza:FindFirstAncestorWhichIsA("Tool") then
-                        Pieza:Destroy()
-                    end
-                end
-            end
-        end)
-    else
-        if SitGui then
-            SitGui.Boton.Text = "OFF"
-            SitGui.Boton.BackgroundColor3 = Color3.fromRGB(245, 210, 90)
-        end
-        if SitConexiones.Bucle then
-            SitConexiones.Bucle:Disconnect()
-            SitConexiones.Bucle = nil
-        end
-        RestaurarTodoNormalSit()
-    end
 end
 
 LocalPlayer.CharacterAdded:Connect(function()
@@ -1119,6 +814,8 @@ local function GuardarConfiguracion(silent)
         AntiFreezeEnabled = AntiFreezeEnabled,
         AntiReportEnabled = AntiReportEnabled,
         AntiVCEnabled = AntiVCEnabled,
+        TPWalkEnabled = getgenv().TPWalkEnabled,
+        TPWalkSpeed = getgenv().TPWalkSpeed,
         ServidoresVisitados = ServidoresVisitados,
         AccentR = math.floor(ColorAccent.R*255),
         AccentG = math.floor(ColorAccent.G*255),
@@ -1179,6 +876,7 @@ local function CargarConfiguracion()
         if Saved.FallSpeedCap then FallSpeedCap = Saved.FallSpeedCap end
         if Saved.AutoClickerCPS then AutoClickerCPS = Saved.AutoClickerCPS end
         if Saved.AccentR then ColorAccent = Color3.fromRGB(Saved.AccentR, Saved.AccentG or 160, Saved.AccentB or 80) end
+        if Saved.TPWalkSpeed then getgenv().TPWalkSpeed = Saved.TPWalkSpeed end
     end)
 end
 
@@ -1235,6 +933,7 @@ local function AplicarConfiguracion()
     Try(function() if Saved.AntiResetEnabled then SetAntiReset(true) end end)
     Try(function() if Saved.AntiReportEnabled then SetAntiReport(true) end end)
     Try(function() if Saved.AntiVCEnabled then SetAntiVC(true) end end)
+    Try(function() if Saved.TPWalkEnabled then getgenv().TPWalkEnabled = true end end)
     Try(function() if Saved.AntiSitEnabled~=nil then AntiSitEnabled=Saved.AntiSitEnabled end end)
     Try(function() if Saved.AntiFlingEnabled~=nil then AntiFlingEnabled=Saved.AntiFlingEnabled end end)
     Try(function() if Saved.AntiFreezeEnabled~=nil then AntiFreezeEnabled=Saved.AntiFreezeEnabled end end)
@@ -1280,6 +979,10 @@ MainTab:Space({Size=12})
 local MainRow1 = MainTab:Group({})
 MainRow1:Button({Title="Teleport a Ti", Icon="map-pin", Justify="Center", Callback=function() local m=LocalPlayer:GetMouse(); if RootPart then RootPart.CFrame=CFrame.new(m.Hit.Position+Vector3.new(0,3,0)) end end})
 MainRow1:Space({Size=8})
+MainRow1:Toggle({Title="TPWalk (Anti-Rubberband)", Def=Get("TPWalkEnabled", false), Callback=AS(function(s) getgenv().TPWalkEnabled = s end)})
+MainTab:Space({Size=8})
+MainTab:Slider({Title="Velocidad TPWalk", Step=0.05, Value={Min=0.01, Max=20, Default=Get("TPWalkSpeed", 0.30)}, Callback=AS(function(v) getgenv().TPWalkSpeed = v end)})
+MainTab:Space({Size=8})
 local MainRow2 = MainTab:Group({})
 MainRow2:Toggle({Title="Salto Alto", Def=false, Callback=AS(function(s) if Humanoid then Humanoid.JumpPower=s and 120 or 50 end end)})
 MainRow2:Space({Size=8})
@@ -2187,4 +1890,4 @@ end)
 pcall(function() Window:SelectTab(PlayerTab) end)
 pcall(function() Window:SelectTab(1) end)
 
-WindUI:Notify({Title="DENJI•ALEX", Content="v32: TPWalk nuevo (Anti-Rubberband + Shift Lock + Joystick OK)", Duration=4})
+WindUI:Notify({Title="DENJI•ALEX", Content="v33: TPWalk integrado en pestaña Main (sin panel aparte)", Duration=4})
