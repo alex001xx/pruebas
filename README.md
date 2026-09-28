@@ -330,6 +330,56 @@ local function SetAutoClicker(s)
 end
 
 -- 🛡️ NO FALL DAMAGE (universal)
+-- ⚔️ ATAQUE RAPIDO (real: spam de tool:Activate + click izquierdo)
+local function SetFlashAttack(state)
+    FlashAttackEnabled = state
+    if state then
+        if not FlashConn then
+            FlashConn = task.spawn(function()
+                while FlashAttackEnabled do
+                    pcall(function()
+                        local char = LocalPlayer.Character
+                        if char then
+                            local tool = char:FindFirstChildOfClass("Tool")
+                            if tool then
+                                for i = 1, FlashMultiplier do pcall(function() tool:Activate() end) end
+                            end
+                        end
+                        pcall(function()
+                            local vu = game:GetService("VirtualUser")
+                            vu:CaptureController()
+                            vu:ClickButton1(Vector2.new())
+                        end)
+                    end)
+                    task.wait(math.max(0.03, 1 / FlashMultiplier))
+                end
+            end)
+        end
+    else
+        if FlashConn then pcall(function() task.cancel(FlashConn) end); FlashConn = nil end
+    end
+end
+
+-- 🦘 AUTO JUMP (Bunny Hop real: salta automatico al tocar el suelo)
+local AutoJumpConn = nil
+local function SetAutoJump(state)
+    AutoJumpEnabled = state
+    if state then
+        if not AutoJumpConn then
+            AutoJumpConn = RunService.RenderStepped:Connect(function()
+                if not AutoJumpEnabled then return end
+                pcall(function()
+                    if Humanoid and Humanoid.FloorMaterial ~= Enum.Material.Air then
+                        Humanoid.Jump = true
+                    end
+                end)
+            end)
+        end
+    else
+        if AutoJumpConn then AutoJumpConn:Disconnect(); AutoJumpConn = nil end
+    end
+end
+
 local function SetNoFallDamage(s)
     NoFallDamageEnabled = s
     if s then
@@ -927,7 +977,7 @@ local function AplicarConfiguracion()
     Try(function() if Saved.AutoRejoinEnabled~=nil then AutoRejoinEnabled=Saved.AutoRejoinEnabled end end)
     Try(function() if Saved.InstantRespawnEnabled~=nil then InstantRespawnEnabled=Saved.InstantRespawnEnabled end end)
     Try(function() if Saved.FollowPlayerEnabled~=nil then FollowPlayerEnabled=Saved.FollowPlayerEnabled end end)
-    Try(function() if Saved.AutoJumpEnabled~=nil then AutoJumpEnabled=Saved.AutoJumpEnabled end end)
+    Try(function() if Saved.AutoJumpEnabled then SetAutoJump(true) end end)
     Try(function() if Saved.WalkOnWaterEnabled~=nil then WalkOnWaterEnabled=Saved.WalkOnWaterEnabled end end)
     Try(function() if Saved.AntiKickEnabled then SetAntiKick(true) end end)
     Try(function() if Saved.AntiResetEnabled then SetAntiReset(true) end end)
@@ -1167,7 +1217,7 @@ GMov:Toggle({Title="Fly (Volar)", Def=Get("FlyEnabled", false), Callback=AS(func
 GMov:Toggle({Title="Noclip", Def=Get("NoclipEnabled", false), Callback=AS(SetNoclip)}); GMov:Space({Size=6})
 GMov:Toggle({Title="Salto Infinito", Def=Get("InfJumpEnabled", false), Callback=AS(SetInfJump)}); GMov:Space({Size=6})
 GMov:Toggle({Title="Click TP (Clic Der.)", Def=Get("ClickTPEnabled", false), Callback=AS(SetClickTP)}); GMov:Space({Size=6})
-GMov:Toggle({Title="Auto-Jump (Bunny Hop)", Def=Get("AutoJumpEnabled", false), Callback=AS(function(s) AutoJumpEnabled=s end)}); GMov:Space({Size=6})
+GMov:Toggle({Title="Auto-Jump (Bunny Hop)", Def=Get("AutoJumpEnabled", false), Callback=AS(SetAutoJump)}); GMov:Space({Size=6})
 GMov:Toggle({Title="Walk on Water", Def=Get("WalkOnWaterEnabled", false), Callback=AS(function(s) WalkOnWaterEnabled=s end)}); GMov:Space({Size=6})
 GMov:Toggle({Title="Spin Bot", Def=Get("SpinBotEnabled", false), Callback=AS(SetSpinBot)}); GMov:Space({Size=6})
 GMov:Toggle({Title="Freeze Position", Def=Get("FreezePositionEnabled", false), Callback=AS(SetFreeze)}); GMov:Space({Size=6})
@@ -1694,7 +1744,7 @@ H:Space({Size=10})
 H:Section({Title="Movimiento Extra", TextSize=20}); H:Space({Size=6})
 local ME=H:Section({Title="Movimiento Adicional", Box=true, BoxBorder=true, Opened=true})
 ME:Toggle({Title="Click TP (Clic Derecho)", Def=Get("ClickTPEnabled", false), Callback=AS(SetClickTP)}); ME:Space({Size=6})
-ME:Toggle({Title="Auto-Jump (Bunny Hop)", Def=Get("AutoJumpEnabled", false), Callback=AS(function(s) AutoJumpEnabled=s end)}); ME:Space({Size=6})
+ME:Toggle({Title="Auto-Jump (Bunny Hop)", Def=Get("AutoJumpEnabled", false), Callback=AS(SetAutoJump)}); ME:Space({Size=6})
 ME:Toggle({Title="Walk on Water", Def=Get("WalkOnWaterEnabled", false), Callback=AS(function(s) WalkOnWaterEnabled=s end)}); ME:Space({Size=6})
 ME:Toggle({Title="Spin Bot", Def=Get("SpinBotEnabled", false), Callback=AS(SetSpinBot)}); ME:Space({Size=6})
 ME:Toggle({Title="Freeze Position", Def=Get("FreezePositionEnabled", false), Callback=AS(SetFreeze)}); ME:Space({Size=6})
@@ -1890,4 +1940,4 @@ end)
 pcall(function() Window:SelectTab(PlayerTab) end)
 pcall(function() Window:SelectTab(1) end)
 
-WindUI:Notify({Title="DENJI•ALEX", Content="v33: TPWalk integrado en pestaña Main (sin panel aparte)", Duration=4})
+WindUI:Notify({Title="DENJI•ALEX", Content="v34: Ataque Rapido arreglado + Auto Jump real", Duration=4})
