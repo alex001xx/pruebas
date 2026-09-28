@@ -19,6 +19,7 @@ GodModeEnabled, ClickTPEnabled, AutoJumpEnabled, WalkOnWaterEnabled = false, fal
 FollowPlayerEnabled, SpinBotEnabled, FreezePositionEnabled, InstantRespawnEnabled = false, false, false, false
 FallSpeedCap, SavedPosition, CoordsText, ClickTPConn, SpinConn = 200, nil, "", nil, nil
 AutoWalkEnabled, AutoWalkConn = false, nil
+TPWalkEnabled, TPWalkSpeed, TPWalkConn = false, 0.30, nil
 InvisibleEnabled = false
 AutoClickerEnabled, AutoClickerCPS = false, 10
 NoFallDamageEnabled, NoFallConn = false, nil
@@ -142,55 +143,216 @@ local function SetInfJump(state)
         end) end
     else if InfJumpConn then InfJumpConn:Disconnect(); InfJumpConn=nil end end
 end
--- ==============================================
--- TPWalk + Anti-Rubberband + SHIFT LOCK + JOYSTICK ARREGLADO
--- (controles integrados en la pestana Main; el motor no se toca)
--- ==============================================
-do
-    local Players = game:GetService("Players")
-    local RunService = game:GetService("RunService")
-    local UserInputService = game:GetService("UserInputService")
-    local Workspace = game:GetService("Workspace")
-    local player = Players.LocalPlayer
+-- TPWALK NUEVO (Anti-Rubberband + Shift Lock + Joystick OK) integrado a WindUI
+getgenv().TPWalkEnabled = false
+getgenv().TPWalkSpeed = TPWalkSpeed
+local function SetTPWalk(s)
+    TPWalkEnabled = s
+    getgenv().TPWalkEnabled = s
+    if s then
+        if not TPWalkConn then
+            TPWalkConn = RunService.RenderStepped:Connect(function()
+                if not getgenv().TPWalkEnabled then return end
 
-    getgenv().TPWalkEnabled = false
-    getgenv().TPWalkSpeed = 0.30
+                local character = LocalPlayer.Character
+                if not character then return end
 
-    RunService.RenderStepped:Connect(function()
-        if not getgenv().TPWalkEnabled then return end
-        local character = player.Character
-        if not character then return end
-        local humanoid = character:FindFirstChildOfClass("Humanoid")
-        local hrp = character:FindFirstChild("HumanoidRootPart")
-        local camera = Workspace.CurrentCamera
-        if not humanoid or not hrp or not camera then return end
+                local humanoid = character:FindFirstChildOfClass("Humanoid")
+                local hrp = character:FindFirstChild("HumanoidRootPart")
+                local camera = workspace.CurrentCamera
 
-        humanoid.Sit = true
-        humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
-        humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
-        humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
-        humanoid:SetStateEnabled(Enum.HumanoidStateType.PlatformStanding, false)
-        humanoid.PlatformStand = false
+                if not humanoid or not hrp or not camera then return end
 
-        local shiftLockActivo = (UserInputService.MouseBehavior == Enum.MouseBehavior.LockCenter)
-        if shiftLockActivo then
-            humanoid.AutoRotate = false
-            local camLook = camera.CFrame.LookVector
-            local targetY = math.atan2(-camLook.X, -camLook.Z)
-            hrp.CFrame = CFrame.new(hrp.Position) * CFrame.Angles(0, targetY, 0)
-        else
-            humanoid.AutoRotate = true
+                -- Anti-Rubberband
+                humanoid.Sit = true
+                humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
+                humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+                humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
+                humanoid:SetStateEnabled(Enum.HumanoidStateType.PlatformStanding, false)
+                humanoid.PlatformStand = false
+
+                -- Detectar Shift Lock
+                local shiftLockActivo = (UserInputService.MouseBehavior == Enum.MouseBehavior.LockCenter)
+
+                if shiftLockActivo then
+                    humanoid.AutoRotate = false
+                    local camLook = camera.CFrame.LookVector
+                    local targetY = math.atan2(-camLook.X, -camLook.Z)
+                    hrp.CFrame = CFrame.new(hrp.Position) * CFrame.Angles(0, targetY, 0)
+                else
+                    humanoid.AutoRotate = true
+                end
+
+                if humanoid.MoveDirection.Magnitude > 0.1 then
+                    local speedMultiplier = getgenv().TPWalkSpeed * 55
+                    hrp.AssemblyLinearVelocity = Vector3.new(
+                        humanoid.MoveDirection.X * speedMultiplier,
+                        hrp.AssemblyLinearVelocity.Y,
+                        humanoid.MoveDirection.Z * speedMultiplier
+                    )
+                end
+            end)
         end
+    else
+        if TPWalkConn then TPWalkConn:Disconnect(); TPWalkConn = nil end
+        pcall(function()
+            local character = LocalPlayer.Character
+            if character then
+                local humanoid = character:FindFirstChildOfClass("Humanoid")
+                if humanoid then
+                    humanoid.Sit = false
+                    humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, true)
+                    humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, true)
+                    humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, true)
+                    humanoid:SetStateEnabled(Enum.HumanoidStateType.PlatformStanding, true)
+                    humanoid.AutoRotate = true
+                end
+            end
+        end)
+    end
+end
 
-        if humanoid.MoveDirection.Magnitude > 0.1 then
-            local speedMultiplier = getgenv().TPWalkSpeed * 55
-            hrp.AssemblyLinearVelocity = Vector3.new(
-                humanoid.MoveDirection.X * speedMultiplier,
-                hrp.AssemblyLinearVelocity.Y,
-                humanoid.MoveDirection.Z * speedMultiplier
-            )
+-- ⚔️ FUNCIÓN ATAQUE RÁPIDO
+local function SetFlashAttack(s)
+    FlashAttackEnabled = s
+    if s then
+        if not FlashConn then
+            FlashConn = RunService.Heartbeat:Connect(function()
+                if not FlashAttackEnabled or not Character then return end
+                local tool = Character:FindFirstChildWhichIsA("Tool")
+                if not tool then return end
+                pcall(function()
+                    for _ = 1, FlashMultiplier do
+                        tool:Activate()
+                    end
+                    for _, v in pairs(tool:GetDescendants()) do
+                        if v:IsA("NumberValue") or v:IsA("IntValue") then
+                            local name = v.Name:lower()
+                            if name:find("cooldown") or name:find("delay") or name:find("rate") or name:find("time") then
+                                v.Value = 0
+                            end
+                        end
+                    end
+                end)
+            end)
         end
-    end)
+    else
+        if FlashConn then FlashConn:Disconnect(); FlashConn = nil end
+    end
+end
+
+-- 🛡️ FUNCIÓN SIT PROTECTOR (Escudo)
+local function GuardarEstadosOriginalesSit(Personaje)
+    if not Personaje then return end
+    local Hum = Personaje:FindFirstChildWhichIsA("Humanoid")
+    if not Hum then return end
+    SitEstadosOriginales = {
+        Sit = false,
+        PlatformStand = false,
+        AutoRotate = true,
+        Seated = Hum:GetStateEnabled(Enum.HumanoidStateType.Seated),
+        FallingDown = Hum:GetStateEnabled(Enum.HumanoidStateType.FallingDown),
+        Ragdoll = Hum:GetStateEnabled(Enum.HumanoidStateType.Ragdoll),
+        PlatformStanding = Hum:GetStateEnabled(Enum.HumanoidStateType.PlatformStanding),
+    }
+end
+
+local function RestaurarTodoNormalSit()
+    local Pj = LocalPlayer.Character
+    if not Pj then return end
+    local Hum = Pj:FindFirstChildWhichIsA("Humanoid")
+    local Raiz = Pj:FindFirstChild("HumanoidRootPart")
+    if not Hum then return end
+    Hum.Sit = SitEstadosOriginales.Sit
+    Hum.PlatformStand = SitEstadosOriginales.PlatformStand
+    Hum.AutoRotate = SitEstadosOriginales.AutoRotate
+    Hum:SetStateEnabled(Enum.HumanoidStateType.Seated, SitEstadosOriginales.Seated)
+    Hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, SitEstadosOriginales.FallingDown)
+    Hum:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, SitEstadosOriginales.Ragdoll)
+    Hum:SetStateEnabled(Enum.HumanoidStateType.PlatformStanding, SitEstadosOriginales.PlatformStanding)
+end
+
+local function CrearSitGui()
+    if SitGui then return end
+    local Gui = Instance.new("ScreenGui")
+    Gui.Name = "SitProtector"
+    Gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+    Gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    Gui.ResetOnSpawn = false
+
+    local Marco = Instance.new("Frame")
+    Marco.Size = UDim2.new(0, 120, 0, 55)
+    Marco.Position = UDim2.new(0.02, 0, 0.02, 0)
+    Marco.BackgroundColor3 = Color3.fromRGB(250, 235, 170)
+    Marco.BorderColor3 = Color3.fromRGB(245, 210, 90)
+    Marco.BorderSizePixel = 2
+    Marco.Active = true
+    Marco.Draggable = true
+    Marco.Parent = Gui
+
+    local Boton = Instance.new("TextButton")
+    Boton.Size = UDim2.new(0, 90, 0, 35)
+    Boton.Position = UDim2.new(0.5, -45, 0.5, -17)
+    Boton.BackgroundColor3 = Color3.fromRGB(245, 210, 90)
+    Boton.TextColor3 = Color3.fromRGB(70, 60, 40)
+    Boton.Font = Enum.Font.GothamBold
+    Boton.TextSize = 12
+    Boton.Text = "OFF"
+    Boton.AutoLocalize = false
+    Boton.Parent = Marco
+
+    SitGui = {Gui=Gui, Marco=Marco, Boton=Boton}
+end
+
+local function SetSitProtector(s)
+    if s and SitProtectorEnabled then return end
+    SitProtectorEnabled = s
+    CrearSitGui()
+
+    if s then
+        SitGui.Boton.Text = "ON"
+        SitGui.Boton.BackgroundColor3 = Color3.fromRGB(170, 245, 180)
+        GuardarEstadosOriginalesSit(LocalPlayer.Character)
+
+        SitConexiones.Bucle = RunService.Heartbeat:Connect(function()
+            local Pj = LocalPlayer.Character
+            if not Pj then return end
+            local Hum = Pj:FindFirstChildWhichIsA("Humanoid")
+            local Raiz = Pj:FindFirstChild("HumanoidRootPart")
+            if not Hum or not Raiz then return end
+
+            Hum.Sit = true
+            Hum:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
+            Hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+            Hum:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
+            Hum:SetStateEnabled(Enum.HumanoidStateType.PlatformStanding, false)
+            Hum.AutoRotate = true
+            Hum.PlatformStand = false
+
+            if math.abs(Raiz.RotVelocity.Y) > 8 then
+                Raiz.RotVelocity = Vector3.new(0, math.sign(Raiz.RotVelocity.Y) * 8, 0)
+            end
+
+            for _, Pieza in Pj:GetChildren() do
+                if Pieza:IsA("Weld") or Pieza:IsA("WeldConstraint") or Pieza:IsA("Motor6D") then
+                    if Pieza.Name ~= "RootJoint" and Pieza.Name ~= "Neck" and Pieza.Name ~= "Waist"
+                    and not Pieza:FindFirstAncestorWhichIsA("Tool") then
+                        Pieza:Destroy()
+                    end
+                end
+            end
+        end)
+    else
+        if SitGui then
+            SitGui.Boton.Text = "OFF"
+            SitGui.Boton.BackgroundColor3 = Color3.fromRGB(245, 210, 90)
+        end
+        if SitConexiones.Bucle then
+            SitConexiones.Bucle:Disconnect()
+            SitConexiones.Bucle = nil
+        end
+        RestaurarTodoNormalSit()
+    end
 end
 
 LocalPlayer.CharacterAdded:Connect(function()
@@ -330,59 +492,6 @@ local function SetAutoClicker(s)
 end
 
 -- 🛡️ NO FALL DAMAGE (universal)
--- ⚔️ ATAQUE RÁPIDO (sin clicks simulados: solo tool:Activate + reducir cooldowns)
-local function SetFlashAttack(s)
-    FlashAttackEnabled = s
-    if s then
-        if not FlashConn then
-            FlashConn = RunService.Heartbeat:Connect(function()
-                if not FlashAttackEnabled or not Character then return end
-                local tool = Character:FindFirstChildWhichIsA("Tool")
-                if not tool then return end
-                pcall(function()
-                    for _ = 1, FlashMultiplier do
-                        tool:Activate()
-                    end
-                    for _, v in pairs(tool:GetDescendants()) do
-                        if v:IsA("NumberValue") or v:IsA("IntValue") then
-                            local name = v.Name:lower()
-                            if name:find("cooldown") or name:find("delay")
-                            or name:find("rate") or name:find("time") then
-                                v.Value = 0
-                            end
-                        end
-                    end
-                end)
-            end)
-        end
-    else
-        if FlashConn then
-            FlashConn:Disconnect()
-            FlashConn = nil
-        end
-    end
-end
-
--- 🦘 AUTO JUMP (Bunny Hop real: salta automatico al tocar el suelo)
-local AutoJumpConn = nil
-local function SetAutoJump(state)
-    AutoJumpEnabled = state
-    if state then
-        if not AutoJumpConn then
-            AutoJumpConn = RunService.RenderStepped:Connect(function()
-                if not AutoJumpEnabled then return end
-                pcall(function()
-                    if Humanoid and Humanoid.FloorMaterial ~= Enum.Material.Air then
-                        Humanoid.Jump = true
-                    end
-                end)
-            end)
-        end
-    else
-        if AutoJumpConn then AutoJumpConn:Disconnect(); AutoJumpConn = nil end
-    end
-end
-
 local function SetNoFallDamage(s)
     NoFallDamageEnabled = s
     if s then
@@ -824,6 +933,8 @@ local function GuardarConfiguracion(silent)
     local Config = {
         FlashAttackEnabled = FlashAttackEnabled,
         FlashMultiplier = FlashMultiplier,
+        TPWalkEnabled = TPWalkEnabled,
+        TPWalkSpeed = TPWalkSpeed,
         NoFrictionEnabled = NoFrictionEnabled,
         InvisibleEnabled = InvisibleEnabled,
         FlyEnabled = FlyEnabled,
@@ -867,8 +978,6 @@ local function GuardarConfiguracion(silent)
         AntiFreezeEnabled = AntiFreezeEnabled,
         AntiReportEnabled = AntiReportEnabled,
         AntiVCEnabled = AntiVCEnabled,
-        TPWalkEnabled = getgenv().TPWalkEnabled,
-        TPWalkSpeed = getgenv().TPWalkSpeed,
         ServidoresVisitados = ServidoresVisitados,
         AccentR = math.floor(ColorAccent.R*255),
         AccentG = math.floor(ColorAccent.G*255),
@@ -925,11 +1034,11 @@ local function CargarConfiguracion()
             Saved.ServidoresVisitados = t
         end
         if Saved.FlashMultiplier then FlashMultiplier = Saved.FlashMultiplier end
+        if Saved.TPWalkSpeed then TPWalkSpeed = Saved.TPWalkSpeed end; getgenv().TPWalkSpeed = TPWalkSpeed
         if Saved.FlySpeed then FlySpeed = Saved.FlySpeed end
         if Saved.FallSpeedCap then FallSpeedCap = Saved.FallSpeedCap end
         if Saved.AutoClickerCPS then AutoClickerCPS = Saved.AutoClickerCPS end
         if Saved.AccentR then ColorAccent = Color3.fromRGB(Saved.AccentR, Saved.AccentG or 160, Saved.AccentB or 80) end
-        if Saved.TPWalkSpeed then getgenv().TPWalkSpeed = Saved.TPWalkSpeed end
     end)
 end
 
@@ -957,6 +1066,7 @@ local function AplicarConfiguracion()
         end
     end)
     Try(function() if Saved.FlashAttackEnabled then SetFlashAttack(true) end end)
+    Try(function() if Saved.TPWalkEnabled then SetTPWalk(true) end end)
     Try(function() if Saved.FlyEnabled then StartFly() end end)
     Try(function() if Saved.NoclipEnabled then SetNoclip(true) end end)
     Try(function() if Saved.InfJumpEnabled then SetInfJump(true) end end)
@@ -980,13 +1090,12 @@ local function AplicarConfiguracion()
     Try(function() if Saved.AutoRejoinEnabled~=nil then AutoRejoinEnabled=Saved.AutoRejoinEnabled end end)
     Try(function() if Saved.InstantRespawnEnabled~=nil then InstantRespawnEnabled=Saved.InstantRespawnEnabled end end)
     Try(function() if Saved.FollowPlayerEnabled~=nil then FollowPlayerEnabled=Saved.FollowPlayerEnabled end end)
-    Try(function() if Saved.AutoJumpEnabled then SetAutoJump(true) end end)
+    Try(function() if Saved.AutoJumpEnabled~=nil then AutoJumpEnabled=Saved.AutoJumpEnabled end end)
     Try(function() if Saved.WalkOnWaterEnabled~=nil then WalkOnWaterEnabled=Saved.WalkOnWaterEnabled end end)
     Try(function() if Saved.AntiKickEnabled then SetAntiKick(true) end end)
     Try(function() if Saved.AntiResetEnabled then SetAntiReset(true) end end)
     Try(function() if Saved.AntiReportEnabled then SetAntiReport(true) end end)
     Try(function() if Saved.AntiVCEnabled then SetAntiVC(true) end end)
-    Try(function() if Saved.TPWalkEnabled then getgenv().TPWalkEnabled = true end end)
     Try(function() if Saved.AntiSitEnabled~=nil then AntiSitEnabled=Saved.AntiSitEnabled end end)
     Try(function() if Saved.AntiFlingEnabled~=nil then AntiFlingEnabled=Saved.AntiFlingEnabled end end)
     Try(function() if Saved.AntiFreezeEnabled~=nil then AntiFreezeEnabled=Saved.AntiFreezeEnabled end end)
@@ -1032,9 +1141,9 @@ MainTab:Space({Size=12})
 local MainRow1 = MainTab:Group({})
 MainRow1:Button({Title="Teleport a Ti", Icon="map-pin", Justify="Center", Callback=function() local m=LocalPlayer:GetMouse(); if RootPart then RootPart.CFrame=CFrame.new(m.Hit.Position+Vector3.new(0,3,0)) end end})
 MainRow1:Space({Size=8})
-MainRow1:Toggle({Title="TPWalk (Anti-Rubberband)", Def=Get("TPWalkEnabled", false), Callback=AS(function(s) getgenv().TPWalkEnabled = s end)})
+MainRow1:Toggle({Title="TPWalk (Bypass)", Def=Get("TPWalkEnabled", false), Callback=AS(SetTPWalk)})
 MainTab:Space({Size=8})
-MainTab:Slider({Title="Velocidad TPWalk", Step=0.05, Value={Min=0.01, Max=20, Default=Get("TPWalkSpeed", 0.30)}, Callback=AS(function(v) getgenv().TPWalkSpeed = v end)})
+MainTab:Slider({Title="Velocidad TPWalk", Step=0.05, Value={Min=0.01, Max=20, Default=Get("TPWalkSpeed", 0.30)}, Callback=AS(function(v) TPWalkSpeed = v; getgenv().TPWalkSpeed = v end)})
 MainTab:Space({Size=8})
 local MainRow2 = MainTab:Group({})
 MainRow2:Toggle({Title="Salto Alto", Def=false, Callback=AS(function(s) if Humanoid then Humanoid.JumpPower=s and 120 or 50 end end)})
@@ -1220,7 +1329,7 @@ GMov:Toggle({Title="Fly (Volar)", Def=Get("FlyEnabled", false), Callback=AS(func
 GMov:Toggle({Title="Noclip", Def=Get("NoclipEnabled", false), Callback=AS(SetNoclip)}); GMov:Space({Size=6})
 GMov:Toggle({Title="Salto Infinito", Def=Get("InfJumpEnabled", false), Callback=AS(SetInfJump)}); GMov:Space({Size=6})
 GMov:Toggle({Title="Click TP (Clic Der.)", Def=Get("ClickTPEnabled", false), Callback=AS(SetClickTP)}); GMov:Space({Size=6})
-GMov:Toggle({Title="Auto-Jump (Bunny Hop)", Def=Get("AutoJumpEnabled", false), Callback=AS(SetAutoJump)}); GMov:Space({Size=6})
+GMov:Toggle({Title="Auto-Jump (Bunny Hop)", Def=Get("AutoJumpEnabled", false), Callback=AS(function(s) AutoJumpEnabled=s end)}); GMov:Space({Size=6})
 GMov:Toggle({Title="Walk on Water", Def=Get("WalkOnWaterEnabled", false), Callback=AS(function(s) WalkOnWaterEnabled=s end)}); GMov:Space({Size=6})
 GMov:Toggle({Title="Spin Bot", Def=Get("SpinBotEnabled", false), Callback=AS(SetSpinBot)}); GMov:Space({Size=6})
 GMov:Toggle({Title="Freeze Position", Def=Get("FreezePositionEnabled", false), Callback=AS(SetFreeze)}); GMov:Space({Size=6})
@@ -1747,7 +1856,7 @@ H:Space({Size=10})
 H:Section({Title="Movimiento Extra", TextSize=20}); H:Space({Size=6})
 local ME=H:Section({Title="Movimiento Adicional", Box=true, BoxBorder=true, Opened=true})
 ME:Toggle({Title="Click TP (Clic Derecho)", Def=Get("ClickTPEnabled", false), Callback=AS(SetClickTP)}); ME:Space({Size=6})
-ME:Toggle({Title="Auto-Jump (Bunny Hop)", Def=Get("AutoJumpEnabled", false), Callback=AS(SetAutoJump)}); ME:Space({Size=6})
+ME:Toggle({Title="Auto-Jump (Bunny Hop)", Def=Get("AutoJumpEnabled", false), Callback=AS(function(s) AutoJumpEnabled=s end)}); ME:Space({Size=6})
 ME:Toggle({Title="Walk on Water", Def=Get("WalkOnWaterEnabled", false), Callback=AS(function(s) WalkOnWaterEnabled=s end)}); ME:Space({Size=6})
 ME:Toggle({Title="Spin Bot", Def=Get("SpinBotEnabled", false), Callback=AS(SetSpinBot)}); ME:Space({Size=6})
 ME:Toggle({Title="Freeze Position", Def=Get("FreezePositionEnabled", false), Callback=AS(SetFreeze)}); ME:Space({Size=6})
@@ -1943,4 +2052,4 @@ end)
 pcall(function() Window:SelectTab(PlayerTab) end)
 pcall(function() Window:SelectTab(1) end)
 
-WindUI:Notify({Title="DENJI•ALEX", Content="v35: Ataque Rapido sin expulsion (cooldown reset)", Duration=4})
+WindUI:Notify({Title="DENJI•ALEX", Content="v32: TPWalk nuevo (Anti-Rubberband + Shift Lock + Joystick OK)", Duration=4})
