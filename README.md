@@ -330,33 +330,36 @@ local function SetAutoClicker(s)
 end
 
 -- 🛡️ NO FALL DAMAGE (universal)
--- ⚔️ ATAQUE RAPIDO (real: spam de tool:Activate + click izquierdo)
-local function SetFlashAttack(state)
-    FlashAttackEnabled = state
-    if state then
+-- ⚔️ ATAQUE RÁPIDO (sin clicks simulados: solo tool:Activate + reducir cooldowns)
+local function SetFlashAttack(s)
+    FlashAttackEnabled = s
+    if s then
         if not FlashConn then
-            FlashConn = task.spawn(function()
-                while FlashAttackEnabled do
-                    pcall(function()
-                        local char = LocalPlayer.Character
-                        if char then
-                            local tool = char:FindFirstChildOfClass("Tool")
-                            if tool then
-                                for i = 1, FlashMultiplier do pcall(function() tool:Activate() end) end
+            FlashConn = RunService.Heartbeat:Connect(function()
+                if not FlashAttackEnabled or not Character then return end
+                local tool = Character:FindFirstChildWhichIsA("Tool")
+                if not tool then return end
+                pcall(function()
+                    for _ = 1, FlashMultiplier do
+                        tool:Activate()
+                    end
+                    for _, v in pairs(tool:GetDescendants()) do
+                        if v:IsA("NumberValue") or v:IsA("IntValue") then
+                            local name = v.Name:lower()
+                            if name:find("cooldown") or name:find("delay")
+                            or name:find("rate") or name:find("time") then
+                                v.Value = 0
                             end
                         end
-                        pcall(function()
-                            local vu = game:GetService("VirtualUser")
-                            vu:CaptureController()
-                            vu:ClickButton1(Vector2.new())
-                        end)
-                    end)
-                    task.wait(math.max(0.03, 1 / FlashMultiplier))
-                end
+                    end
+                end)
             end)
         end
     else
-        if FlashConn then pcall(function() task.cancel(FlashConn) end); FlashConn = nil end
+        if FlashConn then
+            FlashConn:Disconnect()
+            FlashConn = nil
+        end
     end
 end
 
@@ -1940,4 +1943,4 @@ end)
 pcall(function() Window:SelectTab(PlayerTab) end)
 pcall(function() Window:SelectTab(1) end)
 
-WindUI:Notify({Title="DENJI•ALEX", Content="v34: Ataque Rapido arreglado + Auto Jump real", Duration=4})
+WindUI:Notify({Title="DENJI•ALEX", Content="v35: Ataque Rapido sin expulsion (cooldown reset)", Duration=4})
