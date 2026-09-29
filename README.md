@@ -212,25 +212,6 @@ local function SetTPWalk(s)
     end
 end
 
-local AutoJumpConn = nil
-local function SetAutoJump(s)
-    AutoJumpEnabled = s
-    if s then
-        if not AutoJumpConn then
-            AutoJumpConn = RunService.RenderStepped:Connect(function()
-                if not AutoJumpEnabled then return end
-                if not Humanoid or not Character then return end
-                -- solo salta si esta en el suelo
-                if Humanoid.FloorMaterial ~= Enum.Material.Air then
-                    pcall(function() Humanoid:ChangeState(Enum.HumanoidStateType.Jumping) end)
-                end
-            end)
-        end
-    else
-        if AutoJumpConn then AutoJumpConn:Disconnect(); AutoJumpConn = nil end
-    end
-end
-
 -- ⚔️ FUNCIÓN ATAQUE RÁPIDO
 local function SetFlashAttack(s)
     FlashAttackEnabled = s
@@ -1109,7 +1090,7 @@ local function AplicarConfiguracion()
     Try(function() if Saved.AutoRejoinEnabled~=nil then AutoRejoinEnabled=Saved.AutoRejoinEnabled end end)
     Try(function() if Saved.InstantRespawnEnabled~=nil then InstantRespawnEnabled=Saved.InstantRespawnEnabled end end)
     Try(function() if Saved.FollowPlayerEnabled~=nil then FollowPlayerEnabled=Saved.FollowPlayerEnabled end end)
-    Try(function() if Saved.AutoJumpEnabled then SetAutoJump(true) end end)
+    Try(function() if Saved.AutoJumpEnabled~=nil then AutoJumpEnabled=Saved.AutoJumpEnabled end end)
     Try(function() if Saved.WalkOnWaterEnabled~=nil then WalkOnWaterEnabled=Saved.WalkOnWaterEnabled end end)
     Try(function() if Saved.AntiKickEnabled then SetAntiKick(true) end end)
     Try(function() if Saved.AntiResetEnabled then SetAntiReset(true) end end)
@@ -1167,8 +1148,7 @@ MainTab:Space({Size=8})
 local MainRow2 = MainTab:Group({})
 MainRow2:Toggle({Title="Salto Alto", Def=false, Callback=AS(function(s) if Humanoid then Humanoid.JumpPower=s and 120 or 50 end end)})
 MainRow2:Space({Size=8})
-MainRow2:Space({Size=8})
-MainRow2:Toggle({Title="AutoJump (Auto Salto)", Def=Get("AutoJumpEnabled", false), Callback=AS(SetAutoJump)})
+MainRow2:Toggle({Title="Salto Infinito", Def=Get("InfJumpEnabled", false), Callback=AS(function(s) SetInfJump(s) end)})
 MainTab:Space({Size=8})
 local MainRow3 = MainTab:Group({})
 MainRow3:Toggle({Title="Sin Fricción", Def=Get("NoFrictionEnabled", false), Callback=AS(function(s) NoFrictionEnabled=s end)})
@@ -1349,7 +1329,7 @@ GMov:Toggle({Title="Fly (Volar)", Def=Get("FlyEnabled", false), Callback=AS(func
 GMov:Toggle({Title="Noclip", Def=Get("NoclipEnabled", false), Callback=AS(SetNoclip)}); GMov:Space({Size=6})
 GMov:Toggle({Title="Salto Infinito", Def=Get("InfJumpEnabled", false), Callback=AS(SetInfJump)}); GMov:Space({Size=6})
 GMov:Toggle({Title="Click TP (Clic Der.)", Def=Get("ClickTPEnabled", false), Callback=AS(SetClickTP)}); GMov:Space({Size=6})
-GMov:Toggle({Title="Auto-Jump (Bunny Hop)", Def=Get("AutoJumpEnabled", false), Callback=AS(SetAutoJump)}); GMov:Space({Size=6})
+GMov:Toggle({Title="Auto-Jump (Bunny Hop)", Def=Get("AutoJumpEnabled", false), Callback=AS(function(s) AutoJumpEnabled=s end)}); GMov:Space({Size=6})
 GMov:Toggle({Title="Walk on Water", Def=Get("WalkOnWaterEnabled", false), Callback=AS(function(s) WalkOnWaterEnabled=s end)}); GMov:Space({Size=6})
 GMov:Toggle({Title="Spin Bot", Def=Get("SpinBotEnabled", false), Callback=AS(SetSpinBot)}); GMov:Space({Size=6})
 GMov:Toggle({Title="Freeze Position", Def=Get("FreezePositionEnabled", false), Callback=AS(SetFreeze)}); GMov:Space({Size=6})
@@ -1876,7 +1856,7 @@ H:Space({Size=10})
 H:Section({Title="Movimiento Extra", TextSize=20}); H:Space({Size=6})
 local ME=H:Section({Title="Movimiento Adicional", Box=true, BoxBorder=true, Opened=true})
 ME:Toggle({Title="Click TP (Clic Derecho)", Def=Get("ClickTPEnabled", false), Callback=AS(SetClickTP)}); ME:Space({Size=6})
-ME:Toggle({Title="Auto-Jump (Bunny Hop)", Def=Get("AutoJumpEnabled", false), Callback=AS(SetAutoJump)}); ME:Space({Size=6})
+ME:Toggle({Title="Auto-Jump (Bunny Hop)", Def=Get("AutoJumpEnabled", false), Callback=AS(function(s) AutoJumpEnabled=s end)}); ME:Space({Size=6})
 ME:Toggle({Title="Walk on Water", Def=Get("WalkOnWaterEnabled", false), Callback=AS(function(s) WalkOnWaterEnabled=s end)}); ME:Space({Size=6})
 ME:Toggle({Title="Spin Bot", Def=Get("SpinBotEnabled", false), Callback=AS(SetSpinBot)}); ME:Space({Size=6})
 ME:Toggle({Title="Freeze Position", Def=Get("FreezePositionEnabled", false), Callback=AS(SetFreeze)}); ME:Space({Size=6})
@@ -2072,4 +2052,4 @@ end)
 pcall(function() Window:SelectTab(PlayerTab) end)
 pcall(function() Window:SelectTab(1) end)
 
-WindUI:Notify({Title="DENJI•ALEX", Content="v33: AutoJump real agregado en Main", Duration=4})
+WindUI:Notify({Title="DENJI•ALEX", Content="v32: TPWalk nuevo (Anti-Rubberband + Shift Lock + Joystick OK)", Duration=4})
