@@ -1039,31 +1039,22 @@ _G.TargetModule = {
 getgenv().TargetModule = _G.TargetModule
 
 -- ============================================================
--- 💾 CONFIGURACIÓN PERSISTENTE (guardado al cambiar, NO cada 10s)
+-- 💾 AUTO-GUARDADO SILENCIOSO (en archivo — sobrevive a rejoins)
+-- Sin botón de guardar ni notificación: se guarda solo al cambiar
+-- cualquier ajuste, y se restaura SOLO al ejecutar el menú.
 -- ============================================================
 local Saved = {}
--- Estado persistente en carpeta oculta de CoreGui (sobrevive a re-ejecutar el script, no necesita writefile)
-local StateFolder = nil
-local function GetStateFolder()
-    if StateFolder and StateFolder.Parent then return StateFolder end
-    local ok, hui = pcall(function() return gethui and gethui() end)
-    local parent = (ok and hui) or game:GetService("CoreGui")
-    StateFolder = parent:FindFirstChild("DENJI_ALEX_SavedState")
-    if not StateFolder then
-        StateFolder = Instance.new("Folder")
-        StateFolder.Name = "DENJI_ALEX_SavedState"
-        pcall(function() StateFolder.Parent = parent end)
-    end
-    return StateFolder
-end
-local SaveNotified = false
+local ConfigFolder = "DENJI_ALEX"
+local ConfigFile = ConfigFolder .. "/Takemichi_Config.json"
+local HttpService = game:GetService("HttpService")
+
 local function Get(key, def)
     if Saved[key] ~= nil then return Saved[key] end
     return def
 end
 
-local function GuardarConfiguracion(silent)
-    local Config = {
+local function BuildConfig()
+    return {
         FlashAttackEnabled = FlashAttackEnabled,
         FlashMultiplier = FlashMultiplier,
         TPWalkEnabled = TPWalkEnabled,
@@ -1117,27 +1108,30 @@ local function GuardarConfiguracion(silent)
         AccentG = math.floor(ColorAccent.G*255),
         AccentB = math.floor(ColorAccent.B*255),
     }
+end
+
+local function DoSave()
     pcall(function()
-        local f = GetStateFolder()
-        for k, v in pairs(Config) do
-            if type(v) == "table" then
-                local keys = {}
-                for kid in pairs(v) do keys[#keys+1] = tostring(kid) end
-                f:SetAttribute(k, table.concat(keys, ","))
-            else
-                f:SetAttribute(k, v)
-            end
-        end
-        if not silent then
-            WindUI:Notify({Title="Configuración", Content="Guardada correctamente", Duration=3})
-        end
+        if not isfolder(ConfigFolder) then makefolder(ConfigFolder) end
+        writefile(ConfigFile, HttpService:JSONEncode(BuildConfig()))
+    end)
+end
+
+-- Guarda como máximo cada 0.4s (para no spamear al mover sliders)
+local SaveScheduled = false
+local function SaveConfig()
+    if SaveScheduled then return end
+    SaveScheduled = true
+    task.delay(0.4, function()
+        SaveScheduled = false
+        DoSave()
     end)
 end
 
 local function AS(fn)
     return function(...)
         if fn then fn(...) end
-        pcall(function() GuardarConfiguracion(true) end) -- guardado instantaneo en CoreGui
+        pcall(SaveConfig)
     end
 end
 
@@ -1150,30 +1144,25 @@ local function AplicarColor(c)
     pcall(function() if RefTPBtn then RefTPBtn.BackgroundColor3 = c end end)
     pcall(function() if Window and Window.SetAccent then Window:SetAccent(c) end end)
     pcall(function() if Window and Window.SetThemeColor then Window:SetThemeColor(c) end end)
-    pcall(function() GuardarConfiguracion(true) end)
+    pcall(SaveConfig)
 end
 
-local function CargarConfiguracion()
+local function LoadConfig()
     pcall(function()
-        local ok, hui = pcall(function() return gethui and gethui() end)
-        local parent = (ok and hui) or game:GetService("CoreGui")
-        local f = parent:FindFirstChild("DENJI_ALEX_SavedState")
-        if not f then return end
-        local attrs = f:GetAttributes()
-        if attrs then Saved = attrs end
-        if Saved.ServidoresVisitados and type(Saved.ServidoresVisitados) == "string" then
-            local t = {}
-            for kid in string.gmatch(Saved.ServidoresVisitados, "[^,]+") do t[kid] = true end
-            ServidoresVisitados = t
-            Saved.ServidoresVisitados = t
+        if isfolder(ConfigFolder) and isfile(ConfigFile) then
+            local data = HttpService:JSONDecode(readfile(ConfigFile))
+            if data then Saved = data end
         end
-        if Saved.FlashMultiplier then FlashMultiplier = Saved.FlashMultiplier end
-        if Saved.TPWalkSpeed then TPWalkSpeed = Saved.TPWalkSpeed end; getgenv().TPWalkSpeed = TPWalkSpeed
-        if Saved.FlySpeed then FlySpeed = Saved.FlySpeed end
-        if Saved.FallSpeedCap then FallSpeedCap = Saved.FallSpeedCap end
-        if Saved.AutoClickerCPS then AutoClickerCPS = Saved.AutoClickerCPS end
-        if Saved.AccentR then ColorAccent = Color3.fromRGB(Saved.AccentR, Saved.AccentG or 160, Saved.AccentB or 80) end
     end)
+    if Saved.ServidoresVisitados and type(Saved.ServidoresVisitados) == "table" then
+        ServidoresVisitados = Saved.ServidoresVisitados
+    end
+    if Saved.FlashMultiplier then FlashMultiplier = Saved.FlashMultiplier end
+    if Saved.TPWalkSpeed then TPWalkSpeed = Saved.TPWalkSpeed end; getgenv().TPWalkSpeed = TPWalkSpeed
+    if Saved.FlySpeed then FlySpeed = Saved.FlySpeed end
+    if Saved.FallSpeedCap then FallSpeedCap = Saved.FallSpeedCap end
+    if Saved.AutoClickerCPS then AutoClickerCPS = Saved.AutoClickerCPS end
+    if Saved.AccentR then ColorAccent = Color3.fromRGB(Saved.AccentR, Saved.AccentG or 160, Saved.AccentB or 80) end
 end
 
 local function AplicarConfiguracion()
@@ -1236,7 +1225,7 @@ local function AplicarConfiguracion()
     Try(function() if Saved.AntiFreezeEnabled~=nil then AntiFreezeEnabled=Saved.AntiFreezeEnabled end end)
 end
 
-CargarConfiguracion()
+LoadConfig()
 
 local Window = WindUI:CreateWindow({
     Title="Takemichi", Icon="sword", Author="TOKI🇯🇵", Folder="DENJI•ALEX",
@@ -1533,7 +1522,7 @@ local RJTab = Window:Tab({Title="RJ=New.SV", Icon="globe"})
 local AutoOn = false
 local AutoCoroutine = nil
 local ServerList = {}
-local ServidoresVisitados = {}
+ServidoresVisitados = ServidoresVisitados or {}
 local RJLimit = 1 -- reemplaza a LimitBox.Text
 local RJStatus, RJCounter = nil, nil
 local ServerListGui = nil -- ventana independiente de la lista
@@ -1579,7 +1568,7 @@ local function JoinBest()
         if S.Players <= Limit then table.insert(Candidates, S) end
     end
     local Target = #Candidates > 0 and Candidates[math.random(#Candidates)] or Servers[math.random(#Servers)]
-    ServidoresVisitados[Target.Id] = true; pcall(function() GuardarConfiguracion(true) end)
+    ServidoresVisitados[Target.Id] = true; pcall(SaveConfig)
     if RJStatus and RJStatus.SetDesc then RJStatus:SetDesc("Teletransportando...") end
     pcall(function() TeleportService:TeleportToPlaceInstance(game.PlaceId, Target.Id, LocalPlayer) end)
 end
@@ -1727,7 +1716,7 @@ local function AbrirListaServidores()
             pcall(function() WindUI:Notify({Title="Servidores", Content="Selecciona un servidor primero", Duration=2}) end)
             return
         end
-        pcall(function() ServidoresVisitados[SelectedServer.Id] = true; GuardarConfiguracion(true) end)
+        pcall(function() ServidoresVisitados[SelectedServer.Id] = true; pcall(SaveConfig) end)
         pcall(function() WindUI:Notify({Title="Servidores", Content="Teletransportando al servidor seleccionado...", Duration=2}) end)
         pcall(function() TeleportService:TeleportToPlaceInstance(game.PlaceId, SelectedServer.Id, LocalPlayer) end)
     end)
@@ -2152,4 +2141,4 @@ WindUI:Notify({Title="TOKI🇯🇵", Content="v33: Invisible Ultra integrado en 
 
 -- [v33] La función "Invisible Ultra" (antes el botón flotante TK del final) ya está
 -- integrada como toggle en la pestaña Main y con atajo de tecla G. Se eliminó el
--- botón flotante independiente y el bloque _G.a para evitar duplicados. 
+-- botón flotante independiente y el bloque _G.a para evitar duplicados.
