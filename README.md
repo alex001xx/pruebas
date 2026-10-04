@@ -611,6 +611,76 @@ LocalPlayer.CharacterAdded:Connect(function()
 end)
 
 -- ============================================================
+-- 🎈 BOTONES FLOTANTES (Invisible / TPWalk / Ataque Rápido) [v33.1]
+-- Cada botón circular arrastrable enciende/apaga su función.
+-- Se muestran/ocultan desde los toggles de la pestaña Main.
+-- ============================================================
+local BotonesFlotantes = {}
+local FlotCount = 0
+local function CrearFlotante(id, texto, colorOn, getEstado, alternar)
+    FlotCount = FlotCount + 1
+    local gui = Instance.new("ScreenGui")
+    gui.Name = "Flotante_"..id
+    gui.ResetOnSpawn = false
+    gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    gui.Enabled = false -- oculto por defecto; se muestra con el toggle del menú
+    local puesto = pcall(function()
+        if gethui then gui.Parent = gethui() else gui.Parent = game:GetService("CoreGui") end
+    end)
+    if not puesto then pcall(function() gui.Parent = LocalPlayer:WaitForChild("PlayerGui") end) end
+
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0, 54, 0, 54)
+    btn.Position = UDim2.new(0.5, -100 + ((FlotCount-1)*64), 0.88, 0)
+    btn.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+    btn.Text = texto
+    btn.Font = Enum.Font.GothamBold
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.TextSize = 13
+    btn.BorderSizePixel = 0
+    btn.Active = true
+    btn.Draggable = true
+    btn.AutoLocalize = false
+    btn.Parent = gui
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(1, 0)
+    local stroke = Instance.new("UIStroke")
+    stroke.Thickness = 2.5
+    stroke.Parent = btn
+
+    local function Actualizar()
+        local on = getEstado()
+        btn.BackgroundColor3 = on and colorOn or Color3.fromRGB(40, 40, 50)
+        btn.Text = on and (texto.." ✓") or texto
+        stroke.Color = on and Color3.fromRGB(255, 255, 255) or colorOn
+    end
+    Actualizar()
+
+    btn.MouseButton1Click:Connect(function()
+        alternar(not getEstado())
+        task.wait(0.05)
+        Actualizar()
+    end)
+
+    BotonesFlotantes[id] = {Gui=gui, Actualizar=Actualizar}
+end
+
+CrearFlotante("Invisible", "INV", Color3.fromRGB(140, 90, 240),
+    function() return HidePosEnabled end, function(s) SetHidePos(s) end)
+CrearFlotante("TPWalk", "TPW", Color3.fromRGB(60, 190, 100),
+    function() return TPWalkEnabled end, function(s) SetTPWalk(s) end)
+CrearFlotante("Ataque", "ATA", Color3.fromRGB(230, 80, 80),
+    function() return FlashAttackEnabled end, function(s) SetFlashAttack(s) end)
+
+-- Sincroniza el color/texto de los botones flotantes con los toggles del menú
+task.spawn(function()
+    while task.wait(0.3) do
+        for _, f in pairs(BotonesFlotantes) do
+            if f.Gui.Enabled then f.Actualizar() end
+        end
+    end
+end)
+
+-- ============================================================
 -- 🛡️ NUEVOS ESCUDOS REALES (antes la pestaña no hacía NADA)
 -- ============================================================
 local function SetAntiKick(s)
@@ -1225,6 +1295,15 @@ local MainRow4 = MainTab:Group({})
 MainRow4:Toggle({Title="Invisible (Local)", Def=Get("InvisibleEnabled", false), Callback=AS(function(s) InvisibleEnabled=s; if Character then for _,v in pairs(Character:GetDescendants()) do if v:IsA("BasePart") then v.LocalTransparencyModifier=s and 1 or 0 end end end end)})
 MainRow4:Space({Size=8})
 MainRow4:Toggle({Title="Invisible Ultra (Oculta Posición) [G]", Def=Get("HidePosEnabled", false), Callback=AS(SetHidePos)})
+MainTab:Space({Size=12})
+-- [v33.1] Mostrar/ocultar los botones flotantes (cada uno enciende/apaga su función)
+MainTab:Section({Title="🎈 Botones Flotantes (tocá para prender/apagar)", TextSize=18}); MainTab:Space({Size=6})
+local FlotSec = MainTab:Section({Title="", Box=true, BoxBorder=true, Opened=true})
+FlotSec:Toggle({Title="Mostrar Botón: Invisible Ultra", Def=false, Callback=function(s) if BotonesFlotantes.Invisible then BotonesFlotantes.Invisible.Gui.Enabled = s end end})
+FlotSec:Space({Size=6})
+FlotSec:Toggle({Title="Mostrar Botón: TPWalk (Bypass)", Def=false, Callback=function(s) if BotonesFlotantes.TPWalk then BotonesFlotantes.TPWalk.Gui.Enabled = s end end})
+FlotSec:Space({Size=6})
+FlotSec:Toggle({Title="Mostrar Botón: Ataque Rápido", Def=false, Callback=function(s) if BotonesFlotantes.Ataque then BotonesFlotantes.Ataque.Gui.Enabled = s end end})
 MainTab:Space({Size=12})
 MainTab:Section({Title="Ajustes de Movimiento", TextSize=18}); MainTab:Space({Size=6})
 local MainSliders = MainTab:Section({Title="Sliders Rápidos", Box=true, BoxBorder=true, Opened=true})
