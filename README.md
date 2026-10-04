@@ -2152,4 +2152,4 @@ WindUI:Notify({Title="TOKI🇯🇵", Content="v33: Invisible Ultra integrado en 
 
 -- [v33] La función "Invisible Ultra" (antes el botón flotante TK del final) ya está
 -- integrada como toggle en la pestaña Main y con atajo de tecla G. Se eliminó el
--- botón flotante independiente y el bloque _G.a para evitar duplicados..
+-- botón flotante independiente y el bloque _G.a para evitar duplicados. 
