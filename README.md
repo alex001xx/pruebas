@@ -610,7 +610,7 @@ LocalPlayer.CharacterAdded:Connect(function()
 end)
 
 -- ============================================================
--- 🎈 BOTONES FLOTANTES [v33.1]
+-- 🎈 BOTONES FLOTANTES (Invisible / TPWalk / Ataque Rápido) [v33.1]
 -- ============================================================
 local BotonesFlotantes = {}
 local FlotCount = 0
@@ -793,7 +793,7 @@ local function SetAntiVC(s)
 end
 
 -- ============================================================
--- 🎯 FUNCIONES DEL MODULO TARGET
+-- 🎯 FUNCIONES DEL MODULO TARGET (integradas)
 -- ============================================================
 local function TargetSafe(fn) local st, r = pcall(fn); return st and r or nil end
 
@@ -1047,9 +1047,6 @@ local function Get(key, def)
     return def
 end
 
-local ColorAccent = Color3.fromRGB(255, 160, 80)
-local RefBordeCirculo, RefBordePerfil, RefTPBtn = nil, nil, nil
-
 local function BuildConfig()
     return {
         FlashAttackEnabled = FlashAttackEnabled,
@@ -1131,6 +1128,8 @@ local function AS(fn)
     end
 end
 
+local ColorAccent = Color3.fromRGB(255, 160, 80)
+local RefBordeCirculo, RefBordePerfil, RefTPBtn = nil, nil, nil
 local function AplicarColor(c)
     ColorAccent = c
     pcall(function() if RefBordeCirculo then RefBordeCirculo.Color = c end end)
@@ -1225,9 +1224,67 @@ local Window = WindUI:CreateWindow({
     Title="Takemichi", Icon="sword", Author="TOKI🇯🇵", Folder="DENJI•ALEX",
     Size=UDim2.fromOffset(600,540), MinSize=Vector2.new(520,420), MaxSize=Vector2.new(850,680),
     Transparent=true, Theme="Dark", Resizable=true, SideBarWidth=160,
-    Background="", HideSearchBar=true, Accent=Color3.fromRGB(255,255,255),
+    Background="rbxassetid://100863830944628", HideSearchBar=true, Accent=Color3.fromRGB(255,255,255),
     OpenButton={Title="TOKI🇯🇵", Icon="sword", Enabled=true, Draggable=true, OnlyMobile=false, CornerRadius=UDim.new(1,0), StrokeThickness=2, StrokeColor=Color3.fromRGB(255,255,255), Scale=1},
 })
+
+-- ============================================================
+-- 🖼️ FONDO PERSONALIZADO (ID: 100863830944628)
+-- Se inyecta manualmente para garantizar que se vea bien,
+-- con una capa oscura semitransparente para que el texto se lea.
+-- ============================================================
+task.spawn(function()
+    task.wait(0.6)
+    if not Window then return end
+    local MainFrame = nil
+    pcall(function() MainFrame = Window.UIElements and Window.UIElements.Main end)
+    if not MainFrame then pcall(function() MainFrame = Window.Container end) end
+    if not MainFrame then pcall(function() MainFrame = Window.Main end) end
+    if not MainFrame then
+        -- Buscador universal: recorre CoreGui buscando la ventana
+        pcall(function()
+            for _, gui in ipairs(game:GetService("CoreGui"):GetChildren()) do
+                if gui:IsA("ScreenGui") then
+                    local f = gui:FindFirstChildWhichIsA("Frame", true)
+                    if f and f.Size.X.Scale == 0 and f.Size.X.Offset >= 500 then
+                        MainFrame = f; break
+                    end
+                end
+            end
+        end)
+    end
+    if not MainFrame then return end
+
+    -- Capa oscura semitransparente (para que el texto se lea bien)
+    local Oscurecer = Instance.new("Frame")
+    Oscurecer.Name = "CapaOscuraFondo"
+    Oscurecer.Parent = MainFrame
+    Oscurecer.ZIndex = -99
+    Oscurecer.Size = UDim2.new(1, 0, 1, 0)
+    Oscurecer.Position = UDim2.new(0, 0, 0, 0)
+    Oscurecer.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    Oscurecer.BackgroundTransparency = 0.45  -- 0 = totalmente negro, 1 = transparente
+    Oscurecer.BorderSizePixel = 0
+    local corner2 = Instance.new("UICorner")
+    corner2.CornerRadius = UDim.new(0, 12)
+    corner2.Parent = Oscurecer
+
+    -- Imagen de fondo
+    local Fondo = Instance.new("ImageLabel")
+    Fondo.Name = "FondoPersonalizado"
+    Fondo.Parent = MainFrame
+    Fondo.ZIndex = -100  -- Enviar MUY atrás de todo
+    Fondo.Size = UDim2.new(1, 0, 1, 0)
+    Fondo.Position = UDim2.new(0, 0, 0, 0)
+    Fondo.BackgroundTransparency = 1
+    Fondo.Image = "rbxassetid://100863830944628"
+    Fondo.ScaleType = Enum.ScaleType.Crop
+    Fondo.ImageTransparency = 0.25  -- 0 = opaco, 1 = invisible
+    Fondo.BorderSizePixel = 0
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 12)
+    corner.Parent = Fondo
+end)
 
 -- 1. PLAYER
 local PlayerTab = Window:Tab({Title="Player", Icon="user"})
@@ -2022,7 +2079,7 @@ end)
 AplicarConfiguracion()
 task.spawn(function() task.wait(1.5); pcall(AplicarConfiguracion) end)
 
--- CUADRO DE PERFIL
+-- === CUADRO DE PERFIL ===
 task.spawn(function()
     pcall(function()
         task.wait(0.6)
@@ -2113,56 +2170,3 @@ pcall(function() Window:SelectTab(PlayerTab) end)
 pcall(function() Window:SelectTab(1) end)
 
 WindUI:Notify({Title="TOKI🇯🇵", Content="v33: Invisible Ultra integrado en pestaña Main (toggle + tecla G)", Duration=4})
-
--- ============================================================
--- 🖼️ FONDO PERSONALIZADO (ID: 100863830944628)
--- Agregado al final — no afecta las pestañas ni funciones
--- ============================================================
-task.spawn(function()
-    task.wait(1) -- Espera a que TODO el menú termine de cargar
-    if not Window then return end
-
-    -- Buscar el contenedor principal de la ventana (intenta varias rutas)
-    local MainFrame = nil
-    pcall(function() MainFrame = Window.UIElements and Window.UIElements.Main end)
-    if not MainFrame then pcall(function() MainFrame = Window.Container end) end
-    if not MainFrame then pcall(function() MainFrame = Window.Main end) end
-    if not MainFrame then pcall(function() MainFrame = Window.UIElements and Window.UIElements.Container end) end
-
-    local function CrearFondo(padre)
-        local Fondo = Instance.new("ImageLabel")
-        Fondo.Name = "FondoPersonalizado"
-        Fondo.Parent = padre
-        Fondo.ZIndex = -100 -- Lo envía MUY atrás, para no tapar nada
-        Fondo.Size = UDim2.new(1, 0, 1, 0)
-        Fondo.Position = UDim2.new(0, 0, 0, 0)
-        Fondo.BackgroundTransparency = 1
-        Fondo.Image = "rbxassetid://100863830944628" -- ✅ Tu imagen
-        Fondo.ScaleType = Enum.ScaleType.Crop -- Recorta para llenar el menú
-        Fondo.ImageTransparency = 0.25 -- Ajusta: 0 = opaco, 1 = invisible
-        Fondo.BorderSizePixel = 0
-        Fondo.Active = false
-        local corner = Instance.new("UICorner")
-        corner.CornerRadius = UDim.new(0, 12)
-        corner.Parent = Fondo
-        return Fondo
-    end
-
-    if MainFrame then
-        CrearFondo(MainFrame)
-    else
-        -- Fallback: busca la GUI de WindUI en CoreGui
-        pcall(function()
-            local CoreGui = game:GetService("CoreGui")
-            for _, gui in ipairs(CoreGui:GetChildren()) do
-                if gui:IsA("ScreenGui") then
-                    local frame = gui:FindFirstChildWhichIsA("Frame", true)
-                    if frame and frame.Size.X.Scale == 0 then
-                        CrearFondo(frame)
-                        break
-                    end
-                end
-            end
-        end)
-    end
-end)
