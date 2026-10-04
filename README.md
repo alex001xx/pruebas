@@ -610,7 +610,7 @@ LocalPlayer.CharacterAdded:Connect(function()
 end)
 
 -- ============================================================
--- 🎈 BOTONES FLOTANTES (Invisible / TPWalk / Ataque Rápido) [v33.1]
+-- 🎈 BOTONES FLOTANTES [v33.1]
 -- ============================================================
 local BotonesFlotantes = {}
 local FlotCount = 0
@@ -793,7 +793,7 @@ local function SetAntiVC(s)
 end
 
 -- ============================================================
--- 🎯 FUNCIONES DEL MODULO TARGET (integradas)
+-- 🎯 FUNCIONES DEL MODULO TARGET
 -- ============================================================
 local function TargetSafe(fn) local st, r = pcall(fn); return st and r or nil end
 
@@ -1220,71 +1220,40 @@ end
 
 LoadConfig()
 
+-- ============================================================
+-- ✅ VENTANA PRINCIPAL (reemplazada con la nueva configuración)
+-- ============================================================
 local Window = WindUI:CreateWindow({
-    Title="Takemichi", Icon="sword", Author="TOKI🇯🇵", Folder="DENJI•ALEX",
-    Size=UDim2.fromOffset(600,540), MinSize=Vector2.new(520,420), MaxSize=Vector2.new(850,680),
-    Transparent=true, Theme="Dark", Resizable=true, SideBarWidth=160,
-    Background="rbxassetid://100863830944628", HideSearchBar=true, Accent=Color3.fromRGB(255,255,255),
-    OpenButton={Title="TOKI🇯🇵", Icon="sword", Enabled=true, Draggable=true, OnlyMobile=false, CornerRadius=UDim.new(1,0), StrokeThickness=2, StrokeColor=Color3.fromRGB(255,255,255), Scale=1},
+    Title = "TOKI🇯🇵",
+    Icon = "sword",
+    Author = "Takemichi",
+    Folder = "AmmjBypass",
+
+    Size = UDim2.fromOffset(480, 380),
+    MinSize = Vector2.new(420, 320),
+    MaxSize = Vector2.new(700, 550),
+
+    Transparent = true,
+    Theme = "Dark",
+    Resizable = true,
+    SideBarWidth = 150,
+
+    Background = "rbxassetid://109983304433573",
+    BackgroundImageTransparency = 0.35,
+
+    HideSearchBar = true,
+
+    OpenButton = {
+        Title = "TOKI🇯🇵",
+        Icon = "sword",
+        Enabled = true,
+        Draggable = true,
+        OnlyMobile = false,
+        CornerRadius = UDim.new(1, 0),
+        StrokeThickness = 2,
+        Scale = 1,
+    },
 })
-
--- ============================================================
--- 🖼️ FONDO PERSONALIZADO (ID: 100863830944628)
--- Se inyecta manualmente para garantizar que se vea bien,
--- con una capa oscura semitransparente para que el texto se lea.
--- ============================================================
-task.spawn(function()
-    task.wait(0.6)
-    if not Window then return end
-    local MainFrame = nil
-    pcall(function() MainFrame = Window.UIElements and Window.UIElements.Main end)
-    if not MainFrame then pcall(function() MainFrame = Window.Container end) end
-    if not MainFrame then pcall(function() MainFrame = Window.Main end) end
-    if not MainFrame then
-        -- Buscador universal: recorre CoreGui buscando la ventana
-        pcall(function()
-            for _, gui in ipairs(game:GetService("CoreGui"):GetChildren()) do
-                if gui:IsA("ScreenGui") then
-                    local f = gui:FindFirstChildWhichIsA("Frame", true)
-                    if f and f.Size.X.Scale == 0 and f.Size.X.Offset >= 500 then
-                        MainFrame = f; break
-                    end
-                end
-            end
-        end)
-    end
-    if not MainFrame then return end
-
-    -- Capa oscura semitransparente (para que el texto se lea bien)
-    local Oscurecer = Instance.new("Frame")
-    Oscurecer.Name = "CapaOscuraFondo"
-    Oscurecer.Parent = MainFrame
-    Oscurecer.ZIndex = -99
-    Oscurecer.Size = UDim2.new(1, 0, 1, 0)
-    Oscurecer.Position = UDim2.new(0, 0, 0, 0)
-    Oscurecer.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    Oscurecer.BackgroundTransparency = 0.45  -- 0 = totalmente negro, 1 = transparente
-    Oscurecer.BorderSizePixel = 0
-    local corner2 = Instance.new("UICorner")
-    corner2.CornerRadius = UDim.new(0, 12)
-    corner2.Parent = Oscurecer
-
-    -- Imagen de fondo
-    local Fondo = Instance.new("ImageLabel")
-    Fondo.Name = "FondoPersonalizado"
-    Fondo.Parent = MainFrame
-    Fondo.ZIndex = -100  -- Enviar MUY atrás de todo
-    Fondo.Size = UDim2.new(1, 0, 1, 0)
-    Fondo.Position = UDim2.new(0, 0, 0, 0)
-    Fondo.BackgroundTransparency = 1
-    Fondo.Image = "rbxassetid://100863830944628"
-    Fondo.ScaleType = Enum.ScaleType.Crop
-    Fondo.ImageTransparency = 0.25  -- 0 = opaco, 1 = invisible
-    Fondo.BorderSizePixel = 0
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 12)
-    corner.Parent = Fondo
-end)
 
 -- 1. PLAYER
 local PlayerTab = Window:Tab({Title="Player", Icon="user"})
@@ -2086,9 +2055,9 @@ task.spawn(function()
         if not PlayerTab then return end
         local Contenedor = nil
         pcall(function() Contenedor = PlayerTab.UIElements and PlayerTab.UIElements.ContainerFrame end)
-        if not Contenedor then pcall(function() Contenedor = PlayerTab.ContainerFrame end) end
-        if not Contenedor then pcall(function() Contenedor = PlayerTab.Container end) end
-        if not Contenedor then pcall(function() Contenedor = Window.SideBar and Window.SideBar.Parent end) end
+        if not Contenedor then pcall(function() Contenedor = PlayerTab.ContainerFrame end) end)
+        if not Contenedor then pcall(function() Contenedor = PlayerTab.Container end) end)
+        if not Contenedor then pcall(function() Contenedor = Window.SideBar and Window.SideBar.Parent end) end)
         if not Contenedor then return end
 
         local Box = Instance.new("Frame")
@@ -2169,4 +2138,9 @@ end)
 pcall(function() Window:SelectTab(PlayerTab) end)
 pcall(function() Window:SelectTab(1) end)
 
-WindUI:Notify({Title="TOKI🇯🇵", Content="v33: Invisible Ultra integrado en pestaña Main (toggle + tecla G)", Duration=4})
+-- ✅ Notificación inicial (reemplazada)
+WindUI:Notify({
+    Title = "TOKI🇯🇵",
+    Content = "Takemichi — Menú cargado correctamente",
+    Duration = 3
+})
