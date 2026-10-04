@@ -2110,7 +2110,7 @@ task.spawn(function()
             )
         end)
         if not Cargar then
-            Foto.Image = "rbxassetid://6026588573" -- Imagen de respaldo
+            Foto.Image = "rbxassetid://100863830944628" -- Imagen de respaldo
         end
 
         -- Nombre + ID en forma de lista, lado izquierdo del cuadro
