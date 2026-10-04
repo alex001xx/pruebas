@@ -1945,7 +1945,7 @@ task.spawn(function()
         Circulo.Name = "CirculoPerfil"
         Circulo.Parent = Box
         Circulo.BackgroundColor3 = Color3.fromRGB(255, 210, 150) -- naranja pastel
-        Circulo.BackgroundTransparency = 0
+        Circulo.BackgroundTransparency = 1 -- fondo transparente (igual que el menú)
         Circulo.Position = UDim2.new(1, -108, 0.5, -50)
         Circulo.Size = UDim2.new(0, 100, 0, 100)
         Circulo.ZIndex = 51
