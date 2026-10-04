@@ -21,6 +21,8 @@ FallSpeedCap, SavedPosition, CoordsText, ClickTPConn, SpinConn = 200, nil, "", n
 AutoWalkEnabled, AutoWalkConn = false, nil
 TPWalkEnabled, TPWalkSpeed, TPWalkConn = false, 0.30, nil
 InvisibleEnabled = false
+-- [v33] Invisible Ultra (Oculta Posición) — integrado a la pestaña Main
+HidePosEnabled, HidePosConn, HideParts = false, nil, {}
 AutoClickerEnabled, AutoClickerCPS = false, 10
 NoFallDamageEnabled, NoFallConn = false, nil
 AntiAFKConn = nil
@@ -548,6 +550,67 @@ local function TPAllToMe()
 end
 
 -- ============================================================
+-- 👻 INVISIBLE ULTRA (Oculta Posición) — integrado a Main [v33]
+-- (antes era el botón flotante TK + tecla G del final del script)
+-- ============================================================
+local function CollectHideParts()
+    HideParts = {}
+    if not Character then return end
+    for _, obj in pairs(Character:GetDescendants()) do
+        if obj:IsA("BasePart") and obj.Transparency == 0 then
+            table.insert(HideParts, obj)
+        end
+    end
+end
+
+local function SetHidePos(s)
+    HidePosEnabled = s
+    if s then
+        CollectHideParts()
+        for _, part in pairs(HideParts) do
+            pcall(function() part.Transparency = 0.5 end)
+        end
+        if not HidePosConn then
+            HidePosConn = RunService.Heartbeat:Connect(function()
+                if not HidePosEnabled or not RootPart or not Humanoid then return end
+                local cf = RootPart.CFrame
+                local camOffset = Humanoid.CameraOffset
+                local hidden = cf * CFrame.new(0, -200000, 0)
+                RootPart.CFrame = hidden
+                Humanoid.CameraOffset = hidden:ToObjectSpace(CFrame.new(cf.Position)).Position
+                RunService.RenderStepped:Wait()
+                RootPart.CFrame = cf
+                Humanoid.CameraOffset = camOffset
+            end)
+        end
+    else
+        if HidePosConn then HidePosConn:Disconnect(); HidePosConn = nil end
+        for _, part in pairs(HideParts) do
+            pcall(function() part.Transparency = 0 end)
+        end
+        pcall(function() if Humanoid then Humanoid.CameraOffset = Vector3.new(0,0,0) end end)
+    end
+end
+
+-- Atajo de tecla G (igual que antes, pero ahora sincronizado con el toggle del menú)
+UserInputService.InputBegan:Connect(function(input, gp)
+    if gp then return end
+    if input.KeyCode == Enum.KeyCode.G then
+        SetHidePos(not HidePosEnabled)
+        pcall(function() WindUI:Notify({Title="Invisible Ultra", Content=HidePosEnabled and "Activado (tecla G)" or "Desactivado", Duration=2}) end)
+    end
+end)
+
+-- Re-colectar partes al reaparecer (si sigue activado)
+LocalPlayer.CharacterAdded:Connect(function()
+    task.wait(0.5)
+    if HidePosEnabled then
+        CollectHideParts()
+        for _, p in pairs(HideParts) do pcall(function() p.Transparency = 0.5 end) end
+    end
+end)
+
+-- ============================================================
 -- 🛡️ NUEVOS ESCUDOS REALES (antes la pestaña no hacía NADA)
 -- ============================================================
 local function SetAntiKick(s)
@@ -937,6 +1000,7 @@ local function GuardarConfiguracion(silent)
         TPWalkSpeed = TPWalkSpeed,
         NoFrictionEnabled = NoFrictionEnabled,
         InvisibleEnabled = InvisibleEnabled,
+        HidePosEnabled = HidePosEnabled,
         FlyEnabled = FlyEnabled,
         FlySpeed = FlySpeed,
         NoclipEnabled = NoclipEnabled,
@@ -1065,6 +1129,7 @@ local function AplicarConfiguracion()
             InvisibleEnabled = true
         end
     end)
+    Try(function() if Saved.HidePosEnabled then SetHidePos(true) end end)
     Try(function() if Saved.FlashAttackEnabled then SetFlashAttack(true) end end)
     Try(function() if Saved.TPWalkEnabled then SetTPWalk(true) end end)
     Try(function() if Saved.FlyEnabled then StartFly() end end)
@@ -1155,8 +1220,11 @@ MainRow3:Toggle({Title="Sin Fricción", Def=Get("NoFrictionEnabled", false), Cal
 MainRow3:Space({Size=8})
 MainRow3:Toggle({Title="Sin Gravedad", Def=false, Callback=AS(function(s) if Humanoid then Humanoid.GravityScale=s and 0 or 1 end end)})
 MainTab:Space({Size=8})
+-- [v33] Ahora hay DOS invisibles en la misma fila: el local (ya existía) + el Ultra (oculta posición)
 local MainRow4 = MainTab:Group({})
-MainRow4:Toggle({Title="Invisible", Def=Get("InvisibleEnabled", false), Callback=AS(function(s) InvisibleEnabled=s; if Character then for _,v in pairs(Character:GetDescendants()) do if v:IsA("BasePart") then v.LocalTransparencyModifier=s and 1 or 0 end end end end)})
+MainRow4:Toggle({Title="Invisible (Local)", Def=Get("InvisibleEnabled", false), Callback=AS(function(s) InvisibleEnabled=s; if Character then for _,v in pairs(Character:GetDescendants()) do if v:IsA("BasePart") then v.LocalTransparencyModifier=s and 1 or 0 end end end end)})
+MainRow4:Space({Size=8})
+MainRow4:Toggle({Title="Invisible Ultra (Oculta Posición) [G]", Def=Get("HidePosEnabled", false), Callback=AS(SetHidePos)})
 MainTab:Space({Size=12})
 MainTab:Section({Title="Ajustes de Movimiento", TextSize=18}); MainTab:Space({Size=6})
 local MainSliders = MainTab:Section({Title="Sliders Rápidos", Box=true, BoxBorder=true, Opened=true})
@@ -1915,9 +1983,9 @@ task.spawn(function()
         if not PlayerTab then return end
         local Contenedor = nil
         pcall(function() Contenedor = PlayerTab.UIElements and PlayerTab.UIElements.ContainerFrame end)
-        if not Contenedor then pcall(function() Contenedor = PlayerTab.ContainerFrame end) end
-        if not Contenedor then pcall(function() Contenedor = PlayerTab.Container end) end
-        if not Contenedor then pcall(function() Contenedor = Window.SideBar and Window.SideBar.Parent end) end
+        if not Contenedor then pcall(function() Contenedor = PlayerTab.ContainerFrame end) end)
+        if not Contenedor then pcall(function() Contenedor = PlayerTab.Container end) end)
+        if not Contenedor then pcall(function() Contenedor = Window.SideBar and Window.SideBar.Parent end) end)
         if not Contenedor then return end
 
         local Box = Instance.new("Frame")
@@ -2001,4 +2069,8 @@ end)
 pcall(function() Window:SelectTab(PlayerTab) end)
 pcall(function() Window:SelectTab(1) end)
 
-WindUI:Notify({Title="TOKI🇯🇵", Content="v32: TPWalk nuevo (Anti-Rubberband + Shift Lock + Joystick OK)", Duration=4})
+WindUI:Notify({Title="TOKI🇯🇵", Content="v33: Invisible Ultra integrado en pestaña Main (toggle + tecla G)", Duration=4})
+
+-- [v33] La función "Invisible Ultra" (antes el botón flotante TK del final) ya está
+-- integrada como toggle en la pestaña Main y con atajo de tecla G. Se eliminó el
+-- botón flotante independiente y el bloque _G.a para evitar duplicados.
