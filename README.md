@@ -2221,11 +2221,41 @@ local function AplicarTemaColores()
             t.Text = Color3.fromRGB(255, 210, 50)      -- TODAS las letras: amarillo fuerte
             t.Toggle = Color3.fromRGB(70, 160, 255)    -- botones toggle: azul cielo
             t.Accent = Color3.fromRGB(70, 160, 255)    -- barra de sliders / acento: azul cielo
+            t.Slider = Color3.fromRGB(70, 160, 255)    -- slider: azul cielo
+            t.PanelBackground = Color3.fromRGB(70, 160, 255)   -- fondo de cada opcion: azul cielo
+            t.PanelBackgroundTransparency = 0.85               -- transparente
+            t.LabelBackground = Color3.fromRGB(70, 160, 255)   -- fondo de etiquetas: azul cielo
+            t.LabelBackgroundTransparency = 0.85               -- transparente
             if Window.SetTheme then Window:SetTheme("Dark") end
         end
     end)
 end
 AplicarTemaColores()
 task.spawn(function() while task.wait(1) do AplicarTemaColores() end end)
+
+
+-- ============================================================
+-- 🔵 Repintar knobs blancos (toggle + slider) a azul cielo [v2.4]
+-- ============================================================
+local function PintarKnobs()
+    pcall(function()
+        if not WindGui then return end
+        for _, obj in ipairs(WindGui:GetDescendants()) do
+            if (obj:IsA("Frame") or obj:IsA("ImageLabel")) then
+                local c = obj:FindFirstChildOfClass("UICorner")
+                if c and c.CornerRadius.Scale >= 0.9 then
+                    local sz = obj.AbsoluteSize
+                    if sz.X > 4 and sz.X < 40 and sz.Y > 4 and sz.Y < 40 then
+                        local bc = obj.BackgroundColor3
+                        if bc.R > 0.85 and bc.G > 0.85 and bc.B > 0.85 then
+                            obj.BackgroundColor3 = Color3.fromRGB(70, 160, 255)
+                        end
+                    end
+                end
+            end
+        end
+    end)
+end
+task.spawn(function() while task.wait(0.5) do PintarKnobs() end end)
 
 WindUI:Notify({Title="Toki🇯🇵", Content="v2.0", Duration=4})
