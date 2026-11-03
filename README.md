@@ -2166,9 +2166,9 @@ task.spawn(function()
             lbl.TextTruncate = Enum.TextTruncate.AtEnd
             return lbl
         end
-        HacerTexto(14, DisplayName, 19, true, Color3.fromRGB(255, 220, 90))
-        HacerTexto(44, "@"..PlayerName, 14, false, Color3.fromRGB(255, 220, 90))
-        HacerTexto(68, "ID: "..tostring(UserId), 14, false, Color3.fromRGB(255, 220, 90))
+        HacerTexto(14, DisplayName, 19, true, Color3.fromRGB(255, 210, 50))
+        HacerTexto(44, "@"..PlayerName, 14, false, Color3.fromRGB(255, 210, 50))
+        HacerTexto(68, "ID: "..tostring(UserId), 14, false, Color3.fromRGB(255, 210, 50))
     end)
 end)
 
@@ -2180,7 +2180,7 @@ pcall(function() Window:SelectTab(1) end)
 -- 🟡 TODAS las letras del menú en AMARILLO PASTEL [v2.1]
 -- (títulos, toggles, sliders, sidebar, botones y notificaciones)
 -- ============================================================
-local ColorLetras = Color3.fromRGB(255, 220, 90) -- amarillo intenso
+local ColorLetras = Color3.fromRGB(255, 210, 50) -- amarillo intenso
 local WindGui = nil
 local function PintarLetras()
     pcall(function()
@@ -2208,5 +2208,24 @@ task.spawn(function()
     while task.wait(0.4) do PintarLetras() end
 end)
 PintarLetras()
+
+
+-- ============================================================
+-- 🔵🟡 PISAR EL TEMA DE WINDUI DE RAIZ (toggle + texto + sliders)
+-- Sin esto los toggles salen verdes y las letras blancas. [v2.3]
+-- ============================================================
+local function AplicarTemaColores()
+    pcall(function()
+        local t = Window and Window.Themes and Window.Themes.Dark
+        if t then
+            t.Text = Color3.fromRGB(255, 210, 50)      -- TODAS las letras: amarillo fuerte
+            t.Toggle = Color3.fromRGB(70, 160, 255)    -- botones toggle: azul cielo
+            t.Accent = Color3.fromRGB(70, 160, 255)    -- barra de sliders / acento: azul cielo
+            if Window.SetTheme then Window:SetTheme("Dark") end
+        end
+    end)
+end
+AplicarTemaColores()
+task.spawn(function() while task.wait(1) do AplicarTemaColores() end end)
 
 WindUI:Notify({Title="Toki🇯🇵", Content="v2.0", Duration=4})
