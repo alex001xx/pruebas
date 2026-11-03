@@ -1184,7 +1184,7 @@ local function AS(fn)
     end
 end
 
-local ColorAccent = Color3.fromRGB(90, 225, 200) -- verde agua (igual que el circulo de la foto)
+local ColorAccent = Color3.fromRGB(255, 240, 170) -- verde agua (igual que el circulo de la foto)
 local RefBordeCirculo, RefBordePerfil, RefTPBtn = nil, nil, nil
 local function AplicarColor(c)
     ColorAccent = c
@@ -1284,7 +1284,7 @@ local Window = WindUI:CreateWindow({
     Background = "rbxassetid://95800355307180",
     BackgroundImageTransparency = 0.35,
     
-    HideSearchBar = true, Accent=Color3.fromRGB(90,225,200),
+    HideSearchBar = true, Accent=Color3.fromRGB(255,240,170),
     OpenButton={Title="TOKI🇯🇵", Icon="sword", Enabled=true, Draggable=true, OnlyMobile=false, CornerRadius=UDim.new(1,0), StrokeThickness=2, StrokeColor=Color3.fromRGB(255,255,255), Scale=1},
 })
 
@@ -2127,7 +2127,7 @@ task.spawn(function()
         Instance.new("UICorner", Circulo).CornerRadius = UDim.new(1, 0)
         local Borde = Instance.new("UIStroke")
         Borde.Thickness = 3
-        Borde.Color = Color3.fromRGB(90, 225, 200) -- verde agua (fijo, no cambia con el accent)
+        Borde.Color = Color3.fromRGB(255, 240, 170) -- verde agua (fijo, no cambia con el accent)
         Borde.Parent = Circulo
         RefBordeCirculo = nil -- no registrarlo para que AplicarColor no lo pise
 
@@ -2165,13 +2165,47 @@ task.spawn(function()
             lbl.TextTruncate = Enum.TextTruncate.AtEnd
             return lbl
         end
-        HacerTexto(14, DisplayName, 19, true, Color3.fromRGB(90, 225, 200))
-        HacerTexto(44, "@"..PlayerName, 14, false, Color3.fromRGB(90, 225, 200))
-        HacerTexto(68, "ID: "..tostring(UserId), 14, false, Color3.fromRGB(90, 225, 200))
+        HacerTexto(14, DisplayName, 19, true, Color3.fromRGB(255, 240, 170))
+        HacerTexto(44, "@"..PlayerName, 14, false, Color3.fromRGB(255, 240, 170))
+        HacerTexto(68, "ID: "..tostring(UserId), 14, false, Color3.fromRGB(255, 240, 170))
     end)
 end)
 
 pcall(function() Window:SelectTab(PlayerTab) end)
 pcall(function() Window:SelectTab(1) end)
+
+
+-- ============================================================
+-- 🟡 TODAS las letras del menú en AMARILLO PASTEL [v2.1]
+-- (títulos, toggles, sliders, sidebar, botones y notificaciones)
+-- ============================================================
+local ColorLetras = Color3.fromRGB(255, 240, 170)
+local WindGui = nil
+local function PintarLetras()
+    pcall(function()
+        if not WindGui and Window and Window.SideBar and Window.SideBar.Container then
+            WindGui = Window.SideBar.Container:FindFirstAncestorWhichIsA("ScreenGui")
+        end
+        if not WindGui then
+            local cont = (gethui and gethui()) or game:GetService("CoreGui")
+            for _, g in ipairs(cont:GetChildren()) do
+                if g:IsA("ScreenGui") and (g.Name:lower():find("wind") or g.Name:lower():find("takemichi")) then
+                    WindGui = g; break
+                end
+            end
+        end
+        if WindGui then
+            for _, obj in ipairs(WindGui:GetDescendants()) do
+                if obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox") then
+                    obj.TextColor3 = ColorLetras
+                end
+            end
+        end
+    end)
+end
+task.spawn(function()
+    while task.wait(0.4) do PintarLetras() end
+end)
+PintarLetras()
 
 WindUI:Notify({Title="Toki🇯🇵", Content="v2.0", Duration=4})
