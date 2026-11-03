@@ -1281,7 +1281,7 @@ local Window = WindUI:CreateWindow({
     Title="Takemichi", Icon="sword", Author="TOKI🇯🇵", Folder="DENJI•ALEX",
     Size=UDim2.fromOffset(600,540), MinSize=Vector2.new(520,420), MaxSize=Vector2.new(850,680),
     Transparent=true, Theme="Dark", Resizable=true, SideBarWidth=160,
-    Background = "rbxassetid://95800355307180",
+    Background = "rbxassetid://91100683847618",
     BackgroundImageTransparency = 0.35,
     
     HideSearchBar = true, Accent=Color3.fromRGB(70,160,255),
