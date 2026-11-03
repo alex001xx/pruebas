@@ -2266,13 +2266,22 @@ task.spawn(function() while task.wait(0.5) do PintarKnobs() end end)
 local function PintarFondos()
     pcall(function()
         if not WindGui then return end
+        local AZUL = Color3.fromRGB(70, 160, 255)
         for _, obj in ipairs(WindGui:GetDescendants()) do
-            if obj:IsA("Frame") then
-                local bc = obj.BackgroundColor3
-                local bt = obj.BackgroundTransparency
-                -- cuadro blanco transparente -> azul cielo (mantiene la transparencia)
-                if bc.R > 0.88 and bc.G > 0.88 and bc.B > 0.88 and bt > 0.5 then
-                    obj.BackgroundColor3 = Color3.fromRGB(70, 160, 255)
+            local sz = obj.AbsoluteSize
+            if sz.X >= 80 and sz.Y >= 20 then
+                if obj:IsA("Frame") then
+                    local bt = obj.BackgroundTransparency
+                    -- cuadro semi-transparente mediano/grande (seccion, grupo de opciones) -> azul cielo
+                    if bt > 0.2 and bt < 1 then
+                        obj.BackgroundColor3 = AZUL
+                    end
+                elseif obj:IsA("ImageLabel") and sz.X < 420 then
+                    -- cuadros redondeados (imagen) semi-transparentes, excluyendo el fondo grande
+                    local it = obj.ImageTransparency
+                    if it > 0.2 and it < 1 then
+                        obj.ImageColor3 = AZUL
+                    end
                 end
             end
         end
