@@ -1184,7 +1184,7 @@ local function AS(fn)
     end
 end
 
-local ColorAccent = Color3.fromRGB(255, 240, 170) -- verde agua (igual que el circulo de la foto)
+local ColorAccent = Color3.fromRGB(70, 160, 255) -- azul cielo fuerte (sliders y botones)
 local RefBordeCirculo, RefBordePerfil, RefTPBtn = nil, nil, nil
 local function AplicarColor(c)
     ColorAccent = c
@@ -1284,7 +1284,7 @@ local Window = WindUI:CreateWindow({
     Background = "rbxassetid://95800355307180",
     BackgroundImageTransparency = 0.35,
     
-    HideSearchBar = true, Accent=Color3.fromRGB(255,240,170),
+    HideSearchBar = true, Accent=Color3.fromRGB(70,160,255),
     OpenButton={Title="TOKI🇯🇵", Icon="sword", Enabled=true, Draggable=true, OnlyMobile=false, CornerRadius=UDim.new(1,0), StrokeThickness=2, StrokeColor=Color3.fromRGB(255,255,255), Scale=1},
 })
 
@@ -2083,6 +2083,7 @@ end)
 
 AplicarConfiguracion()
 task.spawn(function() task.wait(1.5); pcall(AplicarConfiguracion) end)
+pcall(function() AplicarColor(Color3.fromRGB(70, 160, 255)) end) -- fuerza azul cielo (sliders y botones)
 
 -- === CUADRO DE PERFIL ===
 task.spawn(function()
@@ -2127,9 +2128,9 @@ task.spawn(function()
         Instance.new("UICorner", Circulo).CornerRadius = UDim.new(1, 0)
         local Borde = Instance.new("UIStroke")
         Borde.Thickness = 3
-        Borde.Color = Color3.fromRGB(255, 240, 170) -- verde agua (fijo, no cambia con el accent)
+        Borde.Color = Color3.fromRGB(70, 160, 255) -- azul cielo fuerte
         Borde.Parent = Circulo
-        RefBordeCirculo = nil -- no registrarlo para que AplicarColor no lo pise
+        RefBordeCirculo = Borde -- registrado para que combine con el accent azul cielo
 
         local Foto = Instance.new("ImageLabel")
         Foto.Name = "Foto"
@@ -2165,9 +2166,9 @@ task.spawn(function()
             lbl.TextTruncate = Enum.TextTruncate.AtEnd
             return lbl
         end
-        HacerTexto(14, DisplayName, 19, true, Color3.fromRGB(255, 240, 170))
-        HacerTexto(44, "@"..PlayerName, 14, false, Color3.fromRGB(255, 240, 170))
-        HacerTexto(68, "ID: "..tostring(UserId), 14, false, Color3.fromRGB(255, 240, 170))
+        HacerTexto(14, DisplayName, 19, true, Color3.fromRGB(255, 220, 90))
+        HacerTexto(44, "@"..PlayerName, 14, false, Color3.fromRGB(255, 220, 90))
+        HacerTexto(68, "ID: "..tostring(UserId), 14, false, Color3.fromRGB(255, 220, 90))
     end)
 end)
 
@@ -2179,7 +2180,7 @@ pcall(function() Window:SelectTab(1) end)
 -- 🟡 TODAS las letras del menú en AMARILLO PASTEL [v2.1]
 -- (títulos, toggles, sliders, sidebar, botones y notificaciones)
 -- ============================================================
-local ColorLetras = Color3.fromRGB(255, 240, 170)
+local ColorLetras = Color3.fromRGB(255, 220, 90) -- amarillo intenso
 local WindGui = nil
 local function PintarLetras()
     pcall(function()
