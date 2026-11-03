@@ -2258,4 +2258,26 @@ local function PintarKnobs()
 end
 task.spawn(function() while task.wait(0.5) do PintarKnobs() end end)
 
+
+-- ============================================================
+-- 🔵 Repintar CUADROS de seccion/opciones (blanco transparente) -> azul cielo [v2.5]
+-- (porque Window.Themes puede ser nil; se hace a la fuerza en el GUI)
+-- ============================================================
+local function PintarFondos()
+    pcall(function()
+        if not WindGui then return end
+        for _, obj in ipairs(WindGui:GetDescendants()) do
+            if obj:IsA("Frame") then
+                local bc = obj.BackgroundColor3
+                local bt = obj.BackgroundTransparency
+                -- cuadro blanco transparente -> azul cielo (mantiene la transparencia)
+                if bc.R > 0.88 and bc.G > 0.88 and bc.B > 0.88 and bt > 0.5 then
+                    obj.BackgroundColor3 = Color3.fromRGB(70, 160, 255)
+                end
+            end
+        end
+    end)
+end
+task.spawn(function() while task.wait(0.5) do PintarFondos() end end)
+
 WindUI:Notify({Title="Toki🇯🇵", Content="v2.0", Duration=4})
