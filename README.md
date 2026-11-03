@@ -1184,7 +1184,7 @@ local function AS(fn)
     end
 end
 
-local ColorAccent = Color3.fromRGB(255, 160, 80)
+local ColorAccent = Color3.fromRGB(90, 225, 200) -- verde agua (igual que el circulo de la foto)
 local RefBordeCirculo, RefBordePerfil, RefTPBtn = nil, nil, nil
 local function AplicarColor(c)
     ColorAccent = c
@@ -1284,7 +1284,7 @@ local Window = WindUI:CreateWindow({
     Background = "rbxassetid://95800355307180",
     BackgroundImageTransparency = 0.35,
     
-    HideSearchBar = true, Accent=Color3.fromRGB(255,255,255),
+    HideSearchBar = true, Accent=Color3.fromRGB(90,225,200),
     OpenButton={Title="TOKI🇯🇵", Icon="sword", Enabled=true, Draggable=true, OnlyMobile=false, CornerRadius=UDim.new(1,0), StrokeThickness=2, StrokeColor=Color3.fromRGB(255,255,255), Scale=1},
 })
 
@@ -2165,13 +2165,13 @@ task.spawn(function()
             lbl.TextTruncate = Enum.TextTruncate.AtEnd
             return lbl
         end
-        HacerTexto(14, DisplayName, 19, true, Color3.fromRGB(245, 245, 250))
-        HacerTexto(44, "@"..PlayerName, 14, false, Color3.fromRGB(245, 245, 250))
-        HacerTexto(68, "ID: "..tostring(UserId), 14, false, Color3.fromRGB(245, 245, 250))
+        HacerTexto(14, DisplayName, 19, true, Color3.fromRGB(90, 225, 200))
+        HacerTexto(44, "@"..PlayerName, 14, false, Color3.fromRGB(90, 225, 200))
+        HacerTexto(68, "ID: "..tostring(UserId), 14, false, Color3.fromRGB(90, 225, 200))
     end)
 end)
 
 pcall(function() Window:SelectTab(PlayerTab) end)
 pcall(function() Window:SelectTab(1) end)
 
-WindUI:Notify({Title="TOKI🇯🇵", Content="v34: Auto Pisar (Shield de Remotes) agregado en pestaña Main", Duration=4})
+WindUI:Notify({Title="Toki🇯🇵", Content="v2.0", Duration=4})
