@@ -4,6 +4,7 @@ local RunService = game:GetService("RunService")
 local TeleportService = game:GetService("TeleportService")
 local StarterGui = game:GetService("StarterGui")
 local UserInputService = game:GetService("UserInputService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LocalPlayer = Players.LocalPlayer
 local PlayerName, DisplayName, UserId = LocalPlayer.Name, LocalPlayer.DisplayName, LocalPlayer.UserId
 AntiAFKEnabled, NoFrictionEnabled, NoPushEnabled, NoKnockbackEnabled = false, false, false, false
@@ -26,6 +27,8 @@ HidePosEnabled, HidePosConn, HideParts = false, nil, {}
 AutoClickerEnabled, AutoClickerCPS = false, 10
 NoFallDamageEnabled, NoFallConn = false, nil
 AntiAFKConn = nil
+-- [v34] Auto Pisar (Shield de Remotes)
+AutoPisarEnabled = false
 local Lighting = game:GetService("Lighting")
 local OriginalLight = {ClockTime=Lighting.ClockTime, Brightness=Lighting.Brightness, Ambient=Lighting.Ambient, OutdoorAmbient=Lighting.OutdoorAmbient, FogEnd=Lighting.FogEnd, GlobalShadows=Lighting.GlobalShadows, ExposureCompensation=Lighting.ExposureCompensation}
 local GameSettings = UserSettings().GameSettings
@@ -211,6 +214,58 @@ local function SetTPWalk(s)
                 end
             end
         end)
+    end
+end
+
+-- 🛡️ AUTO PISAR (Shield de Remotes — spam de remotes seguros, ignora PvP/combate/ruletas) [v34]
+local AutoPisarThread = nil
+local safeRemotes = {}
+local palabrasProhibidas = {
+    "reset", "die", "death", "respawn", "kill",
+    "pvp", "combat", "attack", "hit", "damage",
+    "fight", "strike", "shoot", "weapon", "melee",
+    "health", "hp", "defense", "shield", "skill",
+    "ability", "dodge", "block", "knock", "stun",
+    "ruleta", "spin", "wheel", "girar", "giro",
+    "suerte", "lottery", "roulette", "reward", "premio"
+}
+
+local function CargarRemotesSeguros()
+    safeRemotes = {}
+    pcall(function()
+        for _, desc in ipairs(ReplicatedStorage:GetDescendants()) do
+            if desc:IsA("RemoteEvent") then
+                local rName = desc.Name:lower()
+                local esProhibido = false
+                for _, prohibido in ipairs(palabrasProhibidas) do
+                    if rName:find(prohibido) then esProhibido = true; break end
+                end
+                if not esProhibido and #safeRemotes < 15 then
+                    table.insert(safeRemotes, desc)
+                end
+            end
+        end
+    end)
+end
+
+local function SetAutoPisar(s)
+    AutoPisarEnabled = s
+    if s then
+        if #safeRemotes == 0 then CargarRemotesSeguros() end
+        if not AutoPisarThread then
+            AutoPisarThread = task.spawn(function()
+                while AutoPisarEnabled do
+                    for _, remote in ipairs(safeRemotes) do
+                        if not AutoPisarEnabled then break end
+                        pcall(function() remote:FireServer(true) end)
+                    end
+                    task.wait(0.3)
+                end
+            end)
+        end
+        WindUI:Notify({Title="Auto Pisar", Content="Shield activado ("..#safeRemotes.." remotes)", Duration=3})
+    else
+        if AutoPisarThread then pcall(function() task.cancel(AutoPisarThread) end); AutoPisarThread = nil end
     end
 end
 
@@ -551,7 +606,6 @@ end
 
 -- ============================================================
 -- 👻 INVISIBLE ULTRA (Oculta Posición) — integrado a Main [v33]
--- (antes era el botón flotante TK + tecla G del final del script)
 -- ============================================================
 local function CollectHideParts()
     HideParts = {}
@@ -592,7 +646,7 @@ local function SetHidePos(s)
     end
 end
 
--- Atajo de tecla G (igual que antes, pero ahora sincronizado con el toggle del menú)
+-- Atajo de tecla G
 UserInputService.InputBegan:Connect(function(input, gp)
     if gp then return end
     if input.KeyCode == Enum.KeyCode.G then
@@ -601,7 +655,7 @@ UserInputService.InputBegan:Connect(function(input, gp)
     end
 end)
 
--- Re-colectar partes al reaparecer (si sigue activado)
+-- Re-colectar partes al reaparecer
 LocalPlayer.CharacterAdded:Connect(function()
     task.wait(0.5)
     if HidePosEnabled then
@@ -612,8 +666,6 @@ end)
 
 -- ============================================================
 -- 🎈 BOTONES FLOTANTES (Invisible / TPWalk / Ataque Rápido) [v33.1]
--- Cada botón circular arrastrable enciende/apaga su función.
--- Se muestran/ocultan desde los toggles de la pestaña Main.
 -- ============================================================
 local BotonesFlotantes = {}
 local FlotCount = 0
@@ -623,7 +675,7 @@ local function CrearFlotante(id, texto, colorOn, getEstado, alternar)
     gui.Name = "Flotante_"..id
     gui.ResetOnSpawn = false
     gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    gui.Enabled = false -- oculto por defecto; se muestra con el toggle del menú
+    gui.Enabled = false
     local puesto = pcall(function()
         if gethui then gui.Parent = gethui() else gui.Parent = game:GetService("CoreGui") end
     end)
@@ -671,7 +723,6 @@ CrearFlotante("TPWalk", "TPW", Color3.fromRGB(60, 190, 100),
 CrearFlotante("Ataque", "ATA", Color3.fromRGB(230, 80, 80),
     function() return FlashAttackEnabled end, function(s) SetFlashAttack(s) end)
 
--- Sincroniza el color/texto de los botones flotantes con los toggles del menú
 task.spawn(function()
     while task.wait(0.3) do
         for _, f in pairs(BotonesFlotantes) do
@@ -681,7 +732,7 @@ task.spawn(function()
 end)
 
 -- ============================================================
--- 🛡️ NUEVOS ESCUDOS REALES (antes la pestaña no hacía NADA)
+-- 🛡️ NUEVOS ESCUDOS REALES
 -- ============================================================
 local function SetAntiKick(s)
     AntiKickEnabled = s
@@ -1039,9 +1090,7 @@ _G.TargetModule = {
 getgenv().TargetModule = _G.TargetModule
 
 -- ============================================================
--- 💾 AUTO-GUARDADO SILENCIOSO (en archivo — sobrevive a rejoins)
--- Sin botón de guardar ni notificación: se guarda solo al cambiar
--- cualquier ajuste, y se restaura SOLO al ejecutar el menú.
+-- 💾 AUTO-GUARDADO SILENCIOSO
 -- ============================================================
 local Saved = {}
 local ConfigFolder = "DENJI_ALEX"
@@ -1057,6 +1106,7 @@ local function BuildConfig()
     return {
         FlashAttackEnabled = FlashAttackEnabled,
         FlashMultiplier = FlashMultiplier,
+        AutoPisarEnabled = AutoPisarEnabled,
         TPWalkEnabled = TPWalkEnabled,
         TPWalkSpeed = TPWalkSpeed,
         NoFrictionEnabled = NoFrictionEnabled,
@@ -1117,7 +1167,6 @@ local function DoSave()
     end)
 end
 
--- Guarda como máximo cada 0.4s (para no spamear al mover sliders)
 local SaveScheduled = false
 local function SaveConfig()
     if SaveScheduled then return end
@@ -1190,6 +1239,7 @@ local function AplicarConfiguracion()
     end)
     Try(function() if Saved.HidePosEnabled then SetHidePos(true) end end)
     Try(function() if Saved.FlashAttackEnabled then SetFlashAttack(true) end end)
+    Try(function() if Saved.AutoPisarEnabled then SetAutoPisar(true) end end)
     Try(function() if Saved.TPWalkEnabled then SetTPWalk(true) end end)
     Try(function() if Saved.FlyEnabled then StartFly() end end)
     Try(function() if Saved.NoclipEnabled then SetNoclip(true) end end)
@@ -1231,7 +1281,7 @@ local Window = WindUI:CreateWindow({
     Title="Takemichi", Icon="sword", Author="TOKI🇯🇵", Folder="DENJI•ALEX",
     Size=UDim2.fromOffset(600,540), MinSize=Vector2.new(520,420), MaxSize=Vector2.new(850,680),
     Transparent=true, Theme="Dark", Resizable=true, SideBarWidth=160,
-    Background = "rbxassetid://109983304433573",
+    Background = "rbxassetid://95800355307180",
     BackgroundImageTransparency = 0.35,
     
     HideSearchBar = true, Accent=Color3.fromRGB(255,255,255),
@@ -1272,6 +1322,9 @@ MainRow1:Toggle({Title="TPWalk (Bypass)", Def=Get("TPWalkEnabled", false), Callb
 MainTab:Space({Size=8})
 MainTab:Slider({Title="Velocidad TPWalk", Step=0.05, Value={Min=0.01, Max=20, Default=Get("TPWalkSpeed", 0.30)}, Callback=AS(function(v) TPWalkSpeed = v; getgenv().TPWalkSpeed = v end)})
 MainTab:Space({Size=8})
+-- [v34] Auto Pisar (Shield de Remotes) — debajo de TPWalk
+MainTab:Toggle({Title="Auto Pisar", Desc="Shield de remotes (anti-PvP/ruletas)", Def=Get("AutoPisarEnabled", false), Callback=AS(SetAutoPisar)})
+MainTab:Space({Size=8})
 local MainRow2 = MainTab:Group({})
 MainRow2:Toggle({Title="Salto Alto", Def=false, Callback=AS(function(s) if Humanoid then Humanoid.JumpPower=s and 120 or 50 end end)})
 MainRow2:Space({Size=8})
@@ -1282,13 +1335,11 @@ MainRow3:Toggle({Title="Sin Fricción", Def=Get("NoFrictionEnabled", false), Cal
 MainRow3:Space({Size=8})
 MainRow3:Toggle({Title="Sin Gravedad", Def=false, Callback=AS(function(s) if Humanoid then Humanoid.GravityScale=s and 0 or 1 end end)})
 MainTab:Space({Size=8})
--- [v33] Ahora hay DOS invisibles en la misma fila: el local (ya existía) + el Ultra (oculta posición)
 local MainRow4 = MainTab:Group({})
 MainRow4:Toggle({Title="Invisible (Local)", Def=Get("InvisibleEnabled", false), Callback=AS(function(s) InvisibleEnabled=s; if Character then for _,v in pairs(Character:GetDescendants()) do if v:IsA("BasePart") then v.LocalTransparencyModifier=s and 1 or 0 end end end end)})
 MainRow4:Space({Size=8})
 MainRow4:Toggle({Title="Invisible Ultra (Oculta Posición) [G]", Def=Get("HidePosEnabled", false), Callback=AS(SetHidePos)})
 MainTab:Space({Size=12})
--- [v33.1] Mostrar/ocultar los botones flotantes (cada uno enciende/apaga su función)
 MainTab:Section({Title="🎈 Botones Flotantes (tocá para prender/apagar)", TextSize=18}); MainTab:Space({Size=6})
 local FlotSec = MainTab:Section({Title="", Box=true, BoxBorder=true, Opened=true})
 FlotSec:Toggle({Title="Mostrar Botón: Invisible Ultra", Def=false, Callback=function(s) if BotonesFlotantes.Invisible then BotonesFlotantes.Invisible.Gui.Enabled = s end end})
@@ -1336,7 +1387,7 @@ ExtScripts:Button({Title="Hitbox Girls", Desc="Ejecutar script", Icon="play", Ju
     end)
 end})
 
--- 3. GAME (MOVIDA AQUÍ, antes estaba después de Target)
+-- 3. GAME
 local GameTab = Window:Tab({Title="Game", Icon="gamepad-2"})
 GameTab:Section({Title="Funciones Universales", TextSize=20}); GameTab:Space({Size=6})
 
@@ -1410,7 +1461,7 @@ GScr:Button({Title="Dex Explorer", Desc="Ejecutar", Icon="play", Justify="Left",
 end})
 GameTab:Space({Size=12})
 
--- 4. TARGET (2 toggles por línea)
+-- 4. TARGET
 local TargetTab = Window:Tab({Title="Target", Icon="crosshair"})
 TargetTab:Section({Title="🎯 Seleccionar Objetivo", TextSize=20}); TargetTab:Space({Size=6})
 local TargetSel = TargetTab:Section({Title="", Box=true, BoxBorder=true, Opened=true})
@@ -1455,31 +1506,26 @@ TargetTab:Space({Size=10})
 
 TargetTab:Section({Title="🔄 Toggles de Objetivo (2 por línea)", TextSize=18}); TargetTab:Space({Size=6})
 local TargetTog = TargetTab:Section({Title="", Box=true, BoxBorder=true, Opened=true})
--- Fila 1: Fling + View
 local TT1 = TargetTog:Group({})
 TT1:Toggle({Title="Lanzar (Fling)", Def=false, Callback=AS(function(s) TargetToggle("Fling", s) end)})
 TT1:Space({Size=8})
 TT1:Toggle({Title="Ver (Cámara)", Def=false, Callback=AS(function(s) TargetToggle("View", s) end)})
 TargetTog:Space({Size=6})
--- Fila 2: Focus + Bang
 local TT2 = TargetTog:Group({})
 TT2:Toggle({Title="Enfocar (Focus)", Def=false, Callback=AS(function(s) TargetToggle("Focus", s) end)})
 TT2:Space({Size=8})
 TT2:Toggle({Title="Bang / Pegar", Def=false, Callback=AS(function(s) TargetToggle("Bang", s) end)})
 TargetTog:Space({Size=6})
--- Fila 3: HeadSit + Stand
 local TT3 = TargetTog:Group({})
 TT3:Toggle({Title="Sentar en Cabeza", Def=false, Callback=AS(function(s) TargetToggle("HeadSit", s) end)})
 TT3:Space({Size=8})
 TT3:Toggle({Title="Pararse Junto (Stand)", Def=false, Callback=AS(function(s) TargetToggle("Stand", s) end)})
 TargetTog:Space({Size=6})
--- Fila 4: Backpack + Doggy
 local TT4 = TargetTog:Group({})
 TT4:Toggle({Title="Mochila (Backpack)", Def=false, Callback=AS(function(s) TargetToggle("Backpack", s) end)})
 TT4:Space({Size=8})
 TT4:Toggle({Title="Posición Baja (Doggy)", Def=false, Callback=AS(function(s) TargetToggle("Doggy", s) end)})
 TargetTog:Space({Size=6})
--- Fila 5: Drag (solo)
 local TT5 = TargetTog:Group({})
 TT5:Toggle({Title="Arrastrar (Drag)", Def=false, Callback=AS(function(s) TargetToggle("Drag", s) end)})
 TargetTab:Space({Size=10})
@@ -1518,17 +1564,16 @@ TAR2:Space({Size=8})
 TAR2:Button({Title="Limpiar Objetivo", Icon="x", Justify="Center", Callback=function() TargetSelect(nil) end})
 TargetTab:Space({Size=12})
 
--- 5. RJ=New.SV (Private Server Finder — lista en ventana independiente)
+-- 5. RJ=New.SV
 local RJTab = Window:Tab({Title="RJ=New.SV", Icon="globe"})
 
--- ██ LÓGICA (idéntica, sin cambios) ██
 local AutoOn = false
 local AutoCoroutine = nil
 local ServerList = {}
 ServidoresVisitados = ServidoresVisitados or {}
-local RJLimit = 1 -- reemplaza a LimitBox.Text
+local RJLimit = 1
 local RJStatus, RJCounter = nil, nil
-local ServerListGui = nil -- ventana independiente de la lista
+local ServerListGui = nil
 
 local function Fetch()
     local Url = string.format("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Asc&limit=100", game.PlaceId)
@@ -1591,7 +1636,6 @@ local function SetAutoHop(on)
     end
 end
 
--- ██ VENTANA INDEPENDIENTE: LISTA DE SERVIDORES (pastel naranja transparente) ██
 local function CerrarListaServidores()
     if ServerListGui then
         pcall(function() ServerListGui:Destroy() end)
@@ -1623,8 +1667,8 @@ local function AbrirListaServidores()
     local Main = Instance.new("Frame")
     Main.Parent = ScreenGui
     Main.Name = "Main"
-    Main.BackgroundColor3 = Color3.fromRGB(255, 195, 145) -- pastel naranja
-    Main.BackgroundTransparency = 0.30 -- transparente
+    Main.BackgroundColor3 = Color3.fromRGB(255, 195, 145)
+    Main.BackgroundTransparency = 0.30
     Main.BorderSizePixel = 0
     Main.Position = UDim2.new(0.5, -150, 0.5, -200)
     Main.Size = UDim2.new(0, 300, 0, 400)
@@ -1699,7 +1743,6 @@ local function AbrirListaServidores()
         btn.MouseLeave:Connect(function() if not btn:GetAttribute("Selected") then TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = normal}):Play() end end)
     end
 
-    -- Boton de TP al servidor seleccionado (barra inferior)
     local TPBtn = Instance.new("TextButton")
     TPBtn.Parent = Main
     TPBtn.Position = UDim2.new(0, 10, 1, -44)
@@ -1762,7 +1805,6 @@ local function AbrirListaServidores()
                     btn.TextXAlignment = Enum.TextXAlignment.Left
                     Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
                     if esActual then
-                        -- Servidor en el que estas AHORA: amarillo intenso
                         btn.BackgroundColor3 = Color3.fromRGB(255, 215, 0)
                         btn.BackgroundTransparency = 0
                         btn.TextColor3 = Color3.fromRGB(90, 60, 0)
@@ -1778,7 +1820,6 @@ local function AbrirListaServidores()
                         btn.Text = string.format(prefijo.."%d/%d jugadores  •  Ping: %dms", srv.playing or 0, srv.maxPlayers or 0, srv.ping or 0)
                         Hover(btn, baseColor, overColor)
                         btn.MouseButton1Click:Connect(function()
-                            -- quitar resaltado al servidor anterior
                             if SelectedBtn then
                                 SelectedBtn:SetAttribute("Selected", false)
                                 SelectedBtn.BackgroundColor3 = Color3.fromRGB(255, 225, 190)
@@ -1788,7 +1829,7 @@ local function AbrirListaServidores()
                             SelectedServer = {Id=tostring(srv.id), Players=srv.playing or 0, Max=srv.maxPlayers or 0, Ping=srv.ping or 0}
                             SelectedBtn = btn
                             btn:SetAttribute("Selected", true)
-                            btn.BackgroundColor3 = Color3.fromRGB(255, 110, 30) -- naranja intenso (seleccionado)
+                            btn.BackgroundColor3 = Color3.fromRGB(255, 110, 30)
                             btn.BackgroundTransparency = 0
                             btn.TextColor3 = Color3.fromRGB(255, 255, 255)
                             if TPBtn then TPBtn.Text = "TP: " .. SelectedServer.Players .. "/" .. SelectedServer.Max .. " jugadores" end
@@ -1810,7 +1851,6 @@ local function ToggleListaServidores()
     else AbrirListaServidores() end
 end
 
--- ██ UI DE LA PESTAÑA (sin lista embebida — solo botón abrir/cerrar) ██
 RJTab:Section({Title="RJ = New Server", TextSize=20}); RJTab:Space({Size=6})
 RJStatus = RJTab:Paragraph({Title="Estado", Desc="Listo", Image="info", ImageSize=14})
 RJTab:Space({Size=4})
@@ -1831,7 +1871,6 @@ RJTab:Space({Size=8})
 RJTab:Button({Title="Abrir / Cerrar Lista de Servidores", Icon="globe", Justify="Center", Callback=ToggleListaServidores})
 RJTab:Space({Size=12})
 
--- Contador en tiempo real
 task.spawn(function()
     while task.wait(1) do
         if RJCounter and RJCounter.SetDesc then
@@ -1840,7 +1879,7 @@ task.spawn(function()
     end
 end)
 
--- 6. ESCUDOS (ARREGLADO — AHORA SÍ FUNCIONAN)
+-- 6. ESCUDOS
 local EscudosTab = Window:Tab({Title="Escudos", Icon="shield"})
 EscudosTab:Section({Title="🛡️ Protección y Defensas (reales)", TextSize=20}); EscudosTab:Space({Size=6})
 EscudosTab:Paragraph({Title="Nota", Desc="Anti-Kick solo bloquea kicks de scripts locales. Un kick del servidor no se puede bloquear del lado del cliente.", Image="info", ImageSize=14})
@@ -1868,7 +1907,6 @@ shieldPair("God Mode (Local)", function(s) GodModeEnabled = s end, Get("GodModeE
 shieldPair("Anti-Report (Oculta UI)", SetAntiReport, Get("AntiReportEnabled", false),
            "No Fall Damage", SetNoFallDamage, Get("NoFallDamageEnabled", false))
 
--- 🎙️ ANTI-VC ULTRA (toggle integrado directamente en Escudos)
 local GAntiVC = EscudosTab:Group({})
 GAntiVC:Toggle({Title="Anti-VC Ultra", Desc="Spam reconexion de voz (anti-VC agresivo)", Def=Get("AntiVCEnabled", false), Callback=AS(SetAntiVC)})
 EscudosTab:Space({Size=8})
@@ -2044,19 +2082,18 @@ pcall(function()
 end)
 
 AplicarConfiguracion()
--- Reintento 1.5s despues: por si WindUI o el personaje aun no estaban listos del todo
 task.spawn(function() task.wait(1.5); pcall(AplicarConfiguracion) end)
 
--- === CUADRO DE PERFIL: foto 100x100 a la DERECHA, nombre + ID en lista a la IZQUIERDA ===
+-- === CUADRO DE PERFIL ===
 task.spawn(function()
     pcall(function()
-        task.wait(0.6) -- esperar a que WindUI termine de construir la GUI
+        task.wait(0.6)
         if not PlayerTab then return end
         local Contenedor = nil
         pcall(function() Contenedor = PlayerTab.UIElements and PlayerTab.UIElements.ContainerFrame end)
-        if not Contenedor then pcall(function() Contenedor = PlayerTab.ContainerFrame end) end
-        if not Contenedor then pcall(function() Contenedor = PlayerTab.Container end) end
-        if not Contenedor then pcall(function() Contenedor = Window.SideBar and Window.SideBar.Parent end) end
+        if not Contenedor then pcall(function() Contenedor = PlayerTab.ContainerFrame end) end)
+        if not Contenedor then pcall(function() Contenedor = PlayerTab.Container end) end)
+        if not Contenedor then pcall(function() Contenedor = Window.SideBar and Window.SideBar.Parent end) end)
         if not Contenedor then return end
 
         local Box = Instance.new("Frame")
@@ -2069,7 +2106,6 @@ task.spawn(function()
         Box.BorderSizePixel = 0
         Box.Active = false
         Instance.new("UICorner", Box).CornerRadius = UDim.new(0, 10)
-        -- Cuadro BLANCO TRANSPARENTE (igual que los demas: Rendimiento, etc.)
         Box.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
         Box.BackgroundTransparency = 0.86
         local BordeBox = Instance.new("UIStroke")
@@ -2079,12 +2115,11 @@ task.spawn(function()
         BordeBox.Transparency = 0.35
         RefBordePerfil = BordeBox
 
-        -- Foto de perfil (tamano ORIGINAL 100x100) dentro del cuadro, lado derecho
         local Circulo = Instance.new("Frame")
         Circulo.Name = "CirculoPerfil"
         Circulo.Parent = Box
-        Circulo.BackgroundColor3 = Color3.fromRGB(255, 210, 150) -- naranja pastel
-        Circulo.BackgroundTransparency = 1 -- fondo transparente (igual que el menú)
+        Circulo.BackgroundColor3 = Color3.fromRGB(255, 210, 150)
+        Circulo.BackgroundTransparency = 1
         Circulo.Position = UDim2.new(1, -108, 0.5, -50)
         Circulo.Size = UDim2.new(0, 100, 0, 100)
         Circulo.ZIndex = 51
@@ -2113,10 +2148,9 @@ task.spawn(function()
             )
         end)
         if not Cargar then
-            Foto.Image = "rbxassetid://6026588573" -- Imagen de respaldo
+            Foto.Image = "rbxassetid://6026588573"
         end
 
-        -- Nombre + ID en forma de lista, lado izquierdo del cuadro
         local function HacerTexto(y, texto, tamano, bold, color)
             local lbl = Instance.new("TextLabel")
             lbl.Parent = Box
@@ -2140,8 +2174,4 @@ end)
 pcall(function() Window:SelectTab(PlayerTab) end)
 pcall(function() Window:SelectTab(1) end)
 
-WindUI:Notify({Title="TOKI🇯🇵", Content="v33: Invisible Ultra integrado en pestaña Main (toggle + tecla G)", Duration=4})
-
--- [v33] La función "Invisible Ultra" (antes el botón flotante TK del final) ya está
--- integrada como toggle en la pestaña Main y con atajo de tecla G. Se eliminó el
--- botón flotante independiente y el bloque _G.a para evitar duplicados.
+WindUI:Notify({Title="TOKI🇯🇵", Content="v34: Auto Pisar (Shield de Remotes) agregado en pestaña Main", Duration=4})
