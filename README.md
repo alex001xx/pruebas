@@ -2091,9 +2091,9 @@ task.spawn(function()
         if not PlayerTab then return end
         local Contenedor = nil
         pcall(function() Contenedor = PlayerTab.UIElements and PlayerTab.UIElements.ContainerFrame end)
-        if not Contenedor then pcall(function() Contenedor = PlayerTab.ContainerFrame end) end)
-        if not Contenedor then pcall(function() Contenedor = PlayerTab.Container end) end)
-        if not Contenedor then pcall(function() Contenedor = Window.SideBar and Window.SideBar.Parent end) end)
+        if not Contenedor then pcall(function() Contenedor = PlayerTab.ContainerFrame end) end
+        if not Contenedor then pcall(function() Contenedor = PlayerTab.Container end) end
+        if not Contenedor then pcall(function() Contenedor = Window.SideBar and Window.SideBar.Parent end) end
         if not Contenedor then return end
 
         local Box = Instance.new("Frame")
@@ -2127,9 +2127,9 @@ task.spawn(function()
         Instance.new("UICorner", Circulo).CornerRadius = UDim.new(1, 0)
         local Borde = Instance.new("UIStroke")
         Borde.Thickness = 3
-        Borde.Color = ColorAccent
+        Borde.Color = Color3.fromRGB(90, 225, 200) -- verde agua (fijo, no cambia con el accent)
         Borde.Parent = Circulo
-        RefBordeCirculo = Borde
+        RefBordeCirculo = nil -- no registrarlo para que AplicarColor no lo pise
 
         local Foto = Instance.new("ImageLabel")
         Foto.Name = "Foto"
