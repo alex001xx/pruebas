@@ -259,7 +259,7 @@ local function SetAutoPisar(s)
                         if not AutoPisarEnabled then break end
                         pcall(function() remote:FireServer(true) end)
                     end
-                    task.wait(0.3)
+                    task.wait(1.5)
                 end
             end)
         end
@@ -724,7 +724,7 @@ CrearFlotante("Ataque", "ATA", Color3.fromRGB(230, 80, 80),
     function() return FlashAttackEnabled end, function(s) SetFlashAttack(s) end)
 
 task.spawn(function()
-    while task.wait(0.3) do
+    while task.wait(1.5) do
         for _, f in pairs(BotonesFlotantes) do
             if f.Gui.Enabled then f.Actualizar() end
         end
@@ -803,49 +803,7 @@ local function SetAntiReport(s)
     pcall(function() StarterGui:SetCore("ReportAbusePageEnabled", not s) end)
 end
 
-local function AntiVCForceReconnect()
-    pcall(function()
-        if VoiceChatService and VoiceChatService.JoinVoice then VoiceChatService:JoinVoice() end
-    end)
-    pcall(function()
-        local internal = game:GetService("VoiceChatInternal")
-        if internal and internal.JoinVoice then internal:JoinVoice() end
-    end)
-    pcall(function()
-        if VoiceChatService and VoiceChatService.SetVoiceChatEnabled then
-            VoiceChatService:SetVoiceChatEnabled(true)
-        end
-    end)
-end
-
-local function SetAntiVC(s)
-    AntiVCEnabled = s
-    if s then
-        if not AntiVCConn then
-            AntiVCConn = RunService.Heartbeat:Connect(function()
-                if not AntiVCEnabled then return end
-                AntiVCForceReconnect()
-            end)
-        end
-        if not AntiVCFastConn then
-            AntiVCFastConn = RunService.RenderStepped:Connect(function()
-                if not AntiVCEnabled then return end
-                AntiVCForceReconnect()
-            end)
-        end
-        task.spawn(function()
-            for i = 1, 8 do
-                if not AntiVCEnabled then break end
-                task.wait(0.1)
-                AntiVCForceReconnect()
-            end
-        end)
-        WindUI:Notify({Title="Anti-VC", Content="Anti-VC Ultra activado", Duration=3})
-    else
-        if AntiVCConn then AntiVCConn:Disconnect(); AntiVCConn = nil end
-        if AntiVCFastConn then AntiVCFastConn:Disconnect(); AntiVCFastConn = nil end
-    end
-end
+-- (Anti-VC eliminado por causar lag)
 
 -- ============================================================
 -- 🎯 FUNCIONES DEL MODULO TARGET (integradas)
@@ -1269,7 +1227,7 @@ local function AplicarConfiguracion()
     Try(function() if Saved.AntiKickEnabled then SetAntiKick(true) end end)
     Try(function() if Saved.AntiResetEnabled then SetAntiReset(true) end end)
     Try(function() if Saved.AntiReportEnabled then SetAntiReport(true) end end)
-    Try(function() if Saved.AntiVCEnabled then SetAntiVC(true) end end)
+    -- Anti-VC: eliminado
     Try(function() if Saved.AntiSitEnabled~=nil then AntiSitEnabled=Saved.AntiSitEnabled end end)
     Try(function() if Saved.AntiFlingEnabled~=nil then AntiFlingEnabled=Saved.AntiFlingEnabled end end)
     Try(function() if Saved.AntiFreezeEnabled~=nil then AntiFreezeEnabled=Saved.AntiFreezeEnabled end end)
@@ -1281,7 +1239,7 @@ local Window = WindUI:CreateWindow({
     Title="Takemichi", Icon="sword", Author="TOKI🇯🇵", Folder="DENJI•ALEX",
     Size=UDim2.fromOffset(600,540), MinSize=Vector2.new(520,420), MaxSize=Vector2.new(850,680),
     Transparent=true, Theme="Dark", Resizable=true, SideBarWidth=160,
-    Background = "rbxassetid://91100683847618",
+    Background = "rbxassetid://95800355307180",
     BackgroundImageTransparency = 0.35,
     
     HideSearchBar = true, Accent=Color3.fromRGB(70,160,255),
@@ -1907,8 +1865,7 @@ shieldPair("God Mode (Local)", function(s) GodModeEnabled = s end, Get("GodModeE
 shieldPair("Anti-Report (Oculta UI)", SetAntiReport, Get("AntiReportEnabled", false),
            "No Fall Damage", SetNoFallDamage, Get("NoFallDamageEnabled", false))
 
-local GAntiVC = EscudosTab:Group({})
-GAntiVC:Toggle({Title="Anti-VC Ultra", Desc="Spam reconexion de voz (anti-VC agresivo)", Def=Get("AntiVCEnabled", false), Callback=AS(SetAntiVC)})
+-- Anti-VC Ultra: eliminado por lag
 EscudosTab:Space({Size=8})
 
 EscudosTab:Space({Size=12})
@@ -2022,7 +1979,7 @@ Cr:Paragraph({Title="", Desc="tonto el que ha leído esto", Image="smile", Image
 
 -- Loop en tiempo real
 task.spawn(function()
-    while task.wait(0.1) do
+    while task.wait(0.25) do
         if not Character or not RootPart then UpdateChar() end
         if NoFrictionEnabled and RootPart then RootPart.Friction=0; RootPart.AirFriction=0
         elseif RootPart then RootPart.Friction=1; RootPart.AirFriction=0.5 end
@@ -2030,8 +1987,6 @@ task.spawn(function()
             RootPart.CustomPhysicalProperties = PhysicalProperties.new(100, NoPushEnabled and 0 or 1, 0)
         elseif (NoPushEnabled or NoKnockbackEnabled) and RootPart then
             RootPart.CustomPhysicalProperties=PhysicalProperties.new(10, 0.3, NoPushEnabled and 0 or 0.5)
-        elseif RootPart then
-            RootPart.CustomPhysicalProperties=PhysicalProperties.new(1, 0.5, 0.5)
         end
         if AntiVoidEnabled and RootPart then
             if RootPart.Position.Y>-10 then LastSafePos=RootPart.Position
@@ -2204,9 +2159,9 @@ local function PintarLetras()
         end
     end)
 end
-task.spawn(function()
-    while task.wait(0.4) do PintarLetras() end
-end)
+-- Pintado permanente (sin bucle): una vez + dos reintentos para lo que se crea tarde
+task.delay(1.5, PintarLetras)
+task.delay(4, PintarLetras)
 PintarLetras()
 
 
@@ -2221,72 +2176,11 @@ local function AplicarTemaColores()
             t.Text = Color3.fromRGB(255, 210, 50)      -- TODAS las letras: amarillo fuerte
             t.Toggle = Color3.fromRGB(70, 160, 255)    -- botones toggle: azul cielo
             t.Accent = Color3.fromRGB(70, 160, 255)    -- barra de sliders / acento: azul cielo
-            t.Slider = Color3.fromRGB(70, 160, 255)    -- slider: azul cielo
-            t.PanelBackground = Color3.fromRGB(70, 160, 255)   -- fondo de cada opcion: azul cielo
-            t.PanelBackgroundTransparency = 0.85               -- transparente
-            t.LabelBackground = Color3.fromRGB(70, 160, 255)   -- fondo de etiquetas: azul cielo
-            t.LabelBackgroundTransparency = 0.85               -- transparente
             if Window.SetTheme then Window:SetTheme("Dark") end
         end
     end)
 end
 AplicarTemaColores()
-task.spawn(function() while task.wait(1) do AplicarTemaColores() end end)
-
-
--- ============================================================
--- 🔵 Repintar knobs blancos (toggle + slider) a azul cielo [v2.4]
--- ============================================================
-local function PintarKnobs()
-    pcall(function()
-        if not WindGui then return end
-        for _, obj in ipairs(WindGui:GetDescendants()) do
-            if (obj:IsA("Frame") or obj:IsA("ImageLabel")) then
-                local c = obj:FindFirstChildOfClass("UICorner")
-                if c and c.CornerRadius.Scale >= 0.9 then
-                    local sz = obj.AbsoluteSize
-                    if sz.X > 4 and sz.X < 40 and sz.Y > 4 and sz.Y < 40 then
-                        local bc = obj.BackgroundColor3
-                        if bc.R > 0.85 and bc.G > 0.85 and bc.B > 0.85 then
-                            obj.BackgroundColor3 = Color3.fromRGB(70, 160, 255)
-                        end
-                    end
-                end
-            end
-        end
-    end)
-end
-task.spawn(function() while task.wait(0.5) do PintarKnobs() end end)
-
-
--- ============================================================
--- 🔵 Repintar CUADROS de seccion/opciones (blanco transparente) -> azul cielo [v2.5]
--- (porque Window.Themes puede ser nil; se hace a la fuerza en el GUI)
--- ============================================================
-local function PintarFondos()
-    pcall(function()
-        if not WindGui then return end
-        local AZUL = Color3.fromRGB(70, 160, 255)
-        for _, obj in ipairs(WindGui:GetDescendants()) do
-            local sz = obj.AbsoluteSize
-            if sz.X >= 80 and sz.Y >= 20 then
-                if obj:IsA("Frame") then
-                    local bt = obj.BackgroundTransparency
-                    -- cuadro semi-transparente mediano/grande (seccion, grupo de opciones) -> azul cielo
-                    if bt > 0.2 and bt < 1 then
-                        obj.BackgroundColor3 = AZUL
-                    end
-                elseif obj:IsA("ImageLabel") and sz.X < 420 then
-                    -- cuadros redondeados (imagen) semi-transparentes, excluyendo el fondo grande
-                    local it = obj.ImageTransparency
-                    if it > 0.2 and it < 1 then
-                        obj.ImageColor3 = AZUL
-                    end
-                end
-            end
-        end
-    end)
-end
-task.spawn(function() while task.wait(0.5) do PintarFondos() end end)
+task.delay(2, AplicarTemaColores) -- un solo reintento (sin bucle, para no causar lag)
 
 WindUI:Notify({Title="Toki🇯🇵", Content="v2.0", Duration=4})
