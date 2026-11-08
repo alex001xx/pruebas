@@ -296,128 +296,7 @@ local function SetFlashAttack(s)
     else
         if FlashConn then FlashConn:Disconnect(); FlashConn = nil end
     end
-end
-
--- 🛡️ FUNCIÓN SIT PROTECTOR (Escudo)
-local function GuardarEstadosOriginalesSit(Personaje)
-    if not Personaje then return end
-    local Hum = Personaje:FindFirstChildWhichIsA("Humanoid")
-    if not Hum then return end
-    SitEstadosOriginales = {
-        Sit = false,
-        PlatformStand = false,
-        AutoRotate = true,
-        Seated = Hum:GetStateEnabled(Enum.HumanoidStateType.Seated),
-        FallingDown = Hum:GetStateEnabled(Enum.HumanoidStateType.FallingDown),
-        Ragdoll = Hum:GetStateEnabled(Enum.HumanoidStateType.Ragdoll),
-        PlatformStanding = Hum:GetStateEnabled(Enum.HumanoidStateType.PlatformStanding),
-    }
-end
-
-local function RestaurarTodoNormalSit()
-    local Pj = LocalPlayer.Character
-    if not Pj then return end
-    local Hum = Pj:FindFirstChildWhichIsA("Humanoid")
-    local Raiz = Pj:FindFirstChild("HumanoidRootPart")
-    if not Hum then return end
-    Hum.Sit = SitEstadosOriginales.Sit
-    Hum.PlatformStand = SitEstadosOriginales.PlatformStand
-    Hum.AutoRotate = SitEstadosOriginales.AutoRotate
-    Hum:SetStateEnabled(Enum.HumanoidStateType.Seated, SitEstadosOriginales.Seated)
-    Hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, SitEstadosOriginales.FallingDown)
-    Hum:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, SitEstadosOriginales.Ragdoll)
-    Hum:SetStateEnabled(Enum.HumanoidStateType.PlatformStanding, SitEstadosOriginales.PlatformStanding)
-end
-
-local function CrearSitGui()
-    if SitGui then return end
-    local Gui = Instance.new("ScreenGui")
-    Gui.Name = "SitProtector"
-    Gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
-    Gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    Gui.ResetOnSpawn = false
-
-    local Marco = Instance.new("Frame")
-    Marco.Size = UDim2.new(0, 120, 0, 55)
-    Marco.Position = UDim2.new(0.02, 0, 0.02, 0)
-    Marco.BackgroundColor3 = Color3.fromRGB(250, 235, 170)
-    Marco.BorderColor3 = Color3.fromRGB(245, 210, 90)
-    Marco.BorderSizePixel = 2
-    Marco.Active = true
-    Marco.Draggable = true
-    Marco.Parent = Gui
-
-    local Boton = Instance.new("TextButton")
-    Boton.Size = UDim2.new(0, 90, 0, 35)
-    Boton.Position = UDim2.new(0.5, -45, 0.5, -17)
-    Boton.BackgroundColor3 = Color3.fromRGB(245, 210, 90)
-    Boton.TextColor3 = Color3.fromRGB(70, 60, 40)
-    Boton.Font = Enum.Font.GothamBold
-    Boton.TextSize = 12
-    Boton.Text = "OFF"
-    Boton.AutoLocalize = false
-    Boton.Parent = Marco
-
-    SitGui = {Gui=Gui, Marco=Marco, Boton=Boton}
-end
-
-local function SetSitProtector(s)
-    if s and SitProtectorEnabled then return end
-    SitProtectorEnabled = s
-    CrearSitGui()
-
-    if s then
-        SitGui.Boton.Text = "ON"
-        SitGui.Boton.BackgroundColor3 = Color3.fromRGB(170, 245, 180)
-        GuardarEstadosOriginalesSit(LocalPlayer.Character)
-
-        SitConexiones.Bucle = RunService.Heartbeat:Connect(function()
-            local Pj = LocalPlayer.Character
-            if not Pj then return end
-            local Hum = Pj:FindFirstChildWhichIsA("Humanoid")
-            local Raiz = Pj:FindFirstChild("HumanoidRootPart")
-            if not Hum or not Raiz then return end
-
-            Hum.Sit = true
-            Hum:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
-            Hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
-            Hum:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
-            Hum:SetStateEnabled(Enum.HumanoidStateType.PlatformStanding, false)
-            Hum.AutoRotate = true
-            Hum.PlatformStand = false
-
-            if math.abs(Raiz.RotVelocity.Y) > 8 then
-                Raiz.RotVelocity = Vector3.new(0, math.sign(Raiz.RotVelocity.Y) * 8, 0)
-            end
-
-            for _, Pieza in Pj:GetChildren() do
-                if Pieza:IsA("Weld") or Pieza:IsA("WeldConstraint") or Pieza:IsA("Motor6D") then
-                    if Pieza.Name ~= "RootJoint" and Pieza.Name ~= "Neck" and Pieza.Name ~= "Waist"
-                    and not Pieza:FindFirstAncestorWhichIsA("Tool") then
-                        Pieza:Destroy()
-                    end
-                end
-            end
-        end)
-    else
-        if SitGui then
-            SitGui.Boton.Text = "OFF"
-            SitGui.Boton.BackgroundColor3 = Color3.fromRGB(245, 210, 90)
-        end
-        if SitConexiones.Bucle then
-            SitConexiones.Bucle:Disconnect()
-            SitConexiones.Bucle = nil
-        end
-        RestaurarTodoNormalSit()
-    end
-end
-
-LocalPlayer.CharacterAdded:Connect(function()
-    task.wait(0.2)
-    if SitGui and SitProtectorEnabled then
-        SitGui.Gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
-    end
-end)
+een
 
 local function SetESP(state)
     ESPEnabled=state
@@ -2180,7 +2059,8 @@ local function AplicarTemaColores()
         end
     end)
 end
-AplicarTemaColores()
+AplicarTemaColores() 
 task.delay(2, AplicarTemaColores) -- un solo reintento (sin bucle, para no causar lag)
 
 WindUI:Notify({Title="Toki🇯🇵", Content="v2.0", Duration=4})
+
