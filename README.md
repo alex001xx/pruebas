@@ -1132,7 +1132,7 @@ local function AplicarConfiguracion()
     Try(function() if Humanoid and Saved.WalkSpeed then Humanoid.WalkSpeed = Saved.WalkSpeed end end)
     Try(function() if Humanoid and Saved.JumpPower then Humanoid.JumpPower = Saved.JumpPower end end)
     Try(function() if Humanoid and Saved.GravityScale then Humanoid.GravityScale = Saved.GravityScale end end)
-    Try(function() if Humanoid and Saved.AnimationSpeed then pcall(function() Humanoid.AnimationSpeed = Saved.AnimationSpeed end) end) end)
+    Try(function() if Humanoid and Saved.AnimationSpeed then pcall(function() Humanoid.AnimationSpeed = Saved.AnimationSpeed end) end end)
     Try(function()
         if Humanoid and Saved.BodyScale then
             pcall(function()
@@ -2003,9 +2003,9 @@ task.spawn(function()
         if not PlayerTab then return end
         local Contenedor = nil
         pcall(function() Contenedor = PlayerTab.UIElements and PlayerTab.UIElements.ContainerFrame end)
-        if not Contenedor then pcall(function() Contenedor = PlayerTab.ContainerFrame end) end)
-        if not Contenedor then pcall(function() Contenedor = PlayerTab.Container end) end)
-        if not Contenedor then pcall(function() Contenedor = Window.SideBar and Window.SideBar.Parent end) end)
+        if not Contenedor then pcall(function() Contenedor = PlayerTab.ContainerFrame end) end
+        if not Contenedor then pcall(function() Contenedor = PlayerTab.Container end) end
+        if not Contenedor then pcall(function() Contenedor = Window.SideBar and Window.SideBar.Parent end) end
         if not Contenedor then return end
 
         local Box = Instance.new("Frame")
