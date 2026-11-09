@@ -40,6 +40,12 @@ local FlashAttackEnabled = false
 local FlashMultiplier = 5
 local FlashConn = nil
 
+-- 🛡️ SIT PROTECTOR (Escudo)
+local SitProtectorEnabled = false
+local SitConexiones = {}
+local SitEstadosOriginales = {}
+local SitGui = nil
+
 -- 🛡️ NUEVOS ESCUDOS REALES (antes no hacían nada)
 local AntiKickEnabled, AntiResetEnabled, AntiSitEnabled = false, false, false
 local AntiFlingEnabled, AntiFreezeEnabled, AntiReportEnabled = false, false, false
@@ -143,89 +149,6 @@ local function SetInfJump(state)
     else if InfJumpConn then InfJumpConn:Disconnect(); InfJumpConn=nil end end
 end
 
--- ============================================================
--- 🚀 TPWALK LIMPIO (v2) — SIN Sit, sin conflictos con Sit Protector
--- Anti-rubberband por velocidad + WalkSpeed 0
--- ============================================================
-getgenv().TPWalkEnabled = false
-getgenv().TPWalkSpeed = TPWalkSpeed
-local TPWalkOriginalWalkSpeed = 16
-
-local function SetTPWalk(s)
-    TPWalkEnabled = s
-    getgenv().TPWalkEnabled = s
-    if s then
-        -- Guardar WalkSpeed original para restaurarlo después
-        pcall(function()
-            if Humanoid then TPWalkOriginalWalkSpeed = Humanoid.WalkSpeed end
-        end)
-        if not TPWalkConn then
-            TPWalkConn = RunService.RenderStepped:Connect(function()
-                if not getgenv().TPWalkEnabled then return end
-
-                local character = LocalPlayer.Character
-                if not character then return end
-
-                local humanoid = character:FindFirstChildOfClass("Humanoid")
-                local hrp = character:FindFirstChild("HumanoidRootPart")
-                local camera = workspace.CurrentCamera
-
-                if not humanoid or not hrp or not camera then return end
-
-                -- Anular movimiento default (no toca Sit en absoluto)
-                pcall(function() humanoid.WalkSpeed = 0 end)
-                humanoid.PlatformStand = false
-
-                -- Detectar Shift Lock
-                local shiftLockActivo = (UserInputService.MouseBehavior == Enum.MouseBehavior.LockCenter)
-
-                if shiftLockActivo then
-                    humanoid.AutoRotate = false
-                    local camLook = camera.CFrame.LookVector
-                    local targetY = math.atan2(-camLook.X, -camLook.Z)
-                    hrp.CFrame = CFrame.new(hrp.Position) * CFrame.Angles(0, targetY, 0)
-                else
-                    humanoid.AutoRotate = true
-                end
-
-                if humanoid.MoveDirection.Magnitude > 0.1 then
-                    local speedMultiplier = getgenv().TPWalkSpeed * 55
-                    hrp.AssemblyLinearVelocity = Vector3.new(
-                        humanoid.MoveDirection.X * speedMultiplier,
-                        hrp.AssemblyLinearVelocity.Y,
-                        humanoid.MoveDirection.Z * speedMultiplier
-                    )
-                else
-                    -- Frenar suavemente en X/Z cuando no hay input
-                    hrp.AssemblyLinearVelocity = Vector3.new(
-                        hrp.AssemblyLinearVelocity.X * 0.85,
-                        hrp.AssemblyLinearVelocity.Y,
-                        hrp.AssemblyLinearVelocity.Z * 0.85
-                    )
-                end
-            end)
-        end
-        WindUI:Notify({Title="TPWalk", Content="Activado (sin Sit — independiente de Sit Protector)", Duration=2})
-    else
-        if TPWalkConn then TPWalkConn:Disconnect(); TPWalkConn = nil end
-        pcall(function()
-            local character = LocalPlayer.Character
-            if character then
-                local humanoid = character:FindFirstChildOfClass("Humanoid")
-                local hrp = character:FindFirstChild("HumanoidRootPart")
-                if humanoid then
-                    humanoid.WalkSpeed = TPWalkOriginalWalkSpeed
-                    humanoid.AutoRotate = true
-                    humanoid.PlatformStand = false
-                end
-                if hrp then
-                    hrp.AssemblyLinearVelocity = Vector3.new(0, hrp.AssemblyLinearVelocity.Y, 0)
-                end
-            end
-        end)
-    end
-end
-
 -- 🛡️ AUTO PISAR (Shield de Remotes — spam de remotes seguros, ignora PvP/combate/ruletas) [v34]
 local AutoPisarThread = nil
 local safeRemotes = {}
@@ -306,6 +229,127 @@ local function SetFlashAttack(s)
         if FlashConn then FlashConn:Disconnect(); FlashConn = nil end
     end
 end
+
+-- 🛡️ FUNCIÓN SIT PROTECTOR (Escudo)
+local function GuardarEstadosOriginalesSit(Personaje)
+    if not Personaje then return end
+    local Hum = Personaje:FindFirstChildWhichIsA("Humanoid")
+    if not Hum then return end
+    SitEstadosOriginales = {
+        Sit = false,
+        PlatformStand = false,
+        AutoRotate = true,
+        Seated = Hum:GetStateEnabled(Enum.HumanoidStateType.Seated),
+        FallingDown = Hum:GetStateEnabled(Enum.HumanoidStateType.FallingDown),
+        Ragdoll = Hum:GetStateEnabled(Enum.HumanoidStateType.Ragdoll),
+        PlatformStanding = Hum:GetStateEnabled(Enum.HumanoidStateType.PlatformStanding),
+    }
+end
+
+local function RestaurarTodoNormalSit()
+    local Pj = LocalPlayer.Character
+    if not Pj then return end
+    local Hum = Pj:FindFirstChildWhichIsA("Humanoid")
+    local Raiz = Pj:FindFirstChild("HumanoidRootPart")
+    if not Hum then return end
+    Hum.Sit = SitEstadosOriginales.Sit
+    Hum.PlatformStand = SitEstadosOriginales.PlatformStand
+    Hum.AutoRotate = SitEstadosOriginales.AutoRotate
+    Hum:SetStateEnabled(Enum.HumanoidStateType.Seated, SitEstadosOriginales.Seated)
+    Hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, SitEstadosOriginales.FallingDown)
+    Hum:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, SitEstadosOriginales.Ragdoll)
+    Hum:SetStateEnabled(Enum.HumanoidStateType.PlatformStanding, SitEstadosOriginales.PlatformStanding)
+end
+
+local function CrearSitGui()
+    if SitGui then return end
+    local Gui = Instance.new("ScreenGui")
+    Gui.Name = "SitProtector"
+    Gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+    Gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    Gui.ResetOnSpawn = false
+
+    local Marco = Instance.new("Frame")
+    Marco.Size = UDim2.new(0, 120, 0, 55)
+    Marco.Position = UDim2.new(0.02, 0, 0.02, 0)
+    Marco.BackgroundColor3 = Color3.fromRGB(250, 235, 170)
+    Marco.BorderColor3 = Color3.fromRGB(245, 210, 90)
+    Marco.BorderSizePixel = 2
+    Marco.Active = true
+    Marco.Draggable = true
+    Marco.Parent = Gui
+
+    local Boton = Instance.new("TextButton")
+    Boton.Size = UDim2.new(0, 90, 0, 35)
+    Boton.Position = UDim2.new(0.5, -45, 0.5, -17)
+    Boton.BackgroundColor3 = Color3.fromRGB(245, 210, 90)
+    Boton.TextColor3 = Color3.fromRGB(70, 60, 40)
+    Boton.Font = Enum.Font.GothamBold
+    Boton.TextSize = 12
+    Boton.Text = "OFF"
+    Boton.AutoLocalize = false
+    Boton.Parent = Marco
+
+    SitGui = {Gui=Gui, Marco=Marco, Boton=Boton}
+end
+
+local function SetSitProtector(s)
+    if s and SitProtectorEnabled then return end
+    SitProtectorEnabled = s
+    CrearSitGui()
+
+    if s then
+        SitGui.Boton.Text = "ON"
+        SitGui.Boton.BackgroundColor3 = Color3.fromRGB(170, 245, 180)
+        GuardarEstadosOriginalesSit(LocalPlayer.Character)
+
+        SitConexiones.Bucle = RunService.Heartbeat:Connect(function()
+            local Pj = LocalPlayer.Character
+            if not Pj then return end
+            local Hum = Pj:FindFirstChildWhichIsA("Humanoid")
+            local Raiz = Pj:FindFirstChild("HumanoidRootPart")
+            if not Hum or not Raiz then return end
+
+            Hum.Sit = true
+            Hum:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
+            Hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+            Hum:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
+            Hum:SetStateEnabled(Enum.HumanoidStateType.PlatformStanding, false)
+            Hum.AutoRotate = true
+            Hum.PlatformStand = false
+
+            if math.abs(Raiz.RotVelocity.Y) > 8 then
+                Raiz.RotVelocity = Vector3.new(0, math.sign(Raiz.RotVelocity.Y) * 8, 0)
+            end
+
+            for _, Pieza in Pj:GetChildren() do
+                if Pieza:IsA("Weld") or Pieza:IsA("WeldConstraint") or Pieza:IsA("Motor6D") then
+                    if Pieza.Name ~= "RootJoint" and Pieza.Name ~= "Neck" and Pieza.Name ~= "Waist"
+                    and not Pieza:FindFirstAncestorWhichIsA("Tool") then
+                        Pieza:Destroy()
+                    end
+                end
+            end
+        end)
+    else
+        if SitGui then
+            SitGui.Boton.Text = "OFF"
+            SitGui.Boton.BackgroundColor3 = Color3.fromRGB(245, 210, 90)
+        end
+        if SitConexiones.Bucle then
+            SitConexiones.Bucle:Disconnect()
+            SitConexiones.Bucle = nil
+        end
+        RestaurarTodoNormalSit()
+    end
+end
+
+LocalPlayer.CharacterAdded:Connect(function()
+    task.wait(0.2)
+    if SitGui and SitProtectorEnabled then
+        SitGui.Gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+    end
+end)
 
 local function SetESP(state)
     ESPEnabled=state
@@ -988,6 +1032,7 @@ local function BuildConfig()
         AntiAFKEnabled = AntiAFKEnabled,
         NoPushEnabled = NoPushEnabled,
         NoKnockbackEnabled = NoKnockbackEnabled,
+        SitProtectorEnabled = SitProtectorEnabled,
         AutoClickerEnabled = AutoClickerEnabled,
         AutoClickerCPS = AutoClickerCPS,
         NoFallDamageEnabled = NoFallDamageEnabled,
@@ -1029,7 +1074,7 @@ local function AS(fn)
     end
 end
 
-local ColorAccent = Color3.fromRGB(70, 160, 255)
+local ColorAccent = Color3.fromRGB(70, 160, 255) -- azul cielo fuerte (sliders y botones)
 local RefBordeCirculo, RefBordePerfil, RefTPBtn = nil, nil, nil
 local function AplicarColor(c)
     ColorAccent = c
@@ -1095,6 +1140,7 @@ local function AplicarConfiguracion()
     Try(function() if Saved.FpsBoostEnabled then SetFpsBoost(true) end end)
     Try(function() if Saved.ClickTPEnabled then SetClickTP(true) end end)
     Try(function() if Saved.SpinBotEnabled then SetSpinBot(true) end end)
+    Try(function() if Saved.SitProtectorEnabled then SetSitProtector(true) end end)
     Try(function() if Saved.AutoClickerEnabled then SetAutoClicker(true) end end)
     Try(function() if Saved.NoFallDamageEnabled then SetNoFallDamage(true) end end)
     Try(function() if Saved.AntiAFKEnabled then SetAntiAFK(true) end end)
@@ -1113,6 +1159,7 @@ local function AplicarConfiguracion()
     Try(function() if Saved.AntiKickEnabled then SetAntiKick(true) end end)
     Try(function() if Saved.AntiResetEnabled then SetAntiReset(true) end end)
     Try(function() if Saved.AntiReportEnabled then SetAntiReport(true) end end)
+    -- Anti-VC: eliminado
     Try(function() if Saved.AntiSitEnabled~=nil then AntiSitEnabled=Saved.AntiSitEnabled end end)
     Try(function() if Saved.AntiFlingEnabled~=nil then AntiFlingEnabled=Saved.AntiFlingEnabled end end)
     Try(function() if Saved.AntiFreezeEnabled~=nil then AntiFreezeEnabled=Saved.AntiFreezeEnabled end end)
@@ -1126,6 +1173,7 @@ local Window = WindUI:CreateWindow({
     Transparent=true, Theme="Dark", Resizable=true, SideBarWidth=160,
     Background = "rbxassetid://95800355307180",
     BackgroundImageTransparency = 0.35,
+    
     HideSearchBar = true, Accent=Color3.fromRGB(70,160,255),
     OpenButton={Title="TOKI🇯🇵", Icon="sword", Enabled=true, Draggable=true, OnlyMobile=false, CornerRadius=UDim.new(1,0), StrokeThickness=2, StrokeColor=Color3.fromRGB(255,255,255), Scale=1},
 })
@@ -1749,6 +1797,9 @@ shieldPair("God Mode (Local)", function(s) GodModeEnabled = s end, Get("GodModeE
 shieldPair("Anti-Report (Oculta UI)", SetAntiReport, Get("AntiReportEnabled", false),
            "No Fall Damage", SetNoFallDamage, Get("NoFallDamageEnabled", false))
 
+-- Anti-VC Ultra: eliminado por lag
+EscudosTab:Space({Size=8})
+
 EscudosTab:Space({Size=12})
 
 -- 7. HERRAMIENTAS
@@ -1919,7 +1970,7 @@ end)
 
 AplicarConfiguracion()
 task.spawn(function() task.wait(1.5); pcall(AplicarConfiguracion) end)
-pcall(function() AplicarColor(Color3.fromRGB(70, 160, 255)) end)
+pcall(function() AplicarColor(Color3.fromRGB(70, 160, 255)) end) -- fuerza azul cielo (sliders y botones)
 
 -- === CUADRO DE PERFIL ===
 task.spawn(function()
@@ -1964,9 +2015,9 @@ task.spawn(function()
         Instance.new("UICorner", Circulo).CornerRadius = UDim.new(1, 0)
         local Borde = Instance.new("UIStroke")
         Borde.Thickness = 3
-        Borde.Color = Color3.fromRGB(70, 160, 255)
+        Borde.Color = Color3.fromRGB(70, 160, 255) -- azul cielo fuerte
         Borde.Parent = Circulo
-        RefBordeCirculo = Borde
+        RefBordeCirculo = Borde -- registrado para que combine con el accent azul cielo
 
         local Foto = Instance.new("ImageLabel")
         Foto.Name = "Foto"
@@ -2011,10 +2062,12 @@ end)
 pcall(function() Window:SelectTab(PlayerTab) end)
 pcall(function() Window:SelectTab(1) end)
 
+
 -- ============================================================
--- 🟡 TODAS las letras del menú en AMARILLO
+-- 🟡 TODAS las letras del menú en AMARILLO PASTEL [v2.1]
+-- (títulos, toggles, sliders, sidebar, botones y notificaciones)
 -- ============================================================
-local ColorLetras = Color3.fromRGB(255, 210, 50)
+local ColorLetras = Color3.fromRGB(255, 210, 50) -- amarillo intenso
 local WindGui = nil
 local function PintarLetras()
     pcall(function()
@@ -2038,25 +2091,29 @@ local function PintarLetras()
         end
     end)
 end
+-- Pintado permanente (sin bucle): una vez + dos reintentos para lo que se crea tarde
 task.delay(1.5, PintarLetras)
 task.delay(4, PintarLetras)
 PintarLetras()
 
+
 -- ============================================================
--- 🔵🟡 TEMA DE WINDUI
+-- 🔵🟡 PISAR EL TEMA DE WINDUI DE RAIZ (toggle + texto + sliders)
+-- Sin esto los toggles salen verdes y las letras blancas. [v2.3]
 -- ============================================================
 local function AplicarTemaColores()
     pcall(function()
         local t = Window and Window.Themes and Window.Themes.Dark
         if t then
-            t.Text = Color3.fromRGB(255, 210, 50)
-            t.Toggle = Color3.fromRGB(70, 160, 255)
-            t.Accent = Color3.fromRGB(70, 160, 255)
+            t.Text = Color3.fromRGB(255, 210, 50)      -- TODAS las letras: amarillo fuerte
+            t.Toggle = Color3.fromRGB(70, 160, 255)    -- botones toggle: azul cielo
+            t.Accent = Color3.fromRGB(70, 160, 255)    -- barra de sliders / acento: azul cielo
             if Window.SetTheme then Window:SetTheme("Dark") end
         end
     end)
 end
-AplicarTemaColores()
-task.delay(2, AplicarTemaColores)
+AplicarTemaColores() 
+task.delay(2, AplicarTemaColores) -- un solo reintento (sin bucle, para no causar lag)
 
-WindUI:Notify({Title="Toki🇯🇵", Content="v2.2 (sin Sit Protector)", Duration=4})
+WindUI:Notify({Title="Toki🇯🇵", Content="v2.0", Duration=4})
+
