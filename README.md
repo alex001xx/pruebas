@@ -20,7 +20,8 @@ GodModeEnabled, ClickTPEnabled, AutoJumpEnabled, WalkOnWaterEnabled = false, fal
 FollowPlayerEnabled, SpinBotEnabled, FreezePositionEnabled, InstantRespawnEnabled = false, false, false, false
 FallSpeedCap, SavedPosition, CoordsText, ClickTPConn, SpinConn = 200, nil, "", nil, nil
 AutoWalkEnabled, AutoWalkConn = false, nil
-TPWalkEnabled, TPWalkSpeed, TPWalkConn = false, 0.30, nil
+-- [v35] TPWalk (Bypass) integrado — velocidad por defecto 1.0
+TPWalkEnabled, TPWalkSpeed, TPWalkConn = false, 1.0, nil
 InvisibleEnabled = false
 -- [v33] Invisible Ultra (Oculta Posición) — integrado a la pestaña Main
 HidePosEnabled, HidePosConn, HideParts = false, nil, {}
@@ -227,6 +228,27 @@ local function SetFlashAttack(s)
         end
     else
         if FlashConn then FlashConn:Disconnect(); FlashConn = nil end
+    end
+end
+
+-- 👣 TPWALK (BYPASS) — integrado a la pestaña Main, al lado de Ataque Rápido [v35]
+local function SetTPWalk(s)
+    TPWalkEnabled = s
+    if s then
+        if not TPWalkConn then
+            TPWalkConn = RunService.Heartbeat:Connect(function()
+                if not TPWalkEnabled or not RootPart or not Humanoid then return end
+                local dir = Humanoid.MoveDirection
+                if dir.Magnitude > 0 then
+                    RootPart.CFrame = RootPart.CFrame + (dir * TPWalkSpeed)
+                end
+            end)
+        end
+    else
+        if TPWalkConn then
+            TPWalkConn:Disconnect()
+            TPWalkConn = nil
+        end
     end
 end
 
@@ -1110,7 +1132,7 @@ local function AplicarConfiguracion()
     Try(function() if Humanoid and Saved.WalkSpeed then Humanoid.WalkSpeed = Saved.WalkSpeed end end)
     Try(function() if Humanoid and Saved.JumpPower then Humanoid.JumpPower = Saved.JumpPower end end)
     Try(function() if Humanoid and Saved.GravityScale then Humanoid.GravityScale = Saved.GravityScale end end)
-    Try(function() if Humanoid and Saved.AnimationSpeed then pcall(function() Humanoid.AnimationSpeed = Saved.AnimationSpeed end) end end)
+    Try(function() if Humanoid and Saved.AnimationSpeed then pcall(function() Humanoid.AnimationSpeed = Saved.AnimationSpeed end) end) end)
     Try(function()
         if Humanoid and Saved.BodyScale then
             pcall(function()
@@ -1198,21 +1220,23 @@ end)
 local MainTab = Window:Tab({Title="Main", Icon="home"})
 MainTab:Section({Title="Funciones Principales", TextSize=20}); MainTab:Space({Size=6})
 
-MainTab:Section({Title="⚔️ Ataque Rápido", TextSize=18}); MainTab:Space({Size=6})
+-- [v35] Ataque Rápido + TPWalk juntos, al lado
+MainTab:Section({Title="⚔️ Ataque Rápido / 👣 TPWalk", TextSize=18}); MainTab:Space({Size=6})
 local FlashRow = MainTab:Group({})
 FlashRow:Toggle({Title="Activar Ataque Rápido", Def=Get("FlashAttackEnabled", false), Callback=AS(SetFlashAttack)})
 FlashRow:Space({Size=8})
 FlashRow:Slider({Title="Multiplicador", Step=1, Value={Min=1,Max=30,Default=Get("FlashMultiplier", 5)}, Callback=AS(function(v) FlashMultiplier = v end)})
+MainTab:Space({Size=8})
+local TPWalkRow = MainTab:Group({})
+TPWalkRow:Toggle({Title="TPWalk (Bypass)", Def=Get("TPWalkEnabled", false), Callback=AS(SetTPWalk)})
+TPWalkRow:Space({Size=8})
+TPWalkRow:Slider({Title="Velocidad TPWalk", Step=0.05, Value={Min=0.01, Max=20, Default=Get("TPWalkSpeed", 1.0)}, Callback=AS(function(v) TPWalkSpeed = v; getgenv().TPWalkSpeed = v end)})
 MainTab:Space({Size=12})
 
 local MainRow1 = MainTab:Group({})
 MainRow1:Button({Title="Teleport a Ti", Icon="map-pin", Justify="Center", Callback=function() local m=LocalPlayer:GetMouse(); if RootPart then RootPart.CFrame=CFrame.new(m.Hit.Position+Vector3.new(0,3,0)) end end})
-MainRow1:Space({Size=8})
-MainRow1:Toggle({Title="TPWalk (Bypass)", Def=Get("TPWalkEnabled", false), Callback=AS(SetTPWalk)})
 MainTab:Space({Size=8})
-MainTab:Slider({Title="Velocidad TPWalk", Step=0.05, Value={Min=0.01, Max=20, Default=Get("TPWalkSpeed", 0.30)}, Callback=AS(function(v) TPWalkSpeed = v; getgenv().TPWalkSpeed = v end)})
-MainTab:Space({Size=8})
--- [v34] Auto Pisar (Shield de Remotes) — debajo de TPWalk
+-- [v34] Auto Pisar (Shield de Remotes)
 MainTab:Toggle({Title="Auto Pisar", Desc="Shield de remotes (anti-PvP/ruletas)", Def=Get("AutoPisarEnabled", false), Callback=AS(SetAutoPisar)})
 MainTab:Space({Size=8})
 local MainRow2 = MainTab:Group({})
@@ -1979,9 +2003,9 @@ task.spawn(function()
         if not PlayerTab then return end
         local Contenedor = nil
         pcall(function() Contenedor = PlayerTab.UIElements and PlayerTab.UIElements.ContainerFrame end)
-        if not Contenedor then pcall(function() Contenedor = PlayerTab.ContainerFrame end) end
-        if not Contenedor then pcall(function() Contenedor = PlayerTab.Container end) end
-        if not Contenedor then pcall(function() Contenedor = Window.SideBar and Window.SideBar.Parent end) end
+        if not Contenedor then pcall(function() Contenedor = PlayerTab.ContainerFrame end) end)
+        if not Contenedor then pcall(function() Contenedor = PlayerTab.Container end) end)
+        if not Contenedor then pcall(function() Contenedor = Window.SideBar and Window.SideBar.Parent end) end)
         if not Contenedor then return end
 
         local Box = Instance.new("Frame")
@@ -2115,5 +2139,4 @@ end
 AplicarTemaColores() 
 task.delay(2, AplicarTemaColores) -- un solo reintento (sin bucle, para no causar lag)
 
-WindUI:Notify({Title="Toki🇯🇵", Content="v2.0", Duration=4})
-
+WindUI:Notify({Title="Toki🇯🇵", Content="v2.1 (TPWalk integrado)", Duration=4})
