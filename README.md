@@ -1,5 +1,5 @@
 -- ==================================================
--- 📋 AA.toki | v31 (HITBOX = como antes / RenderStepped cada frame)
+-- 📋 AA.toki | v32 (2 PESTAÑAS: COMBATE + ADICIONALES · scooter incorporado)
 -- ==================================================
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -28,6 +28,9 @@ local ALTO_BASE = 352
 local MIN_ANCHO = 150
 local MIN_ALTO_FRAME = 70
 local ID_FONDO = "rbxassetid://79902517665758"
+local ALTO_TITULO = 22
+local ALTO_TABS = 28
+local ALTO_SUPERIOR = ALTO_TITULO + ALTO_TABS
 
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "AA.toki"
@@ -39,7 +42,7 @@ local framePrincipal = Instance.new("Frame")
 framePrincipal.Parent = screenGui
 framePrincipal.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
 framePrincipal.BackgroundTransparency = 0.35
-framePrincipal.Size = UDim2.new(0, ANCHO_BASE, 0, ALTO_BASE + 22)
+framePrincipal.Size = UDim2.new(0, ANCHO_BASE, 0, ALTO_BASE + ALTO_SUPERIOR)
 framePrincipal.Position = UDim2.new(0.02, 0, 0.15, 0)
 framePrincipal.Active = true
 framePrincipal.Draggable = true
@@ -61,7 +64,7 @@ bgImage.Selectable = false
 bgImage.Parent = framePrincipal
 
 local barra = Instance.new("Frame")
-barra.Size = UDim2.new(1, 0, 0, 22)
+barra.Size = UDim2.new(1, 0, 0, ALTO_TITULO)
 barra.BackgroundColor3 = COLOR_BARRA
 barra.BackgroundTransparency = TRANSPARENCIA_BARRA
 barra.BorderSizePixel = 1
@@ -93,11 +96,44 @@ btnMin.TextSize = 13
 btnMin.ZIndex = 11
 btnMin.Parent = barra
 
+-- ==================================================
+-- 📑 PESTAÑAS (COMBATE / ADICIONALES)
+-- ==================================================
+local barraTab = Instance.new("Frame")
+barraTab.Size = UDim2.new(1, 0, 0, ALTO_TABS)
+barraTab.Position = UDim2.new(0, 0, 0, ALTO_TITULO)
+barraTab.BackgroundTransparency = 1
+barraTab.ZIndex = 10
+barraTab.Parent = framePrincipal
+
+local tabCombate = Instance.new("TextButton")
+tabCombate.Size = UDim2.new(0.5, -2, 1, -4)
+tabCombate.Position = UDim2.new(0, 0, 0, 2)
+tabCombate.Text = "⚔️ COMBATE"
+tabCombate.Font = Enum.Font.GothamBold
+tabCombate.TextSize = 11
+tabCombate.TextColor3 = COLOR_CAFE
+tabCombate.ZIndex = 11
+tabCombate.Parent = barraTab
+
+local tabAdicionales = Instance.new("TextButton")
+tabAdicionales.Size = UDim2.new(0.5, -2, 1, -4)
+tabAdicionales.Position = UDim2.new(0.5, 2, 0, 2)
+tabAdicionales.Text = "➕ ADICIONALES"
+tabAdicionales.Font = Enum.Font.GothamBold
+tabAdicionales.TextSize = 11
+tabAdicionales.TextColor3 = COLOR_CAFE
+tabAdicionales.ZIndex = 11
+tabAdicionales.Parent = barraTab
+
+-- ==================================================
+-- 📄 CONTENIDO: PESTAÑA COMBATE
+-- ==================================================
 local content = Instance.new("ScrollingFrame")
-content.Name = "Content"
+content.Name = "Combate"
 content.BackgroundTransparency = 1
-content.Position = UDim2.new(0, 0, 0, 22)
-content.Size = UDim2.new(1, 0, 1, -22)
+content.Position = UDim2.new(0, 0, 0, ALTO_SUPERIOR)
+content.Size = UDim2.new(1, 0, 1, -ALTO_SUPERIOR)
 content.ClipsDescendants = true
 content.BorderSizePixel = 0
 content.ScrollBarThickness = 0
@@ -121,6 +157,39 @@ layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 layout.SortOrder = Enum.SortOrder.LayoutOrder
 layout.Padding = UDim.new(0, 6)
 layout.Parent = content
+
+-- ==================================================
+-- 📄 CONTENIDO: PESTAÑA ADICIONALES
+-- ==================================================
+local contentAdicionales = Instance.new("ScrollingFrame")
+contentAdicionales.Name = "Adicionales"
+contentAdicionales.BackgroundTransparency = 1
+contentAdicionales.Position = UDim2.new(0, 0, 0, ALTO_SUPERIOR)
+contentAdicionales.Size = UDim2.new(1, 0, 1, -ALTO_SUPERIOR)
+contentAdicionales.ClipsDescendants = true
+contentAdicionales.BorderSizePixel = 0
+contentAdicionales.ScrollBarThickness = 0
+contentAdicionales.ScrollBarImageTransparency = 1
+contentAdicionales.ScrollingDirection = Enum.ScrollingDirection.Y
+contentAdicionales.AutomaticCanvasSize = Enum.AutomaticSize.Y
+contentAdicionales.CanvasSize = UDim2.new(0, 0, 0, 0)
+contentAdicionales.ZIndex = 2
+contentAdicionales.Visible = false
+contentAdicionales.Parent = framePrincipal
+
+local pad2 = Instance.new("UIPadding")
+pad2.PaddingTop = UDim.new(0, 8)
+pad2.PaddingBottom = UDim.new(0, 12)
+pad2.PaddingLeft = UDim.new(0, 8)
+pad2.PaddingRight = UDim.new(0, 8)
+pad2.Parent = contentAdicionales
+
+local layout2 = Instance.new("UIListLayout")
+layout2.FillDirection = Enum.FillDirection.Vertical
+layout2.HorizontalAlignment = Enum.HorizontalAlignment.Center
+layout2.SortOrder = Enum.SortOrder.LayoutOrder
+layout2.Padding = UDim.new(0, 6)
+layout2.Parent = contentAdicionales
 
 local function estilizarBoton(btn)
     btn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
@@ -151,6 +220,26 @@ local function bordeActivo(btn, activo)
         stroke.Thickness = 1.5
     end
 end
+
+estilizarBoton(tabCombate)
+estilizarBoton(tabAdicionales)
+
+local function mostrarTab(cual)
+    if cual == "combate" then
+        content.Visible = true
+        contentAdicionales.Visible = false
+        bordeActivo(tabCombate, true)
+        bordeActivo(tabAdicionales, false)
+    else
+        content.Visible = false
+        contentAdicionales.Visible = true
+        bordeActivo(tabCombate, false)
+        bordeActivo(tabAdicionales, true)
+    end
+end
+tabCombate.MouseButton1Click:Connect(function() mostrarTab("combate") end)
+tabAdicionales.MouseButton1Click:Connect(function() mostrarTab("adicionales") end)
+mostrarTab("combate")
 
 local function filaDosBotones(orden, alto, txtA, txtB, tamTexto)
     tamTexto = tamTexto or 11
@@ -196,6 +285,9 @@ local function separador(orden, texto)
     return s
 end
 
+-- ==================================================
+-- ⚔️ BOTONES DE COMBATE
+-- ==================================================
 local statusLabel = Instance.new("TextLabel")
 statusLabel.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 statusLabel.BackgroundTransparency = 0.5
@@ -301,6 +393,30 @@ uiListLayout.SortOrder = Enum.SortOrder.Name
 uiListLayout.Padding = UDim.new(0, 6)
 uiListLayout.Parent = scrollingFrame
 
+-- ==================================================
+-- ➕ BOTONES DE ADICIONALES (Scooter)
+-- ==================================================
+local infoScooter = Instance.new("TextLabel")
+infoScooter.BackgroundTransparency = 1
+infoScooter.Size = UDim2.new(1, 0, 0, 30)
+infoScooter.LayoutOrder = 1
+infoScooter.Text = "Equipa sola la scooter\nde tu mochila"
+infoScooter.TextColor3 = COLOR_TEXTO
+infoScooter.Font = Enum.Font.Gotham
+infoScooter.TextSize = 10
+infoScooter.TextWrapped = true
+infoScooter.Parent = contentAdicionales
+
+local btnScooter = Instance.new("TextButton")
+btnScooter.Size = UDim2.new(1, 0, 0, 38)
+btnScooter.LayoutOrder = 2
+btnScooter.Text = "🛴 SCOOTER: OFF"
+btnScooter.Font = Enum.Font.GothamBold
+btnScooter.TextSize = 13
+btnScooter.ZIndex = 3
+btnScooter.Parent = contentAdicionales
+estilizarBoton(btnScooter)
+
 local letraA = Instance.new("TextLabel")
 letraA.Size = UDim2.new(1, -28, 0, 16)
 letraA.Position = UDim2.new(0, 6, 1, -16)
@@ -349,7 +465,7 @@ UserInputService.InputChanged:Connect(function(input)
         local nuevoAlto = math.max(MIN_ALTO_FRAME, inicioTamano.Y + delta.Y)
         framePrincipal.Size = UDim2.new(0, nuevoAncho, 0, nuevoAlto)
         framePrincipal:SetAttribute("AnchoOriginal", nuevoAncho)
-        framePrincipal:SetAttribute("AltoOriginal", nuevoAlto - 22)
+        framePrincipal:SetAttribute("AltoOriginal", nuevoAlto - ALTO_SUPERIOR)
     end
 end)
 
@@ -367,16 +483,19 @@ btnMin.MouseButton1Click:Connect(function()
     local alto = framePrincipal:GetAttribute("AltoOriginal")
     if minimizado then
         content.Visible = false
+        contentAdicionales.Visible = false
+        barraTab.Visible = false
         gripResize.Visible = false
         letraA.Visible = false
-        framePrincipal.Size = UDim2.new(0, ancho, 0, 22)
+        framePrincipal.Size = UDim2.new(0, ancho, 0, ALTO_TITULO)
         btnMin.Text = "+"
     else
-        content.Visible = true
+        barraTab.Visible = true
         gripResize.Visible = true
         letraA.Visible = true
-        framePrincipal.Size = UDim2.new(0, ancho, 0, alto + 22)
+        framePrincipal.Size = UDim2.new(0, ancho, 0, alto + ALTO_SUPERIOR)
         btnMin.Text = "-"
+        mostrarTab(content.Visible and "combate" or (contentAdicionales.Visible and "adicionales" or "combate"))
     end
 end)
 
@@ -704,7 +823,7 @@ local function restaurarPosicionOriginal()
 end
 
 -- ==================================================
--- 🖤 HITBOX — IGUAL QUE ANTES (RenderStepped cada frame)
+-- 🖤 HITBOX (como antes: RenderStepped cada frame)
 -- ==================================================
 local function buscarObjetivoHitbox()
     if jugadorSeleccionado and jugadorSeleccionado ~= LocalPlayer then return jugadorSeleccionado end
@@ -787,7 +906,7 @@ LocalPlayer.CharacterAdded:Connect(onCharacterAdded)
 if LocalPlayer.Character then onCharacterAdded(LocalPlayer.Character) end
 
 -- ==================================================
--- 🎯 ABRAZO BUG (noclip optimizado + primer agarre inmediato)
+-- 🎯 ABRAZO BUG
 -- ==================================================
 local function KillTarget(target)
     if not target or not target.Character then return end
@@ -802,7 +921,6 @@ local function KillTarget(target)
     thum:BreakJoints()
     thum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
 
-    -- Noclip: escanea las partes UNA sola vez (no cada frame)
     local partesNoclip = {}
     local miChar = LocalPlayer.Character
     if miChar then
@@ -855,9 +973,7 @@ btnAbrazo.MouseButton1Click:Connect(function()
         bordeActivo(btnAbrazo, true)
 
         task.spawn(function()
-            -- Primer agarre INMEDIATO
             if targetSaved and targetSaved.Character then KillTarget(targetSaved) end
-            -- Después repite cada 0.7s
             while autoMode and task.wait(0.7) do
                 if targetSaved and targetSaved.Character then
                     KillTarget(targetSaved)
@@ -882,6 +998,66 @@ btnAbrazo.MouseButton1Click:Connect(function()
 end)
 
 -- ==================================================
+-- 🛴 AUTO-SCOOTER (pestaña ADICIONALES)
+-- ==================================================
+local NOMBRES_SCOOTER = {
+    "scoot", "scooter", "scuter", "escooter",
+    "patin", "patineta", "monopatin", "hoverboard"
+}
+
+local scooterActivo = false
+local scooterThread = nil
+
+local function buscarScooter()
+    local mochila = LocalPlayer:FindFirstChildOfClass("Backpack")
+    if not mochila then return nil end
+    for _, obj in ipairs(mochila:GetDescendants()) do
+        if obj:IsA("Tool") then
+            local n = obj.Name:lower()
+            for _, clave in ipairs(NOMBRES_SCOOTER) do
+                if n:find(clave, 1, true) then return obj end
+            end
+        end
+    end
+    return nil
+end
+
+local function equiparScooter()
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hum or hum.Health <= 0 then return end
+    for _, obj in ipairs(char:GetChildren()) do
+        if obj:IsA("Tool") then
+            local n = obj.Name:lower()
+            for _, clave in ipairs(NOMBRES_SCOOTER) do
+                if n:find(clave, 1, true) then return end
+            end
+        end
+    end
+    local tool = buscarScooter()
+    if tool then pcall(function() hum:EquipTool(tool) end) end
+end
+
+btnScooter.MouseButton1Click:Connect(function()
+    scooterActivo = not scooterActivo
+    if scooterActivo then
+        btnScooter.Text = "🛴 SCOOTER: ON"
+        bordeActivo(btnScooter, true)
+        scooterThread = task.spawn(function()
+            while scooterActivo do
+                equiparScooter()
+                task.wait(0.5)
+            end
+        end)
+    else
+        if scooterThread then task.cancel(scooterThread); scooterThread = nil end
+        btnScooter.Text = "🛴 SCOOTER: OFF"
+        bordeActivo(btnScooter, false)
+    end
+end)
+
+-- ==================================================
 -- 🖱️ LISTA
 -- ==================================================
 btnToggleLista.MouseButton1Click:Connect(function()
@@ -891,12 +1067,12 @@ btnToggleLista.MouseButton1Click:Connect(function()
     framePrincipal:SetAttribute("AnchoOriginal", ancho)
     if listaAbierta then
         areaLista.Size = UDim2.new(1, 0, 0, 245)
-        framePrincipal.Size = UDim2.new(0, ancho, 0, altoBase + 22 + 245)
+        framePrincipal.Size = UDim2.new(0, ancho, 0, altoBase + ALTO_SUPERIOR + 245)
         btnToggleLista.Text = "📋 Cerrar"
         actualizarListaJugadores()
     else
         areaLista.Size = UDim2.new(1, 0, 0, 0)
-        framePrincipal.Size = UDim2.new(0, ancho, 0, altoBase + 22)
+        framePrincipal.Size = UDim2.new(0, ancho, 0, altoBase + ALTO_SUPERIOR)
         btnToggleLista.Text = "📋 Lista"
     end
 end)
@@ -941,4 +1117,4 @@ end)
 task.wait(0.3)
 actualizarListaJugadores()
 
-print("✅ AA.toki v31 (hitbox como antes) cargado correctamente")
+print("✅ AA.toki v32 (2 pestañas + scooter) cargado correctamente")
