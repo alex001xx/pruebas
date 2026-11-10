@@ -1,5 +1,5 @@
 -- ==================================================
--- 📋 AA.toki | v30 (v27 + SIN TRABONES: hitbox 1 sola vez + noclip optimizado)
+-- 📋 AA.toki | v31 (HITBOX = como antes / RenderStepped cada frame)
 -- ==================================================
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -386,7 +386,7 @@ local listaAbierta = false
 local originalPositions = {}
 
 local hitboxActivo = false
-local hitboxLoopTask = nil
+local hitboxConexion = nil
 local hitboxOriginalSize = {}
 
 local lastPosition = nil
@@ -704,7 +704,7 @@ local function restaurarPosicionOriginal()
 end
 
 -- ==================================================
--- 🖤 HITBOX (ANTI-TRABONES: se aplica 1 sola vez)
+-- 🖤 HITBOX — IGUAL QUE ANTES (RenderStepped cada frame)
 -- ==================================================
 local function buscarObjetivoHitbox()
     if jugadorSeleccionado and jugadorSeleccionado ~= LocalPlayer then return jugadorSeleccionado end
@@ -713,19 +713,12 @@ end
 
 local function expandirHitbox()
     local objetivo = buscarObjetivoHitbox()
-    if not objetivo then return end
-    if objetivo.Character and objetivo.Character:FindFirstChild("HumanoidRootPart") then
+    if objetivo and objetivo.Character and objetivo.Character:FindFirstChild("HumanoidRootPart") then
         local hrp = objetivo.Character.HumanoidRootPart
         if not hitboxOriginalSize[objetivo] then hitboxOriginalSize[objetivo] = hrp.Size end
-        -- Solo lo toca si el tamaño NO es ya el gigante (esto elimina el trabe)
-        if hrp.Size.X < TAMANO_HITBOX then
-            hrp.Size = Vector3.new(TAMANO_HITBOX, TAMANO_HITBOX, TAMANO_HITBOX)
-            hrp.Transparency = 1
-            hrp.CanCollide = false
-            pcall(function() hrp.CanQuery = false end)
-            pcall(function() hrp.CanTouch = false end)
-            pcall(function() hrp.Massless = true end)
-        end
+        hrp.Size = Vector3.new(TAMANO_HITBOX, TAMANO_HITBOX, TAMANO_HITBOX)
+        hrp.Transparency = 1
+        hrp.CanCollide = false
     end
 end
 
@@ -749,13 +742,7 @@ hitboxToggle.MouseButton1Click:Connect(function()
         local targetPlr = buscarObjetivoHitbox()
         if targetPlr then
             actualizarBotonHitbox()
-            -- Revisa cada 0.2s (casi nunca hace nada) — ya no cada frame
-            hitboxLoopTask = task.spawn(function()
-                while hitboxActivo do
-                    expandirHitbox()
-                    task.wait(0.2)
-                end
-            end)
+            hitboxConexion = RunService.RenderStepped:Connect(expandirHitbox)
         else
             hitboxActivo = false
             hitboxToggle.Text = "AVATAR NO ENCONTRADO"
@@ -764,7 +751,7 @@ hitboxToggle.MouseButton1Click:Connect(function()
         end
     else
         actualizarBotonHitbox()
-        if hitboxLoopTask then task.cancel(hitboxLoopTask); hitboxLoopTask = nil end
+        if hitboxConexion then hitboxConexion:Disconnect(); hitboxConexion = nil end
         restaurarTodosHitbox()
     end
 end)
@@ -954,4 +941,4 @@ end)
 task.wait(0.3)
 actualizarListaJugadores()
 
-print("✅ AA.toki v30 (sin trabones) cargado correctamente")
+print("✅ AA.toki v31 (hitbox como antes) cargado correctamente")
