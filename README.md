@@ -1,3 +1,30 @@
+-- ===== BANNER ROJO EN CONSOLA (letras rojas al iniciar) =====
+pcall(function()
+    local lineas = {
+        "================================================",
+        "            TAKEMICHI 🌘  -  TOKI  v2.0",
+        "      sin guardado silencioso  |  by TAKEMICHI",
+        "================================================",
+    }
+    local ESC = "\27"
+    local rojo = ESC .. "[31m"
+    local rojoNegrita = ESC .. "[1;31m"
+    local reset = ESC .. "[0m"
+    if rconsoleerr then
+        -- muchos executors imprimen rconsoleerr en rojo por defecto
+        for _, l in ipairs(lineas) do rconsoleerr(l .. "\n") end
+    elseif rconsoleprint then
+        rconsoleprint("\n")
+        rconsoleprint(rojoNegrita .. lineas[1] .. reset .. "\n")
+        rconsoleprint(rojo .. lineas[2] .. reset .. "\n")
+        rconsoleprint(rojo .. lineas[3] .. reset .. "\n")
+        rconsoleprint(rojoNegrita .. lineas[4] .. reset .. "\n")
+        rconsoleprint("\n")
+    else
+        for _, l in ipairs(lineas) do print(l) end
+    end
+end)
+
 local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
 
 -- Pintar TODAS las letras de rojo desde el propio tema de WindUI
@@ -988,86 +1015,7 @@ _G.TargetModule = {
 }
 getgenv().TargetModule = _G.TargetModule
 
-local Saved = {}
-local ConfigFolder = "DENJI_ALEX"
-local ConfigFile = ConfigFolder .. "/Takemichi_Config.json"
-local HttpService = game:GetService("HttpService")
-local function Get(key, def)
-    if Saved[key] ~= nil then return Saved[key] end
-    return def
-end
 local ColorAccent = Color3.fromRGB(70, 160, 255)
-local function BuildConfig()
-    return {
-        FlashAttackEnabled = FlashAttackEnabled,
-        FlashMultiplier = FlashMultiplier,
-        AutoPisarEnabled = AutoPisarEnabled,
-        TPWalkEnabled = TPWalkEnabled,
-        TPWalkSpeed = TPWalkSpeed,
-        NoFrictionEnabled = NoFrictionEnabled,
-        InvisibleEnabled = InvisibleEnabled,
-        HidePosEnabled = HidePosEnabled,
-        FlyEnabled = FlyEnabled,
-        FlySpeed = FlySpeed,
-        NoclipEnabled = NoclipEnabled,
-        InfJumpEnabled = InfJumpEnabled,
-        WalkSpeed = Humanoid and Humanoid.WalkSpeed or 16,
-        JumpPower = Humanoid and Humanoid.JumpPower or 50,
-        GravityScale = Humanoid and Humanoid.GravityScale or 1,
-        AutoWalkEnabled = AutoWalkEnabled,
-        FullbrightEnabled = FullbrightEnabled,
-        ESPEnabled = ESPEnabled,
-        FpsBoostEnabled = FpsBoostEnabled,
-        FOV = (function() local ok,v=pcall(function() return workspace.CurrentCamera.FieldOfView end); return ok and v or 70 end)(),
-        ClockTime = Lighting.ClockTime,
-        AnimationSpeed = Humanoid and Humanoid.AnimationSpeed or 1,
-        BodyScale = Humanoid and Humanoid.BodyHeightScale or 1,
-        AutoRejoinEnabled = AutoRejoinEnabled,
-        AntiVoidEnabled = AntiVoidEnabled,
-        AntiRagdollEnabled = AntiRagdollEnabled,
-        GodModeEnabled = GodModeEnabled,
-        InstantRespawnEnabled = InstantRespawnEnabled,
-        FollowPlayerEnabled = FollowPlayerEnabled,
-        ClickTPEnabled = ClickTPEnabled,
-        AutoJumpEnabled = AutoJumpEnabled,
-        WalkOnWaterEnabled = WalkOnWaterEnabled,
-        SpinBotEnabled = SpinBotEnabled,
-        FreezePositionEnabled = FreezePositionEnabled,
-        FallSpeedCap = FallSpeedCap,
-        AntiAFKEnabled = AntiAFKEnabled,
-        NoPushEnabled = NoPushEnabled,
-        NoKnockbackEnabled = NoKnockbackEnabled,
-        SitProtectorEnabled = SitProtectorEnabled,
-        AutoClickerEnabled = AutoClickerEnabled,
-        AutoClickerCPS = AutoClickerCPS,
-        NoFallDamageEnabled = NoFallDamageEnabled,
-        AntiKickEnabled = AntiKickEnabled,
-        AntiResetEnabled = AntiResetEnabled,
-        AntiSitEnabled = AntiSitEnabled,
-        AntiFlingEnabled = AntiFlingEnabled,
-        AntiFreezeEnabled = AntiFreezeEnabled,
-        AntiReportEnabled = AntiReportEnabled,
-        AntiVCEnabled = AntiVCEnabled,
-        ServidoresVisitados = ServidoresVisitados,
-        AccentR = math.floor(ColorAccent.R*255),
-        AccentG = math.floor(ColorAccent.G*255),
-        AccentB = math.floor(ColorAccent.B*255),
-    }
-end
-
--- ===== GUARDADO SILENCIOSO DESACTIVADO =====
--- Ya no se escribe DENJI_ALEX/Takemichi_Config.json en ningún lado.
--- (La carga del config anterior sigue activa; si quieres quitarla también, avisa.)
-local function DoSave() end
-local SaveScheduled = false
-local function SaveConfig() end
-
-local function AS(fn)
-    return function(...)
-        if fn then fn(...) end
-        -- sin pcall(SaveConfig): ya no guarda automáticamente
-    end
-end
 local RefBordeCirculo, RefBordePerfil, RefTPBtn = nil, nil, nil
 local function AplicarColor(c)
     ColorAccent = c
@@ -1077,83 +1025,6 @@ local function AplicarColor(c)
     pcall(function() if Window and Window.SetAccent then Window:SetAccent(c) end end)
     pcall(function() if Window and Window.SetThemeColor then Window:SetThemeColor(c) end end)
 end
-local function LoadConfig()
-    pcall(function()
-        if isfolder(ConfigFolder) and isfile(ConfigFile) then
-            local data = HttpService:JSONDecode(readfile(ConfigFile))
-            if data then Saved = data end
-        end
-    end)
-    if Saved.ServidoresVisitados and type(Saved.ServidoresVisitados) == "table" then
-        ServidoresVisitados = Saved.ServidoresVisitados
-    end
-    if Saved.FlashMultiplier then FlashMultiplier = Saved.FlashMultiplier end
-    if Saved.TPWalkSpeed then TPWalkSpeed = Saved.TPWalkSpeed end; getgenv().TPWalkSpeed = TPWalkSpeed
-    if Saved.FlySpeed then FlySpeed = Saved.FlySpeed end
-    if Saved.FallSpeedCap then FallSpeedCap = Saved.FallSpeedCap end
-    if Saved.AutoClickerCPS then AutoClickerCPS = Saved.AutoClickerCPS end
-    if Saved.AccentR then ColorAccent = Color3.fromRGB(Saved.AccentR, Saved.AccentG or 160, Saved.AccentB or 80) end
-end
-local function AplicarConfiguracion()
-    if not next(Saved) then return end
-    local function Try(fn) pcall(fn) end
-    Try(function() if Humanoid and Saved.WalkSpeed then Humanoid.WalkSpeed = Saved.WalkSpeed end end)
-    Try(function() if Humanoid and Saved.JumpPower then Humanoid.JumpPower = Saved.JumpPower end end)
-    Try(function() if Humanoid and Saved.GravityScale then Humanoid.GravityScale = Saved.GravityScale end end)
-    Try(function() if Humanoid and Saved.AnimationSpeed then pcall(function() Humanoid.AnimationSpeed = Saved.AnimationSpeed end) end end)
-    Try(function()
-        if Humanoid and Saved.BodyScale then
-            pcall(function()
-                Humanoid.BodyHeightScale=Saved.BodyScale; Humanoid.BodyWidthScale=Saved.BodyScale; Humanoid.BodyDepthScale=Saved.BodyScale
-                if Humanoid.HeadScale then Humanoid.HeadScale=Saved.BodyScale end
-            end)
-        end
-    end)
-    Try(function() if Saved.FOV then pcall(function() workspace.CurrentCamera.FieldOfView = Saved.FOV end) end end)
-    Try(function() if Saved.ClockTime then Lighting.ClockTime = Saved.ClockTime end end)
-    Try(function()
-        if Saved.InvisibleEnabled and Character then
-            for _,v in pairs(Character:GetDescendants()) do if v:IsA("BasePart") then v.LocalTransparencyModifier=1 end end
-            InvisibleEnabled = true
-        end
-    end)
-    Try(function() if Saved.HidePosEnabled then SetHidePos(true) end end)
-    Try(function() if Saved.FlashAttackEnabled then SetFlashAttack(true) end end)
-    Try(function() if Saved.AutoPisarEnabled then SetAutoPisar(true) end end)
-    Try(function() if Saved.TPWalkEnabled then SetTPWalk(true) end end)
-    Try(function() if Saved.FlyEnabled then StartFly() end end)
-    Try(function() if Saved.NoclipEnabled then SetNoclip(true) end end)
-    Try(function() if Saved.InfJumpEnabled then SetInfJump(true) end end)
-    Try(function() if Saved.AutoWalkEnabled then SetAutoWalk(true) end end)
-    Try(function() if Saved.FullbrightEnabled then SetFullbright(true) end end)
-    Try(function() if Saved.ESPEnabled then SetESP(true) end end)
-    Try(function() if Saved.FpsBoostEnabled then SetFpsBoost(true) end end)
-    Try(function() if Saved.ClickTPEnabled then SetClickTP(true) end end)
-    Try(function() if Saved.SpinBotEnabled then SetSpinBot(true) end end)
-    Try(function() if Saved.SitProtectorEnabled then SetSitProtector(true) end end)
-    Try(function() if Saved.AutoClickerEnabled then SetAutoClicker(true) end end)
-    Try(function() if Saved.NoFallDamageEnabled then SetNoFallDamage(true) end end)
-    Try(function() if Saved.AntiAFKEnabled then SetAntiAFK(true) end end)
-    Try(function() if Saved.FreezePositionEnabled and RootPart then pcall(function() RootPart.Anchored=true end); FreezePositionEnabled=true end end)
-    Try(function() if Saved.NoFrictionEnabled~=nil then NoFrictionEnabled=Saved.NoFrictionEnabled end end)
-    Try(function() if Saved.NoPushEnabled~=nil then NoPushEnabled=Saved.NoPushEnabled end end)
-    Try(function() if Saved.NoKnockbackEnabled~=nil then NoKnockbackEnabled=Saved.NoKnockbackEnabled end end)
-    Try(function() if Saved.AntiVoidEnabled~=nil then AntiVoidEnabled=Saved.AntiVoidEnabled end end)
-    Try(function() if Saved.AntiRagdollEnabled~=nil then AntiRagdollEnabled=Saved.AntiRagdollEnabled end end)
-    Try(function() if Saved.GodModeEnabled~=nil then GodModeEnabled=Saved.GodModeEnabled end end)
-    Try(function() if Saved.AutoRejoinEnabled~=nil then AutoRejoinEnabled=Saved.AutoRejoinEnabled end end)
-    Try(function() if Saved.InstantRespawnEnabled~=nil then InstantRespawnEnabled=Saved.InstantRespawnEnabled end end)
-    Try(function() if Saved.FollowPlayerEnabled~=nil then FollowPlayerEnabled=Saved.FollowPlayerEnabled end end)
-    Try(function() if Saved.AutoJumpEnabled~=nil then AutoJumpEnabled=Saved.AutoJumpEnabled end end)
-    Try(function() if Saved.WalkOnWaterEnabled~=nil then WalkOnWaterEnabled=Saved.WalkOnWaterEnabled end end)
-    Try(function() if Saved.AntiKickEnabled then SetAntiKick(true) end end)
-    Try(function() if Saved.AntiResetEnabled then SetAntiReset(true) end end)
-    Try(function() if Saved.AntiReportEnabled then SetAntiReport(true) end end)
-    Try(function() if Saved.AntiSitEnabled~=nil then AntiSitEnabled=Saved.AntiSitEnabled end end)
-    Try(function() if Saved.AntiFlingEnabled~=nil then AntiFlingEnabled=Saved.AntiFlingEnabled end end)
-    Try(function() if Saved.AntiFreezeEnabled~=nil then AntiFreezeEnabled=Saved.AntiFreezeEnabled end end)
-end
-LoadConfig()
 
 local Window = WindUI:CreateWindow({
     Title="TOKI", Icon="sword", Author="TAKEMICHI 🌘", Folder="DENJI•ALEX",
@@ -1164,6 +1035,18 @@ local Window = WindUI:CreateWindow({
     HideSearchBar = true, Accent=Color3.fromRGB(70,160,255),
     OpenButton={Title="TAKEMICHI 🌘", Icon="sword", Enabled=true, Draggable=true, OnlyMobile=false, CornerRadius=UDim.new(1,0), StrokeThickness=2, StrokeColor=Color3.fromRGB(255,255,255), Scale=1},
 })
+
+local WindConfig = nil
+-- ===== GUARDADO NATIVO DE WindUI (guarda lo que activas/desactivas) =====
+pcall(function()
+    if Window and Window.ConfigManager then
+        WindConfig = Window.ConfigManager:CreateConfig("Ajustes", true) -- nombre, AutoLoad
+        task.spawn(function()
+            while task.wait(2) do pcall(function() if WindConfig then WindConfig:Save() end end) end
+        end)
+        pcall(function() WindUI:Notify({Title="Config WindUI", Content="Guardado automatico activado", Duration=3}) end)
+    end
+end)
 
 -- 1. PLAYER
 local PlayerTab = Window:Tab({Title="Player", Icon="user"})
@@ -1186,48 +1069,48 @@ local MainTab = Window:Tab({Title="Main", Icon="home"})
 MainTab:Section({Title="Funciones Principales", TextSize=20}); MainTab:Space({Size=6})
 MainTab:Section({Title="Ataque Rapido", TextSize=18}); MainTab:Space({Size=6})
 local FlashRow = MainTab:Group({})
-FlashRow:Toggle({Title="Activar Ataque Rapido", Def=Get("FlashAttackEnabled", false), Callback=AS(SetFlashAttack)})
+FlashRow:Toggle({Flag="tog_1", Title="Activar Ataque Rapido", Def=false, Callback=SetFlashAttack})
 FlashRow:Space({Size=8})
-FlashRow:Slider({Title="Multiplicador", Step=1, Value={Min=1,Max=30,Default=Get("FlashMultiplier", 5)}, Callback=AS(function(v) FlashMultiplier = v end)})
+FlashRow:Slider({Flag="sli_1", Title="Multiplicador", Step=1, Value={Min=1,Max=30,Default=5}, Callback=function(v) FlashMultiplier = v end})
 MainTab:Space({Size=12})
 local MainRow1 = MainTab:Group({})
 MainRow1:Button({Title="Teleport a Ti", Icon="map-pin", Justify="Center", Callback=function() local m=LocalPlayer:GetMouse(); if RootPart then RootPart.CFrame=CFrame.new(m.Hit.Position+Vector3.new(0,3,0)) end end})
 MainRow1:Space({Size=8})
-MainRow1:Toggle({Title="TPWalk (Bypass)", Def=Get("TPWalkEnabled", false), Callback=AS(SetTPWalk)})
+MainRow1:Toggle({Flag="tog_2", Title="TPWalk (Bypass)", Def=false, Callback=SetTPWalk})
 MainTab:Space({Size=8})
-MainTab:Slider({Title="Velocidad TPWalk", Step=0.05, Value={Min=0.01, Max=20, Default=Get("TPWalkSpeed", 0.30)}, Callback=AS(function(v) TPWalkSpeed = v; getgenv().TPWalkSpeed = v end)})
+MainTab:Slider({Flag="sli_2", Title="Velocidad TPWalk", Step=0.05, Value={Min=0.01, Max=20, Default=0.30}, Callback=function(v) TPWalkSpeed = v; getgenv().TPWalkSpeed = v end})
 MainTab:Space({Size=8})
-MainTab:Toggle({Title="Auto Pisar", Desc="Shield de remotes (anti-PvP/ruletas)", Def=Get("AutoPisarEnabled", false), Callback=AS(SetAutoPisar)})
+MainTab:Toggle({Flag="tog_3", Title="Auto Pisar", Desc="Shield de remotes (anti-PvP/ruletas)", Def=false, Callback=SetAutoPisar})
 MainTab:Space({Size=8})
 local MainRow2 = MainTab:Group({})
-MainRow2:Toggle({Title="Salto Alto", Def=false, Callback=AS(function(s) if Humanoid then Humanoid.JumpPower=s and 120 or 50 end end)})
+MainRow2:Toggle({Flag="tog_4", Title="Salto Alto", Def=false, Callback=function(s) if Humanoid then Humanoid.JumpPower=s and 120 or 50 end end})
 MainRow2:Space({Size=8})
-MainRow2:Toggle({Title="Salto Infinito", Def=Get("InfJumpEnabled", false), Callback=AS(function(s) SetInfJump(s) end)})
+MainRow2:Toggle({Flag="tog_5", Title="Salto Infinito", Def=false, Callback=function(s) SetInfJump(s) end})
 MainTab:Space({Size=8})
 local MainRow3 = MainTab:Group({})
-MainRow3:Toggle({Title="Sin Friccion", Def=Get("NoFrictionEnabled", false), Callback=AS(function(s) NoFrictionEnabled=s end)})
+MainRow3:Toggle({Flag="tog_6", Title="Sin Friccion", Def=false, Callback=function(s) NoFrictionEnabled=s end})
 MainRow3:Space({Size=8})
-MainRow3:Toggle({Title="Sin Gravedad", Def=false, Callback=AS(function(s) if Humanoid then Humanoid.GravityScale=s and 0 or 1 end end)})
+MainRow3:Toggle({Flag="tog_7", Title="Sin Gravedad", Def=false, Callback=function(s) if Humanoid then Humanoid.GravityScale=s and 0 or 1 end end})
 MainTab:Space({Size=8})
 local MainRow4 = MainTab:Group({})
-MainRow4:Toggle({Title="Invisible (Local)", Def=Get("InvisibleEnabled", false), Callback=AS(function(s) InvisibleEnabled=s; if Character then for _,v in pairs(Character:GetDescendants()) do if v:IsA("BasePart") then v.LocalTransparencyModifier=s and 1 or 0 end end end end)})
+MainRow4:Toggle({Flag="tog_8", Title="Invisible (Local)", Def=false, Callback=function(s) InvisibleEnabled=s; if Character then for _,v in pairs(Character:GetDescendants()) do if v:IsA("BasePart") then v.LocalTransparencyModifier=s and 1 or 0 end end end end})
 MainRow4:Space({Size=8})
-MainRow4:Toggle({Title="Invisible Ultra (Oculta Posicion) [G]", Def=Get("HidePosEnabled", false), Callback=AS(SetHidePos)})
+MainRow4:Toggle({Flag="tog_9", Title="Invisible Ultra (Oculta Posicion) [G]", Def=false, Callback=SetHidePos})
 MainTab:Space({Size=12})
 MainTab:Section({Title="Botones Flotantes (toca para prender/apagar)", TextSize=18}); MainTab:Space({Size=6})
 local FlotSec = MainTab:Section({Title="", Box=true, BoxBorder=true, Opened=true})
-FlotSec:Toggle({Title="Mostrar Boton: Invisible Ultra", Def=false, Callback=function(s) if BotonesFlotantes.Invisible then BotonesFlotantes.Invisible.Gui.Enabled = s end end})
+FlotSec:Toggle({Flag="tog_10", Title="Mostrar Boton: Invisible Ultra", Def=false, Callback=function(s) if BotonesFlotantes.Invisible then BotonesFlotantes.Invisible.Gui.Enabled = s end end})
 FlotSec:Space({Size=6})
-FlotSec:Toggle({Title="Mostrar Boton: TPWalk (Bypass)", Def=false, Callback=function(s) if BotonesFlotantes.TPWalk then BotonesFlotantes.TPWalk.Gui.Enabled = s end end})
+FlotSec:Toggle({Flag="tog_11", Title="Mostrar Boton: TPWalk (Bypass)", Def=false, Callback=function(s) if BotonesFlotantes.TPWalk then BotonesFlotantes.TPWalk.Gui.Enabled = s end end})
 FlotSec:Space({Size=6})
-FlotSec:Toggle({Title="Mostrar Boton: Ataque Rapido", Def=false, Callback=function(s) if BotonesFlotantes.Ataque then BotonesFlotantes.Ataque.Gui.Enabled = s end end})
+FlotSec:Toggle({Flag="tog_12", Title="Mostrar Boton: Ataque Rapido", Def=false, Callback=function(s) if BotonesFlotantes.Ataque then BotonesFlotantes.Ataque.Gui.Enabled = s end end})
 MainTab:Space({Size=12})
 MainTab:Section({Title="Ajustes de Movimiento", TextSize=18}); MainTab:Space({Size=6})
 local MainSliders = MainTab:Section({Title="Sliders Rapidos", Box=true, BoxBorder=true, Opened=true})
-MainSliders:Slider({Title="WalkSpeed", Step=1, Value={Min=16,Max=250,Default=Get("WalkSpeed", 16)}, Callback=AS(function(v) if Humanoid then Humanoid.WalkSpeed=v end end)}); MainSliders:Space({Size=6})
-MainSliders:Slider({Title="JumpPower", Step=1, Value={Min=50,Max=350,Default=Get("JumpPower", 50)}, Callback=AS(function(v) if Humanoid then Humanoid.JumpPower=v end end)}); MainSliders:Space({Size=6})
-MainSliders:Slider({Title="Gravedad", Step=0.1, Value={Min=0,Max=2,Default=Get("GravityScale", 1)}, Callback=AS(function(v) if Humanoid then Humanoid.GravityScale=v end end)}); MainSliders:Space({Size=6})
-MainSliders:Toggle({Title="Auto-Caminar (Hacia Adelante)", Def=Get("AutoWalkEnabled", false), Callback=AS(SetAutoWalk)})
+MainSliders:Slider({Flag="sli_3", Title="WalkSpeed", Step=1, Value={Min=16,Max=250,Default=16}, Callback=function(v) if Humanoid then Humanoid.WalkSpeed=v end end}); MainSliders:Space({Size=6})
+MainSliders:Slider({Flag="sli_4", Title="JumpPower", Step=1, Value={Min=50,Max=350,Default=50}, Callback=function(v) if Humanoid then Humanoid.JumpPower=v end end}); MainSliders:Space({Size=6})
+MainSliders:Slider({Flag="sli_5", Title="Gravedad", Step=0.1, Value={Min=0,Max=2,Default=1}, Callback=function(v) if Humanoid then Humanoid.GravityScale=v end end}); MainSliders:Space({Size=6})
+MainSliders:Toggle({Flag="tog_13", Title="Auto-Caminar (Hacia Adelante)", Def=false, Callback=SetAutoWalk})
 MainTab:Space({Size=12})
 MainTab:Section({Title="Acciones Rapidas", TextSize=18}); MainTab:Space({Size=6})
 local MainA1 = MainTab:Group({})
@@ -1305,27 +1188,27 @@ TargetTab:Space({Size=10})
 TargetTab:Section({Title="Toggles de Objetivo (2 por linea)", TextSize=18}); TargetTab:Space({Size=6})
 local TargetTog = TargetTab:Section({Title="", Box=true, BoxBorder=true, Opened=true})
 local TT1 = TargetTog:Group({})
-TT1:Toggle({Title="Lanzar (Fling)", Def=false, Callback=AS(function(s) TargetToggle("Fling", s) end)})
+TT1:Toggle({Flag="tog_14", Title="Lanzar (Fling)", Def=false, Callback=function(s) TargetToggle("Fling", s) end})
 TT1:Space({Size=8})
-TT1:Toggle({Title="Ver (Camara)", Def=false, Callback=AS(function(s) TargetToggle("View", s) end)})
+TT1:Toggle({Flag="tog_15", Title="Ver (Camara)", Def=false, Callback=function(s) TargetToggle("View", s) end})
 TargetTog:Space({Size=6})
 local TT2 = TargetTog:Group({})
-TT2:Toggle({Title="Enfocar (Focus)", Def=false, Callback=AS(function(s) TargetToggle("Focus", s) end)})
+TT2:Toggle({Flag="tog_16", Title="Enfocar (Focus)", Def=false, Callback=function(s) TargetToggle("Focus", s) end})
 TT2:Space({Size=8})
-TT2:Toggle({Title="Bang / Pegar", Def=false, Callback=AS(function(s) TargetToggle("Bang", s) end)})
+TT2:Toggle({Flag="tog_17", Title="Bang / Pegar", Def=false, Callback=function(s) TargetToggle("Bang", s) end})
 TargetTog:Space({Size=6})
 local TT3 = TargetTog:Group({})
-TT3:Toggle({Title="Sentar en Cabeza", Def=false, Callback=AS(function(s) TargetToggle("HeadSit", s) end)})
+TT3:Toggle({Flag="tog_18", Title="Sentar en Cabeza", Def=false, Callback=function(s) TargetToggle("HeadSit", s) end})
 TT3:Space({Size=8})
-TT3:Toggle({Title="Pararse Junto (Stand)", Def=false, Callback=AS(function(s) TargetToggle("Stand", s) end)})
+TT3:Toggle({Flag="tog_19", Title="Pararse Junto (Stand)", Def=false, Callback=function(s) TargetToggle("Stand", s) end})
 TargetTog:Space({Size=6})
 local TT4 = TargetTog:Group({})
-TT4:Toggle({Title="Mochila (Backpack)", Def=false, Callback=AS(function(s) TargetToggle("Backpack", s) end)})
+TT4:Toggle({Flag="tog_20", Title="Mochila (Backpack)", Def=false, Callback=function(s) TargetToggle("Backpack", s) end})
 TT4:Space({Size=8})
-TT4:Toggle({Title="Posicion Baja (Doggy)", Def=false, Callback=AS(function(s) TargetToggle("Doggy", s) end)})
+TT4:Toggle({Flag="tog_21", Title="Posicion Baja (Doggy)", Def=false, Callback=function(s) TargetToggle("Doggy", s) end})
 TargetTog:Space({Size=6})
 local TT5 = TargetTog:Group({})
-TT5:Toggle({Title="Arrastrar (Drag)", Def=false, Callback=AS(function(s) TargetToggle("Drag", s) end)})
+TT5:Toggle({Flag="tog_22", Title="Arrastrar (Drag)", Def=false, Callback=function(s) TargetToggle("Drag", s) end})
 TargetTab:Space({Size=10})
 TargetTab:Section({Title="Acciones (una vez)", TextSize=18}); TargetTab:Space({Size=6})
 local TargetAct = TargetTab:Section({Title="", Box=true, BoxBorder=true, Opened=true})
@@ -1645,7 +1528,7 @@ RJTab:Space({Size=8})
 local RJBtnRow = RJTab:Group({})
 RJBtnRow:Button({Title="BUSCAR Y UNIR", Icon="send", Justify="Center", Callback=function() task.spawn(JoinBest) end})
 RJBtnRow:Space({Size=8})
-RJBtnRow:Toggle({Title="Auto Hop", Def=false, Callback=function(s) SetAutoHop(s) end})
+RJBtnRow:Toggle({Flag="tog_23", Title="Auto Hop", Def=false, Callback=function(s) SetAutoHop(s) end})
 RJTab:Space({Size=8})
 RJTab:Button({Title="Abrir / Cerrar Lista de Servidores", Icon="globe", Justify="Center", Callback=ToggleListaServidores})
 RJTab:Space({Size=12})
@@ -1664,24 +1547,24 @@ EscudosTab:Paragraph({Title="Nota", Desc="Anti-Kick solo bloquea kicks de script
 EscudosTab:Space({Size=8})
 local function shieldPair(t1, cb1, d1, t2, cb2, d2)
     local r = EscudosTab:Group({})
-    r:Toggle({Title=t1, Def=d1, Callback=AS(cb1)}); r:Space({Size=8})
-    r:Toggle({Title=t2, Def=d2, Callback=AS(cb2)})
+    r:Toggle({Flag="tog_24", Title=t1, Def=d1, Callback=cb1}); r:Space({Size=8})
+    r:Toggle({Flag="tog_25", Title=t2, Def=d2, Callback=cb2})
     EscudosTab:Space({Size=8})
 end
-shieldPair("Anti-AFK (Real)", SetAntiAFK, Get("AntiAFKEnabled", false),
-           "Anti-Kick (Hook Local)", SetAntiKick, Get("AntiKickEnabled", false))
-shieldPair("Anti-Reset (Bloquea Reset)", SetAntiReset, Get("AntiResetEnabled", false),
-           "Anti-Sit (No te sientan)", SetAntiSit, Get("AntiSitEnabled", false))
-shieldPair("Anti-Fling (Anti-Lanzamiento)", SetAntiFling, Get("AntiFlingEnabled", false),
-           "Anti-Freeze (Desanclar Auto.)", SetAntiFreeze, Get("AntiFreezeEnabled", false))
-shieldPair("Anti-Ragdoll", function(s) AntiRagdollEnabled = s end, Get("AntiRagdollEnabled", false),
-           "Anti-Void", function(s) AntiVoidEnabled = s end, Get("AntiVoidEnabled", false))
-shieldPair("No Empuje", function(s) NoPushEnabled = s end, Get("NoPushEnabled", false),
-           "No Retroceso", function(s) NoKnockbackEnabled = s end, Get("NoKnockbackEnabled", false))
-shieldPair("God Mode (Local)", function(s) GodModeEnabled = s end, Get("GodModeEnabled", false),
-           "Auto-Rejoin al Morir", function(s) AutoRejoinEnabled = s end, Get("AutoRejoinEnabled", false))
-shieldPair("Anti-Report (Oculta UI)", SetAntiReport, Get("AntiReportEnabled", false),
-           "No Fall Damage", SetNoFallDamage, Get("NoFallDamageEnabled", false))
+shieldPair("Anti-AFK (Real)", SetAntiAFK, false,
+           "Anti-Kick (Hook Local)", SetAntiKick, false)
+shieldPair("Anti-Reset (Bloquea Reset)", SetAntiReset, false,
+           "Anti-Sit (No te sientan)", SetAntiSit, false)
+shieldPair("Anti-Fling (Anti-Lanzamiento)", SetAntiFling, false,
+           "Anti-Freeze (Desanclar Auto.)", SetAntiFreeze, false)
+shieldPair("Anti-Ragdoll", function(s) AntiRagdollEnabled = s end, false,
+           "Anti-Void", function(s) AntiVoidEnabled = s end, false)
+shieldPair("No Empuje", function(s) NoPushEnabled = s end, false,
+           "No Retroceso", function(s) NoKnockbackEnabled = s end, false)
+shieldPair("God Mode (Local)", function(s) GodModeEnabled = s end, false,
+           "Auto-Rejoin al Morir", function(s) AutoRejoinEnabled = s end, false)
+shieldPair("Anti-Report (Oculta UI)", SetAntiReport, false,
+           "No Fall Damage", SetNoFallDamage, false)
 EscudosTab:Space({Size=8})
 EscudosTab:Space({Size=12})
 
@@ -1689,27 +1572,27 @@ EscudosTab:Space({Size=12})
 local H = Window:Tab({Title="Herramientas", Icon="wrench"})
 H:Section({Title="Movimiento", TextSize=20}); H:Space({Size=6})
 local Mov = H:Section({Title="Controles de Movimiento", Box=true, BoxBorder=true, Opened=true})
-Mov:Toggle({Title="Fly (Volar)", Def=Get("FlyEnabled", false), Callback=AS(function(s) if s then StartFly() else StopFly() end end)}); Mov:Space({Size=6})
-Mov:Slider({Title="Velocidad de Fly", Step=5, Value={Min=10,Max=200,Default=Get("FlySpeed", 60)}, Callback=AS(function(v) FlySpeed=v end)}); Mov:Space({Size=6})
-Mov:Toggle({Title="Noclip", Def=Get("NoclipEnabled", false), Callback=AS(SetNoclip)}); Mov:Space({Size=6})
-Mov:Toggle({Title="Salto Infinito", Def=Get("InfJumpEnabled", false), Callback=AS(SetInfJump)}); Mov:Space({Size=6})
-Mov:Slider({Title="WalkSpeed", Step=1, Value={Min=16,Max=250,Default=Get("WalkSpeed", 16)}, Callback=AS(function(v) if Humanoid then Humanoid.WalkSpeed=v end end)}); Mov:Space({Size=6})
-Mov:Slider({Title="JumpPower", Step=1, Value={Min=50,Max=350,Default=Get("JumpPower", 50)}, Callback=AS(function(v) if Humanoid then Humanoid.JumpPower=v end end)}); Mov:Space({Size=6})
-Mov:Slider({Title="Gravedad", Step=0.1, Value={Min=0,Max=2,Default=Get("GravityScale", 1)}, Callback=AS(function(v) if Humanoid then Humanoid.GravityScale=v end end)})
+Mov:Toggle({Flag="tog_26", Title="Fly (Volar)", Def=false, Callback=function(s) if s then StartFly() else StopFly() end end}); Mov:Space({Size=6})
+Mov:Slider({Flag="sli_6", Title="Velocidad de Fly", Step=5, Value={Min=10,Max=200,Default=60}, Callback=function(v) FlySpeed=v end}); Mov:Space({Size=6})
+Mov:Toggle({Flag="tog_27", Title="Noclip", Def=false, Callback=SetNoclip}); Mov:Space({Size=6})
+Mov:Toggle({Flag="tog_28", Title="Salto Infinito", Def=false, Callback=SetInfJump}); Mov:Space({Size=6})
+Mov:Slider({Flag="sli_7", Title="WalkSpeed", Step=1, Value={Min=16,Max=250,Default=16}, Callback=function(v) if Humanoid then Humanoid.WalkSpeed=v end end}); Mov:Space({Size=6})
+Mov:Slider({Flag="sli_8", Title="JumpPower", Step=1, Value={Min=50,Max=350,Default=50}, Callback=function(v) if Humanoid then Humanoid.JumpPower=v end end}); Mov:Space({Size=6})
+Mov:Slider({Flag="sli_9", Title="Gravedad", Step=0.1, Value={Min=0,Max=2,Default=1}, Callback=function(v) if Humanoid then Humanoid.GravityScale=v end end})
 H:Space({Size=10})
 H:Section({Title="Visual", TextSize=20}); H:Space({Size=6})
 local Vis = H:Section({Title="Efectos Visuales", Box=true, BoxBorder=true, Opened=true})
-Vis:Toggle({Title="Fullbright", Def=Get("FullbrightEnabled", false), Callback=AS(SetFullbright)}); Vis:Space({Size=6})
-Vis:Toggle({Title="ESP Jugadores", Def=Get("ESPEnabled", false), Callback=AS(SetESP)}); Vis:Space({Size=6})
-Vis:Toggle({Title="FPS Boost", Def=Get("FpsBoostEnabled", false), Callback=AS(SetFpsBoost)}); Vis:Space({Size=6})
-Vis:Slider({Title="FOV de Camara", Step=1, Value={Min=60,Max=120,Default=Get("FOV", 70)}, Callback=AS(function(v) pcall(function() workspace.CurrentCamera.FieldOfView=v end) end)}); Vis:Space({Size=6})
+Vis:Toggle({Flag="tog_29", Title="Fullbright", Def=false, Callback=SetFullbright}); Vis:Space({Size=6})
+Vis:Toggle({Flag="tog_30", Title="ESP Jugadores", Def=false, Callback=SetESP}); Vis:Space({Size=6})
+Vis:Toggle({Flag="tog_31", Title="FPS Boost", Def=false, Callback=SetFpsBoost}); Vis:Space({Size=6})
+Vis:Slider({Flag="sli_10", Title="FOV de Camara", Step=1, Value={Min=60,Max=120,Default=70}, Callback=function(v) pcall(function() workspace.CurrentCamera.FieldOfView=v end) end}); Vis:Space({Size=6})
 Vis:Button({Title="Desbloquear Zoom", Icon="zoom-in", Justify="Center", Callback=function() pcall(function() workspace.CurrentCamera.CameraMaxZoomDistance=1000; workspace.CurrentCamera.CameraMinZoomDistance=0.5 end); WindUI:Notify({Title="Zoom", Content="Zoom desbloqueado", Duration=2}) end})
 H:Space({Size=10})
 H:Section({Title="Utilidades", TextSize=20}); H:Space({Size=6})
 local Uti = H:Section({Title="Herramientas Universales", Box=true, BoxBorder=true, Opened=true})
-Uti:Toggle({Title="Auto-Rejoin al Morir", Def=Get("AutoRejoinEnabled", false), Callback=AS(function(s) AutoRejoinEnabled=s end)}); Uti:Space({Size=6})
-Uti:Toggle({Title="Anti-Void", Def=Get("AntiVoidEnabled", false), Callback=AS(function(s) AntiVoidEnabled=s end)}); Uti:Space({Size=6})
-Uti:Toggle({Title="Anti-Ragdoll", Def=Get("AntiRagdollEnabled", false), Callback=AS(function(s) AntiRagdollEnabled=s end)}); Uti:Space({Size=8})
+Uti:Toggle({Flag="tog_32", Title="Auto-Rejoin al Morir", Def=false, Callback=function(s) AutoRejoinEnabled=s end}); Uti:Space({Size=6})
+Uti:Toggle({Flag="tog_33", Title="Anti-Void", Def=false, Callback=function(s) AntiVoidEnabled=s end}); Uti:Space({Size=6})
+Uti:Toggle({Flag="tog_34", Title="Anti-Ragdoll", Def=false, Callback=function(s) AntiRagdollEnabled=s end}); Uti:Space({Size=8})
 SpectateDropdown = Uti:Dropdown({Title="Jugador a Espectear", Values=GetPlayerNames(true), Value=1, Callback=function(s) SpectateName=s end})
 Uti:Space({Size=6})
 local SpR=Uti:Group({})
@@ -1753,25 +1636,25 @@ CoordsParagraph = Uti:Paragraph({Title="Coordenadas Actuales", Desc="X: 0  Y: 0 
 H:Space({Size=10})
 H:Section({Title="Movimiento Extra", TextSize=20}); H:Space({Size=6})
 local ME=H:Section({Title="Movimiento Adicional", Box=true, BoxBorder=true, Opened=true})
-ME:Toggle({Title="Click TP (Clic Derecho)", Def=Get("ClickTPEnabled", false), Callback=AS(SetClickTP)}); ME:Space({Size=6})
-ME:Toggle({Title="Auto-Jump (Bunny Hop)", Def=Get("AutoJumpEnabled", false), Callback=AS(function(s) AutoJumpEnabled=s end)}); ME:Space({Size=6})
-ME:Toggle({Title="Walk on Water", Def=Get("WalkOnWaterEnabled", false), Callback=AS(function(s) WalkOnWaterEnabled=s end)}); ME:Space({Size=6})
-ME:Toggle({Title="Spin Bot", Def=Get("SpinBotEnabled", false), Callback=AS(SetSpinBot)}); ME:Space({Size=6})
-ME:Toggle({Title="Freeze Position", Def=Get("FreezePositionEnabled", false), Callback=AS(SetFreeze)}); ME:Space({Size=6})
-ME:Slider({Title="Velocidad de Caida Max.", Step=10, Value={Min=10,Max=200,Default=Get("FallSpeedCap", 200)}, Callback=AS(function(v) FallSpeedCap=v end)}); ME:Space({Size=6})
-ME:Slider({Title="Tamano de Personaje", Step=0.1, Value={Min=0.3,Max=5,Default=Get("BodyScale", 1)}, Callback=AS(function(v) pcall(function() if Humanoid then Humanoid.BodyHeightScale=v; Humanoid.BodyWidthScale=v; Humanoid.BodyDepthScale=v; if Humanoid.HeadScale then Humanoid.HeadScale=v end end end) end)})
+ME:Toggle({Flag="tog_35", Title="Click TP (Clic Derecho)", Def=false, Callback=SetClickTP}); ME:Space({Size=6})
+ME:Toggle({Flag="tog_36", Title="Auto-Jump (Bunny Hop)", Def=false, Callback=function(s) AutoJumpEnabled=s end}); ME:Space({Size=6})
+ME:Toggle({Flag="tog_37", Title="Walk on Water", Def=false, Callback=function(s) WalkOnWaterEnabled=s end}); ME:Space({Size=6})
+ME:Toggle({Flag="tog_38", Title="Spin Bot", Def=false, Callback=SetSpinBot}); ME:Space({Size=6})
+ME:Toggle({Flag="tog_39", Title="Freeze Position", Def=false, Callback=SetFreeze}); ME:Space({Size=6})
+ME:Slider({Flag="sli_11", Title="Velocidad de Caida Max.", Step=10, Value={Min=10,Max=200,Default=200}, Callback=function(v) FallSpeedCap=v end}); ME:Space({Size=6})
+ME:Slider({Flag="sli_12", Title="Tamano de Personaje", Step=0.1, Value={Min=0.3,Max=5,Default=1}, Callback=function(v) pcall(function() if Humanoid then Humanoid.BodyHeightScale=v; Humanoid.BodyWidthScale=v; Humanoid.BodyDepthScale=v; if Humanoid.HeadScale then Humanoid.HeadScale=v end end end) end})
 H:Space({Size=10})
 H:Section({Title="Visual Extra", TextSize=20}); H:Space({Size=6})
 local VE=H:Section({Title="Efectos Adicionales", Box=true, BoxBorder=true, Opened=true})
-VE:Slider({Title="Velocidad de Animacion", Step=0.1, Value={Min=0.1,Max=5,Default=Get("AnimationSpeed", 1)}, Callback=AS(function(v) if Humanoid then pcall(function() Humanoid.AnimationSpeed=v end) end end)}); VE:Space({Size=6})
-VE:Slider({Title="Hora del Dia (ClockTime)", Step=1, Value={Min=0,Max=24,Default=Get("ClockTime", 14)}, Callback=AS(function(v) Lighting.ClockTime=v end)}); VE:Space({Size=6})
+VE:Slider({Flag="sli_13", Title="Velocidad de Animacion", Step=0.1, Value={Min=0.1,Max=5,Default=1}, Callback=function(v) if Humanoid then pcall(function() Humanoid.AnimationSpeed=v end) end end}); VE:Space({Size=6})
+VE:Slider({Flag="sli_14", Title="Hora del Dia (ClockTime)", Step=1, Value={Min=0,Max=24,Default=14}, Callback=function(v) Lighting.ClockTime=v end}); VE:Space({Size=6})
 VE:Button({Title="Eliminar Particulas/Efectos", Icon="trash-2", Justify="Center", Callback=RemoveParticles})
 H:Space({Size=10})
 H:Section({Title="Utilidades Extra", TextSize=20}); H:Space({Size=6})
 local UE=H:Section({Title="Herramientas Adicionales", Box=true, BoxBorder=true, Opened=true})
-UE:Toggle({Title="God Mode (Local)", Def=Get("GodModeEnabled", false), Callback=AS(function(s) GodModeEnabled=s end)}); UE:Space({Size=6})
-UE:Toggle({Title="Auto-Respawn Instantaneo", Def=Get("InstantRespawnEnabled", false), Callback=AS(function(s) InstantRespawnEnabled=s end)}); UE:Space({Size=6})
-UE:Toggle({Title="Seguir Jugador (Follow)", Def=Get("FollowPlayerEnabled", false), Callback=AS(function(s) FollowPlayerEnabled=s end)}); UE:Space({Size=8})
+UE:Toggle({Flag="tog_40", Title="God Mode (Local)", Def=false, Callback=function(s) GodModeEnabled=s end}); UE:Space({Size=6})
+UE:Toggle({Flag="tog_41", Title="Auto-Respawn Instantaneo", Def=false, Callback=function(s) InstantRespawnEnabled=s end}); UE:Space({Size=6})
+UE:Toggle({Flag="tog_42", Title="Seguir Jugador (Follow)", Def=false, Callback=function(s) FollowPlayerEnabled=s end}); UE:Space({Size=8})
 pcall(function() UE:TextBox({Title="Coordenadas (X, Y, Z)", PlaceholderText="0, 10, 0", Callback=function(t) CoordsText=t end}) end)
 UE:Space({Size=6})
 UE:Button({Title="TP a Coordenadas", Icon="map-pin", Justify="Center", Callback=function() TeleportToCoords(CoordsText) end}); UE:Space({Size=6})
@@ -1787,6 +1670,17 @@ Cr:Section({Title="Agradecimientos", TextSize=20}); Cr:Space({Size=6})
 local CG=Cr:Group({})
 CG:Paragraph({Title="Creador", Desc="Takemichi_01x\n(c) 2026", Image="code", ImageSize=16}); CG:Space({Size=10})
 CG:Paragraph({Title="UI Library", Desc="WindUI v1.6.65\nFootagesus", Image="book", ImageSize=16})
+Cr:Space({Size=8})
+local CfgBtns = Cr:Group({})
+CfgBtns:Button({Title="Guardar Config", Icon="save", Justify="Center", Callback=function()
+    pcall(function() if WindConfig then WindConfig:Save() end end)
+    pcall(function() WindUI:Notify({Title="Config", Content="Ajustes guardados", Duration=2}) end)
+end})
+CfgBtns:Space({Size=8})
+CfgBtns:Button({Title="Borrar Config", Icon="trash-2", Justify="Center", Callback=function()
+    pcall(function() if WindConfig then WindConfig:Delete() end end)
+    pcall(function() WindUI:Notify({Title="Config", Content="Config borrada. Reinicia el script.", Duration=3}) end)
+end})
 Cr:Space({Size=8})
 Cr:Paragraph({Title="Gracias por usar", Desc="Disfruta el script!", Image="heart", ImageSize=16})
 Cr:Space({Size=12})
@@ -1850,9 +1744,6 @@ pcall(function()
         if layout then layout.Padding=UDim.new(0,12); layout.Spacing=UDim.new(0,18) end
     end
 end)
-
-AplicarConfiguracion()
-task.spawn(function() task.wait(1.5); pcall(AplicarConfiguracion) end)
 pcall(function() AplicarColor(Color3.fromRGB(70, 160, 255)) end)
 
 task.spawn(function()
