@@ -31,11 +31,20 @@ local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/rel
 -- (titulos, pestañas, toggles, sliders, botones, parrafos, notificaciones, textboxes...)
 pcall(function()
     local Rojo = Color3.fromRGB(255, 0, 0)
+    local Blanco = Color3.fromRGB(255, 255, 255)
     if WindUI.Themes then
         for _, tema in pairs(WindUI.Themes) do
             if type(tema) == "table" then
-                tema.Text = Rojo         -- color principal del texto
+                tema.Text = Rojo         -- color principal del texto (LETRAS)
                 tema.Placeholder = Rojo  -- texto de marcador en los TextBox
+                -- Restaurar claves que NO son texto pero WindUI las hace caer en "Text";
+                -- si no, los cuadros de seccion y el hover se pintarian rojos tambien.
+                -- (solo se tocan si el tema no las define ya, para no romper otros temas)
+                if tema.Hover == nil then tema.Hover = Blanco end
+                if tema.SectionBox == nil then tema.SectionBox = Blanco end
+                if tema.SectionBoxBackground == nil then tema.SectionBoxBackground = Blanco end
+                if tema.ProgressBarTrack == nil then tema.ProgressBarTrack = Blanco end
+                if tema.ElementBackground == nil then tema.ElementBackground = Color3.fromRGB(42, 42, 44) end
             end
         end
     end
