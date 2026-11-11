@@ -26,6 +26,20 @@ pcall(function()
 end)
 
 local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
+
+-- Pintar TODAS las letras de rojo desde el propio tema de WindUI
+-- (titulos, pestañas, toggles, sliders, botones, parrafos, notificaciones, textboxes...)
+pcall(function()
+    local Rojo = Color3.fromRGB(255, 0, 0)
+    if WindUI.Themes then
+        for _, tema in pairs(WindUI.Themes) do
+            if type(tema) == "table" then
+                tema.Text = Rojo         -- color principal del texto
+                tema.Placeholder = Rojo  -- texto de marcador en los TextBox
+            end
+        end
+    end
+end)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TeleportService = game:GetService("TeleportService")
@@ -1150,46 +1164,6 @@ local function AplicarConfiguracion()
 end
 LoadConfig()
 
--- ===== PINTAR TODAS LAS LETRAS DE ROJO (texto de pestañas y todo el contenido) =====
-local RojoTexto = Color3.fromRGB(255, 0, 0)
-local PintadosRojo = {}
-local function ForzarRojo(inst)
-    if not inst or PintadosRojo[inst] then return end
-    PintadosRojo[inst] = true
-    pcall(function()
-        inst.TextColor3 = RojoTexto
-        -- Si WindUI intenta recolorear el texto (hover, seleccion, etc.), lo vuelve a poner rojo
-        inst:GetPropertyChangedSignal("TextColor3"):Connect(function()
-            if inst.TextColor3 ~= RojoTexto then inst.TextColor3 = RojoTexto end
-        end)
-    end)
-end
-local function PintarGuiRojo(root)
-    if not root then return end
-    for _, d in ipairs(root:GetDescendants()) do
-        if d:IsA("TextLabel") or d:IsA("TextButton") or d:IsA("TextBox") then
-            ForzarRojo(d)
-        end
-    end
-    root.DescendantAdded:Connect(function(d)
-        task.wait(0.03)
-        if d:IsA("TextLabel") or d:IsA("TextButton") or d:IsA("TextBox") then
-            ForzarRojo(d)
-        end
-    end)
-end
--- Captura las ScreenGuis que ya existen ANTES de crear la ventana, para solo pintar las nuevas (las del script)
-local GuisAntes = {}
-do
-    local function escanear(parent)
-        if not parent then return end
-        pcall(function() for _, g in ipairs(parent:GetChildren()) do if g:IsA("ScreenGui") then GuisAntes[g] = true end end end)
-    end
-    escanear(game:GetService("CoreGui"))
-    escanear(LocalPlayer:FindFirstChild("PlayerGui"))
-    pcall(function() if gethui then escanear(gethui()) end end)
-end
-
 local Window = WindUI:CreateWindow({
     Title="TOKI", Icon="sword", Author="TAKEMICHI 🌘", Folder="DENJI•ALEX",
     Size=UDim2.fromOffset(600,540), MinSize=Vector2.new(520,420), MaxSize=Vector2.new(850,680),
@@ -1199,25 +1173,6 @@ local Window = WindUI:CreateWindow({
     HideSearchBar = true, Accent=Color3.fromRGB(70,160,255),
     OpenButton={Title="TAKEMICHI 🌘", Icon="sword", Enabled=true, Draggable=true, OnlyMobile=false, CornerRadius=UDim.new(1,0), StrokeThickness=2, StrokeColor=Color3.fromRGB(255,255,255), Scale=1},
 })
-
--- Pinta de rojo la ventana, pestañas, boton flotante, lista de servidores, etc.
--- (escanea durante ~6s cualquier ScreenGui nueva que aparezca; el hook DescendantAdded pinta el texto dinamico)
-task.spawn(function()
-    for _ = 1, 12 do
-        task.wait(0.5)
-        local function escanear(parent)
-            if not parent then return end
-            pcall(function()
-                for _, g in ipairs(parent:GetChildren()) do
-                    if g:IsA("ScreenGui") and not GuisAntes[g] then PintarGuiRojo(g) end
-                end
-            end)
-        end
-        escanear(game:GetService("CoreGui"))
-        escanear(LocalPlayer:FindFirstChild("PlayerGui"))
-        pcall(function() if gethui then escanear(gethui()) end end)
-    end
-end)
 
 -- 1. PLAYER
 local PlayerTab = Window:Tab({Title="Player", Icon="user"})
