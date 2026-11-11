@@ -27,21 +27,6 @@ end)
 
 local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
 
--- Pintar SOLO las letras de rojo (titulos, pestanas, toggles, sliders, botones, parrafos, notificaciones, textboxes...)
--- NO toca cuadros, fondos, hover, bordes ni pistas.
-pcall(function()
-    local Rojo = Color3.fromRGB(255, 0, 0)
-    if WindUI.Themes then
-        for _, tema in pairs(WindUI.Themes) do
-            if type(tema) == "table" then
-                tema.Text = Rojo            -- letras en general
-                tema.PlaceholderText = Rojo -- marcador (placeholder) de los TextBox
-                tema.Placeholder = Rojo     -- numero/texto del slider
-            end
-        end
-    end
-end)
-
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TeleportService = game:GetService("TeleportService")
@@ -1813,5 +1798,97 @@ end)
 
 pcall(function() Window:SelectTab(PlayerTab) end)
 pcall(function() Window:SelectTab(1) end)
+
+-- ===== PINTAR SOLO LAS LETRAS DE ROJO (TextColor3) =====
+-- Recorre la GUI de WindUI ya creada y fuerza ROJO en todo texto:
+-- TextLabel / TextButton / TextBox (y PlaceholderColor3 de los TextBox).
+-- NO toca fondos, bordes, cuadros, hover ni Stroke.
+-- Se engancha a los cambios para que hover/toggles/notificaciones no restauren el color.
+pcall(function()
+    local Rojo = Color3.fromRGB(255, 0, 0)
+    local function EsTexto(obj)
+        return obj and (obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox"))
+    end
+    local function ForzarRojo(inst)
+        if not EsTexto(inst) then return end
+        if inst.TextColor3 ~= Rojo then inst.TextColor3 = Rojo end
+        inst:GetPropertyChangedSignal("TextColor3"):Connect(function()
+            if inst.TextColor3 ~= Rojo then inst.TextColor3 = Rojo end
+        end)
+        if inst:IsA("TextBox") then
+            if inst.PlaceholderColor3 ~= Rojo then inst.PlaceholderColor3 = Rojo end
+            inst:GetPropertyChangedSignal("PlaceholderColor3"):Connect(function()
+                if inst.PlaceholderColor3 ~= Rojo then inst.PlaceholderColor3 = Rojo end
+            end)
+        end
+    end
+    local function Recorrer(root)
+        if not root then return end
+        ForzarRojo(root)
+        for _, d in ipairs(root:GetDescendants()) do ForzarRojo(d) end
+    end
+
+    -- 1) Localizar la ScreenGui principal de WindUI a partir de la barra lateral
+    local WindGui = nil
+    pcall(function() WindGui = Window.SideBar:FindFirstAncestorWhichIsA("ScreenGui") end)
+    if not WindGui then
+        pcall(function()
+            local cont = Window.SideBar
+            while cont and not cont:IsA("ScreenGui") do cont = cont.Parent end
+            WindGui = cont
+        end)
+    end
+
+    -- 2) Fallback: buscar en CoreGui/PlayerGui/gethui la ScreenGui con el titulo "TOKI"
+    if not WindGui then
+        local function buscarEn(contenedor)
+            if not contenedor then return nil end
+            for _, sg in ipairs(contenedor:GetChildren()) do
+                if sg:IsA("ScreenGui") then
+                    for _, d in ipairs(sg:GetDescendants()) do
+                        if d:IsA("TextLabel") and d.Text == "TOKI" then return sg end
+                    end
+                end
+            end
+            return nil
+        end
+        pcall(function() WindGui = buscarEn(game:GetService("CoreGui")) end)
+        if not WindGui then pcall(function() WindGui = buscarEn(LocalPlayer:WaitForChild("PlayerGui")) end) end
+        if not WindGui and gethui then pcall(function() WindGui = buscarEn(gethui()) end) end
+    end
+
+    -- 3) El boton de abrir (OpenButton) puede estar en otra ScreenGui: buscar por su texto
+    local OpenGui = nil
+    pcall(function()
+        local tituloBoton = "TAKEMICHI 🌘"
+        local function buscarOpen(contenedor)
+            if not contenedor then return end
+            for _, sg in ipairs(contenedor:GetChildren()) do
+                if sg:IsA("ScreenGui") and sg ~= WindGui then
+                    for _, d in ipairs(sg:GetDescendants()) do
+                        if d:IsA("TextButton") and d.Text == tituloBoton then
+                            OpenGui = sg; return
+                        end
+                    end
+                end
+            end
+        end
+        buscarOpen(game:GetService("CoreGui"))
+        if not OpenGui then buscarOpen(LocalPlayer:WaitForChild("PlayerGui")) end
+        if not OpenGui and gethui then buscarOpen(gethui()) end
+    end)
+
+    local Raices = {}
+    if WindGui then table.insert(Raices, WindGui) end
+    if OpenGui then table.insert(Raices, OpenGui) end
+
+    for _, r in ipairs(Raices) do
+        Recorrer(r)
+        r.DescendantAdded:Connect(function(d)
+            task.wait(0.05)
+            Recorrer(d)
+        end)
+    end
+end)
 
 WindUI:Notify({Title="TAKEMICHI", Content="v2.0 (sin guardado silencioso)", Duration=4})
