@@ -37,6 +37,9 @@ pcall(function()
             if type(tema) == "table" then
                 tema.Text = Rojo         -- color principal del texto (LETRAS)
                 tema.Placeholder = Rojo  -- texto de marcador en los TextBox
+                -- Cuadros de texto (TextBox / Textarea) en gris transparente, desde el propio tema de WindUI
+                tema.LabelBackground = Color3.fromRGB(110, 110, 110)  -- gris (ajusta 0-255: mas alto = mas claro)
+                tema.LabelBackgroundTransparency = 0.5                -- transparencia (0=opaco, 1=invisible)
                 -- Restaurar claves que NO son texto pero WindUI las hace caer en "Text";
                 -- si no, los cuadros de seccion y el hover se pintarian rojos tambien.
                 -- (solo se tocan si el tema no las define ya, para no romper otros temas)
@@ -1879,9 +1882,9 @@ task.spawn(function()
         if not PlayerTab then return end
         local Contenedor = nil
         pcall(function() Contenedor = PlayerTab.UIElements and PlayerTab.UIElements.ContainerFrame end)
-        if not Contenedor then pcall(function() Contenedor = PlayerTab.ContainerFrame end) end
-        if not Contenedor then pcall(function() Contenedor = PlayerTab.Container end) end
-        if not Contenedor then pcall(function() Contenedor = Window.SideBar and Window.SideBar.Parent end) end
+        if not Contenedor then pcall(function() Contenedor = PlayerTab.ContainerFrame end) end)
+        if not Contenedor then pcall(function() Contenedor = PlayerTab.Container end) end)
+        if not Contenedor then pcall(function() Contenedor = Window.SideBar and Window.SideBar.Parent end) end)
         if not Contenedor then return end
         local Box = Instance.new("Frame")
         Box.Name = "PerfilCuadro"
