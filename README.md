@@ -1345,81 +1345,7 @@ ExtScripts:Button({Title="Hitbox Girls", Desc="Ejecutar script", Icon="play", Ju
     end)
 end})
 
--- 3. GAME
-local GameTab = Window:Tab({Title="Game", Icon="gamepad-2"})
-GameTab:Section({Title="Funciones Universales", TextSize=20}); GameTab:Space({Size=6})
-
-GameTab:Section({Title="🚀 Movimiento", TextSize=18}); GameTab:Space({Size=6})
-local GMov = GameTab:Section({Title="", Box=true, BoxBorder=true, Opened=true})
-GMov:Toggle({Title="Fly (Volar)", Def=Get("FlyEnabled", false), Callback=AS(function(s) if s then StartFly() else StopFly() end end)}); GMov:Space({Size=6})
-GMov:Toggle({Title="Noclip", Def=Get("NoclipEnabled", false), Callback=AS(SetNoclip)}); GMov:Space({Size=6})
-GMov:Toggle({Title="Salto Infinito", Def=Get("InfJumpEnabled", false), Callback=AS(SetInfJump)}); GMov:Space({Size=6})
-GMov:Toggle({Title="Click TP (Clic Der.)", Def=Get("ClickTPEnabled", false), Callback=AS(SetClickTP)}); GMov:Space({Size=6})
-GMov:Toggle({Title="Auto-Jump (Bunny Hop)", Def=Get("AutoJumpEnabled", false), Callback=AS(function(s) AutoJumpEnabled=s end)}); GMov:Space({Size=6})
-GMov:Toggle({Title="Walk on Water", Def=Get("WalkOnWaterEnabled", false), Callback=AS(function(s) WalkOnWaterEnabled=s end)}); GMov:Space({Size=6})
-GMov:Toggle({Title="Spin Bot", Def=Get("SpinBotEnabled", false), Callback=AS(SetSpinBot)}); GMov:Space({Size=6})
-GMov:Toggle({Title="Freeze Position", Def=Get("FreezePositionEnabled", false), Callback=AS(SetFreeze)}); GMov:Space({Size=6})
-GMov:Slider({Title="WalkSpeed", Step=1, Value={Min=16,Max=250,Default=Get("WalkSpeed",16)}, Callback=AS(function(v) if Humanoid then Humanoid.WalkSpeed=v end end)}); GMov:Space({Size=6})
-GMov:Slider({Title="JumpPower", Step=1, Value={Min=50,Max=350,Default=Get("JumpPower",50)}, Callback=AS(function(v) if Humanoid then Humanoid.JumpPower=v end end)}); GMov:Space({Size=6})
-GMov:Slider({Title="Gravedad", Step=0.1, Value={Min=0,Max=2,Default=Get("GravityScale",1)}, Callback=AS(function(v) if Humanoid then Humanoid.GravityScale=v end end)})
-GameTab:Space({Size=10})
-
-GameTab:Section({Title="👁️ Visual", TextSize=18}); GameTab:Space({Size=6})
-local GVis = GameTab:Section({Title="", Box=true, BoxBorder=true, Opened=true})
-GVis:Toggle({Title="ESP Jugadores", Def=Get("ESPEnabled", false), Callback=AS(SetESP)}); GVis:Space({Size=6})
-GVis:Toggle({Title="Fullbright", Def=Get("FullbrightEnabled", false), Callback=AS(SetFullbright)}); GVis:Space({Size=6})
-GVis:Toggle({Title="FPS Boost", Def=Get("FpsBoostEnabled", false), Callback=AS(SetFpsBoost)}); GVis:Space({Size=6})
-GVis:Slider({Title="FOV de Cámara", Step=1, Value={Min=60,Max=120,Default=Get("FOV",70)}, Callback=AS(function(v) pcall(function() workspace.CurrentCamera.FieldOfView=v end) end)}); GVis:Space({Size=6})
-local GVisB = GVis:Group({})
-GVisB:Button({Title="Desbloquear Zoom", Icon="zoom-in", Justify="Center", Callback=function() pcall(function() workspace.CurrentCamera.CameraMaxZoomDistance=1000; workspace.CurrentCamera.CameraMinZoomDistance=0.5 end); WindUI:Notify({Title="Zoom", Content="Desbloqueado", Duration=2}) end})
-GVisB:Space({Size=8})
-GVisB:Button({Title="Eliminar Partículas", Icon="trash-2", Justify="Center", Callback=RemoveParticles})
-GameTab:Space({Size=10})
-
-GameTab:Section({Title="🛡️ Protección", TextSize=18}); GameTab:Space({Size=6})
-local GProt = GameTab:Section({Title="", Box=true, BoxBorder=true, Opened=true})
-GProt:Toggle({Title="God Mode (Local)", Def=Get("GodModeEnabled", false), Callback=AS(function(s) GodModeEnabled=s end)}); GProt:Space({Size=6})
-GProt:Toggle({Title="Anti-Void", Def=Get("AntiVoidEnabled", false), Callback=AS(function(s) AntiVoidEnabled=s end)}); GProt:Space({Size=6})
-GProt:Toggle({Title="Anti-Ragdoll", Def=Get("AntiRagdollEnabled", false), Callback=AS(function(s) AntiRagdollEnabled=s end)}); GProt:Space({Size=6})
-GProt:Toggle({Title="Anti-AFK (Real)", Def=Get("AntiAFKEnabled", false), Callback=AS(SetAntiAFK)}); GProt:Space({Size=6})
-GProt:Toggle({Title="No Fall Damage", Def=Get("NoFallDamageEnabled", false), Callback=AS(SetNoFallDamage)}); GProt:Space({Size=6})
-GProt:Toggle({Title="Auto-Respawn Instantáneo", Def=Get("InstantRespawnEnabled", false), Callback=AS(function(s) InstantRespawnEnabled=s end)}); GProt:Space({Size=6})
-GProt:Toggle({Title="Auto-Rejoin al Morir", Def=Get("AutoRejoinEnabled", false), Callback=AS(function(s) AutoRejoinEnabled=s end)})
-GameTab:Space({Size=10})
-
-GameTab:Section({Title="🔧 Utilidades", TextSize=18}); GameTab:Space({Size=6})
-local GUtil = GameTab:Section({Title="", Box=true, BoxBorder=true, Opened=true})
-GUtil:Toggle({Title="Auto-Clicker", Def=Get("AutoClickerEnabled", false), Callback=AS(SetAutoClicker)}); GUtil:Space({Size=6})
-GUtil:Slider({Title="CPS del Auto-Clicker", Step=1, Value={Min=1,Max=20,Default=Get("AutoClickerCPS",10)}, Callback=AS(function(v) AutoClickerCPS=v end)}); GUtil:Space({Size=8})
-local GU1 = GUtil:Group({})
-GU1:Button({Title="TP All a Mí", Icon="users", Justify="Center", Callback=TPAllToMe}); GU1:Space({Size=8})
-GU1:Button({Title="Rejoin", Icon="refresh-cw", Justify="Center", Callback=function() TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId) end})
-GUtil:Space({Size=6})
-local GU2 = GUtil:Group({})
-GU2:Button({Title="Server Hop", Icon="shuffle", Justify="Center", Callback=ServerHop}); GU2:Space({Size=8})
-GU2:Button({Title="Copiar JobID", Icon="clipboard", Justify="Center", Callback=function() setclipboard(tostring(game.JobId)); WindUI:Notify({Title="Copiado", Content="JobID copiado", Duration=2}) end})
-GUtil:Space({Size=6})
-GUtil:Button({Title="Copiar Link del Juego", Icon="link", Justify="Center", Callback=function() setclipboard("https://www.roblox.com/games/"..tostring(game.PlaceId)); WindUI:Notify({Title="Copiado", Content="Link copiado", Duration=2}) end})
-GameTab:Space({Size=10})
-
-GameTab:Section({Title="📦 Scripts Universales", TextSize=18}); GameTab:Space({Size=6})
-local GScr = GameTab:Section({Title="", Box=true, BoxBorder=true, Opened=true})
-GScr:Button({Title="Infinite Yield (Admin Universal)", Desc="Ejecutar", Icon="play", Justify="Left", Callback=function()
-    pcall(function()
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))()
-        WindUI:Notify({Title="Infinite Yield", Content="Script ejecutado", Duration=3})
-    end)
-end})
-GScr:Space({Size=10})
-GScr:Button({Title="Dex Explorer", Desc="Ejecutar", Icon="play", Justify="Left", Callback=function()
-    pcall(function()
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/infyiff/backup/main/dex.lua"))()
-        WindUI:Notify({Title="Dex Explorer", Content="Script ejecutado", Duration=3})
-    end)
-end})
-GameTab:Space({Size=12})
-
--- 4. TARGET
+-- 3. TARGET
 local TargetTab = Window:Tab({Title="Target", Icon="crosshair"})
 TargetTab:Section({Title="🎯 Seleccionar Objetivo", TextSize=20}); TargetTab:Space({Size=6})
 local TargetSel = TargetTab:Section({Title="", Box=true, BoxBorder=true, Opened=true})
@@ -1522,7 +1448,7 @@ TAR2:Space({Size=8})
 TAR2:Button({Title="Limpiar Objetivo", Icon="x", Justify="Center", Callback=function() TargetSelect(nil) end})
 TargetTab:Space({Size=12})
 
--- 5. RJ=New.SV
+-- 4. RJ=New.SV
 local RJTab = Window:Tab({Title="RJ=New.SV", Icon="globe"})
 
 local AutoOn = false
@@ -1837,7 +1763,7 @@ task.spawn(function()
     end
 end)
 
--- 6. ESCUDOS
+-- 5. ESCUDOS
 local EscudosTab = Window:Tab({Title="Escudos", Icon="shield"})
 EscudosTab:Section({Title="🛡️ Protección y Defensas (reales)", TextSize=20}); EscudosTab:Space({Size=6})
 EscudosTab:Paragraph({Title="Nota", Desc="Anti-Kick solo bloquea kicks de scripts locales. Un kick del servidor no se puede bloquear del lado del cliente.", Image="info", ImageSize=14})
@@ -1870,7 +1796,7 @@ EscudosTab:Space({Size=8})
 
 EscudosTab:Space({Size=12})
 
--- 7. HERRAMIENTAS
+-- 6. HERRAMIENTAS
 local H = Window:Tab({Title="Herramientas", Icon="wrench"})
 H:Section({Title="Movimiento", TextSize=20}); H:Space({Size=6})
 local Mov = H:Section({Title="Controles de Movimiento", Box=true, BoxBorder=true, Opened=true})
@@ -1966,7 +1892,7 @@ SvR:Space({Size=8})
 SvR:Button({Title="Volver a Posición", Icon="home", Justify="Center", Callback=function() if SavedPosition and RootPart then RootPart.CFrame=SavedPosition; RootPart.Velocity=Vector3.new(0,0,0); WindUI:Notify({Title="TP", Content="Volviste", Duration=2}) else WindUI:Notify({Title="Error", Content="No hay posición guardada", Duration=2}) end end})
 H:Space({Size=12})
 
--- 8. CRÉDITOS
+-- 7. CRÉDITOS
 local Cr = Window:Tab({Title="Créditos", Icon="award"})
 Cr:Section({Title="Agradecimientos", TextSize=20}); Cr:Space({Size=6})
 local CG=Cr:Group({})
@@ -2047,9 +1973,9 @@ task.spawn(function()
         if not PlayerTab then return end
         local Contenedor = nil
         pcall(function() Contenedor = PlayerTab.UIElements and PlayerTab.UIElements.ContainerFrame end)
-        if not Contenedor then pcall(function() Contenedor = PlayerTab.ContainerFrame end) end
-        if not Contenedor then pcall(function() Contenedor = PlayerTab.Container end) end
-        if not Contenedor then pcall(function() Contenedor = Window.SideBar and Window.SideBar.Parent end) end
+        if not Contenedor then pcall(function() Contenedor = PlayerTab.ContainerFrame end) end)
+        if not Contenedor then pcall(function() Contenedor = PlayerTab.Container end) end)
+        if not Contenedor then pcall(function() Contenedor = Window.SideBar and Window.SideBar.Parent end) end)
         if not Contenedor then return end
 
         local Box = Instance.new("Frame")
