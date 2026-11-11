@@ -35,22 +35,25 @@ pcall(function()
     if WindUI.Themes then
         for _, tema in pairs(WindUI.Themes) do
             if type(tema) == "table" then
-                tema.Text = Rojo            -- color principal del texto (LETRAS)
+                -- SOLO las letras en rojo; TODO lo demas (cuadros, fondos, hover, bordes, pistas) en gris transparente.
+                -- Se fuerza SIN guardas "if nil" porque en el tema base estas claves son la cadena "Text" (roja), NO son nil.
+                tema.Text = Rojo             -- letras: titulos, pestanas, toggles, descripciones, botones, notificaciones...
                 tema.PlaceholderText = Rojo  -- texto de marcador (placeholder) real de los TextBox
-                tema.Placeholder = Rojo      -- (mantiene rojo el valor del slider; el fondo trasero del TextBox esta al 85% de transparencia, casi no se ve)
-                -- Gris transparente para TODOS los cuadros: fondos de toggles, sliders, botones y TextBox.
-                -- Se fuerza SIN guarda "if nil" porque en el tema base ElementBackground = "Text" (rojo), no es nil.
-                tema.ElementBackground = Color3.fromRGB(110, 110, 110)  -- gris (0-255: mas alto = mas claro)
-                tema.ElementBackgroundTransparency = 0.5                 -- transparencia (0=opaco, 1=invisible)
-                -- Campo interno de los TextBox/Textarea tambien en gris transparente
-                tema.LabelBackground = Color3.fromRGB(110, 110, 110)
+                tema.Placeholder = Rojo      -- numero/texto del slider (es letra); el fondo trasero del TextBox esta al 85% de transparencia
+
+                local Gris = Color3.fromRGB(110, 110, 110)  -- gris base (0-255: mas alto = mas claro)
+                -- Fondos y cuadros en gris transparente
+                tema.ElementBackground = Gris                 -- fondo de toggles, sliders, botones, filas
+                tema.ElementBackgroundTransparency = 0.5      -- 0=opaco, 1=invisible
+                tema.LabelBackground = Gris                   -- campo interno de TextBox/Textarea
                 tema.LabelBackgroundTransparency = 0.5
-                -- Restaurar claves que NO son texto pero WindUI las hace caer en "Text";
-                -- si no, los cuadros de seccion y el hover se pintarian rojos tambien.
-                if tema.Hover == nil then tema.Hover = Blanco end
-                if tema.SectionBox == nil then tema.SectionBox = Blanco end
-                if tema.SectionBoxBackground == nil then tema.SectionBoxBackground = Blanco end
-                if tema.ProgressBarTrack == nil then tema.ProgressBarTrack = Blanco end
+                tema.SectionBox = Gris                        -- borde de los cuadros de seccion
+                tema.SectionBoxBackground = Gris              -- fondo de los cuadros de seccion
+                tema.SectionBoxBackgroundTransparency = 0.5
+                tema.ProgressBarTrack = Color3.fromRGB(80, 80, 80)  -- pista vacia de los sliders (gris mas oscuro)
+                tema.Hover = Color3.fromRGB(150, 150, 150)    -- color al pasar el mouse (gris mas claro)
+                tema.Outline = Gris                            -- borde de los TextBox
+                tema.TabBorder = Gris                          -- borde de pestanas del sidebar
             end
         end
     end
