@@ -1236,14 +1236,14 @@ end
 LoadConfig()
 
 local Window = WindUI:CreateWindow({
-    Title="TOKI", Icon="sword", Author="YEILAN⚡", Folder="DENJI•ALEX",
+    Title="TOKI", Icon="sword", Author="YEILAN🍄", Folder="DENJI•ALEX",
     Size=UDim2.fromOffset(600,540), MinSize=Vector2.new(520,420), MaxSize=Vector2.new(850,680),
     Transparent=true, Theme="Dark", Resizable=true, SideBarWidth=160,
-    Background = "rbxassetid://100579871217024",
+    Background = "rbxassetid://119928187936681",
     BackgroundImageTransparency = 0.35,
     
     HideSearchBar = true, Accent=Color3.fromRGB(70,160,255),
-    OpenButton={Title="YEILAN⚡", Icon="sword", Enabled=true, Draggable=true, OnlyMobile=false, CornerRadius=UDim.new(1,0), StrokeThickness=2, StrokeColor=Color3.fromRGB(255,255,255), Scale=1},
+    OpenButton={Title="YEILAN🍄", Icon="sword", Enabled=true, Draggable=true, OnlyMobile=false, CornerRadius=UDim.new(1,0), StrokeThickness=2, StrokeColor=Color3.fromRGB(255,255,255), Scale=1},
 })
 
 -- 1. PLAYER
