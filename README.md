@@ -27,6 +27,21 @@ end)
 
 local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
 
+-- Pintar SOLO las letras de rojo (titulos, pestanas, toggles, sliders, botones, parrafos, notificaciones, textboxes...)
+-- NO toca cuadros, fondos, hover, bordes ni pistas.
+pcall(function()
+    local Rojo = Color3.fromRGB(255, 0, 0)
+    if WindUI.Themes then
+        for _, tema in pairs(WindUI.Themes) do
+            if type(tema) == "table" then
+                tema.Text = Rojo            -- letras en general
+                tema.PlaceholderText = Rojo -- marcador (placeholder) de los TextBox
+                tema.Placeholder = Rojo     -- numero/texto del slider
+            end
+        end
+    end
+end)
+
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TeleportService = game:GetService("TeleportService")
