@@ -1236,7 +1236,7 @@ end
 LoadConfig()
 
 local Window = WindUI:CreateWindow({
-    Title="Takemichi", Icon="sword", Author="YEILAN⚡", Folder="DENJI•ALEX",
+    Title="TOKI", Icon="sword", Author="YEILAN⚡", Folder="DENJI•ALEX",
     Size=UDim2.fromOffset(600,540), MinSize=Vector2.new(520,420), MaxSize=Vector2.new(850,680),
     Transparent=true, Theme="Dark", Resizable=true, SideBarWidth=160,
     Background = "rbxassetid://100579871217024",
