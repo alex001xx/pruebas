@@ -1022,25 +1022,18 @@ local function BuildConfig()
         AccentB = math.floor(ColorAccent.B*255),
     }
 end
-local function DoSave()
-    pcall(function()
-        if not isfolder(ConfigFolder) then makefolder(ConfigFolder) end
-        writefile(ConfigFile, HttpService:JSONEncode(BuildConfig()))
-    end)
-end
+
+-- ===== GUARDADO SILENCIOSO DESACTIVADO =====
+-- Ya no se escribe DENJI_ALEX/Takemichi_Config.json en ningún lado.
+-- (La carga del config anterior sigue activa; si quieres quitarla también, avisa.)
+local function DoSave() end
 local SaveScheduled = false
-local function SaveConfig()
-    if SaveScheduled then return end
-    SaveScheduled = true
-    task.delay(0.4, function()
-        SaveScheduled = false
-        DoSave()
-    end)
-end
+local function SaveConfig() end
+
 local function AS(fn)
     return function(...)
         if fn then fn(...) end
-        pcall(SaveConfig)
+        -- sin pcall(SaveConfig): ya no guarda automáticamente
     end
 end
 local RefBordeCirculo, RefBordePerfil, RefTPBtn = nil, nil, nil
@@ -1051,7 +1044,6 @@ local function AplicarColor(c)
     pcall(function() if RefTPBtn then RefTPBtn.BackgroundColor3 = c end end)
     pcall(function() if Window and Window.SetAccent then Window:SetAccent(c) end end)
     pcall(function() if Window and Window.SetThemeColor then Window:SetThemeColor(c) end end)
-    pcall(SaveConfig)
 end
 local function LoadConfig()
     pcall(function()
@@ -1386,7 +1378,7 @@ local function JoinBest()
         if S.Players <= Limit then table.insert(Candidates, S) end
     end
     local Target = #Candidates > 0 and Candidates[math.random(#Candidates)] or Servers[math.random(#Servers)]
-    ServidoresVisitados[Target.Id] = true; pcall(SaveConfig)
+    ServidoresVisitados[Target.Id] = true
     if RJStatus and RJStatus.SetDesc then RJStatus:SetDesc("Teletransportando...") end
     pcall(function() TeleportService:TeleportToPlaceInstance(game.PlaceId, Target.Id, LocalPlayer) end)
 end
@@ -1521,7 +1513,7 @@ local function AbrirListaServidores()
             pcall(function() WindUI:Notify({Title="Servidores", Content="Selecciona un servidor primero", Duration=2}) end)
             return
         end
-        pcall(function() ServidoresVisitados[SelectedServer.Id] = true; pcall(SaveConfig) end)
+        pcall(function() ServidoresVisitados[SelectedServer.Id] = true end)
         pcall(function() WindUI:Notify({Title="Servidores", Content="Teletransportando al servidor seleccionado...", Duration=2}) end)
         pcall(function() TeleportService:TeleportToPlaceInstance(game.PlaceId, SelectedServer.Id, LocalPlayer) end)
     end)
@@ -1837,9 +1829,9 @@ task.spawn(function()
         if not PlayerTab then return end
         local Contenedor = nil
         pcall(function() Contenedor = PlayerTab.UIElements and PlayerTab.UIElements.ContainerFrame end)
-        if not Contenedor then pcall(function() Contenedor = PlayerTab.ContainerFrame end) end
-        if not Contenedor then pcall(function() Contenedor = PlayerTab.Container end) end
-        if not Contenedor then pcall(function() Contenedor = Window.SideBar and Window.SideBar.Parent end) end
+        if not Contenedor then pcall(function() Contenedor = PlayerTab.ContainerFrame end) end)
+        if not Contenedor then pcall(function() Contenedor = PlayerTab.Container end) end)
+        if not Contenedor then pcall(function() Contenedor = Window.SideBar and Window.SideBar.Parent end) end)
         if not Contenedor then return end
         local Box = Instance.new("Frame")
         Box.Name = "PerfilCuadro"
@@ -1915,4 +1907,4 @@ end)
 pcall(function() Window:SelectTab(PlayerTab) end)
 pcall(function() Window:SelectTab(1) end)
 
-WindUI:Notify({Title="TAKEMICHI", Content="v2.0", Duration=4})
+WindUI:Notify({Title="TAKEMICHI", Content="v2.0 (sin guardado silencioso)", Duration=4})
