@@ -200,54 +200,178 @@ local function SetTPWalk(s)
     end
 end
 
-local AutoPisarThread = nil
+-- =================================================================
+--          REMOTE SPAM — SIN PvP · SIN RULETAS
+--          (reemplaza al antiguo Auto Pisar)
+-- =================================================================
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local LocalPlayer = Players.LocalPlayer
+local spamMode = false
+local isMinimized = false
+
+-- 🖥️ GUI PRINCIPAL — SIN CAMBIOS
+local Gui = Instance.new("ScreenGui")
+Gui.Name = "RemoteSpamGui"
+Gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+Gui.ResetOnSpawn = false
+
+local Frame = Instance.new("Frame", Gui)
+Frame.Size = UDim2.new(0, 160, 0, 95)
+Frame.Position = UDim2.new(0.7, 0, 0.2, 0)
+Frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+Frame.BorderColor3 = Color3.fromRGB(0, 170, 255)
+Frame.BorderSizePixel = 2
+Frame.Active = true
+Frame.Draggable = true
+
+local TopBar = Instance.new("Frame", Frame)
+TopBar.Size = UDim2.new(1, 0, 0, 25)
+TopBar.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+TopBar.BorderSizePixel = 0
+
+local Title = Instance.new("TextLabel", TopBar)
+Title.Size = UDim2.new(0.75, 0, 1, 0)
+Title.Position = UDim2.new(0.05, 0, 0, 0)
+Title.Text = "SPAM PRO"
+Title.TextColor3 = Color3.fromRGB(0, 170, 255)
+Title.Font = Enum.Font.GothamBold
+Title.TextSize = 12
+Title.BackgroundTransparency = 1
+Title.TextXAlignment = Enum.TextXAlignment.Left
+
+local MinBtn = Instance.new("TextButton", TopBar)
+MinBtn.Size = UDim2.new(0, 25, 0, 25)
+MinBtn.Position = UDim2.new(1, -25, 0, 0)
+MinBtn.Text = "-"
+MinBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+MinBtn.Font = Enum.Font.GothamBold
+MinBtn.TextSize = 14
+MinBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+MinBtn.BorderSizePixel = 0
+
+local BtnDeath = Instance.new("TextButton", Frame)
+BtnDeath.Size = UDim2.new(0.9, 0, 0, 50)
+BtnDeath.Position = UDim2.new(0.05, 0, 0, 35)
+BtnDeath.BackgroundColor3 = Color3.fromRGB(150, 30, 30)
+BtnDeath.TextColor3 = Color3.fromRGB(255, 255, 255)
+BtnDeath.Font = Enum.Font.GothamBold
+BtnDeath.TextSize = 15
+BtnDeath.Text = "🔴 SHIELD: OFF"
+BtnDeath.BorderSizePixel = 1
+
+-- 🗕 Minimizar / Maximizar
+MinBtn.MouseButton1Click:Connect(function()
+    isMinimized = not isMinimized
+    if isMinimized then
+        Frame.Size = UDim2.new(0, 160, 0, 25)
+        BtnDeath.Visible = false
+        MinBtn.Text = "+"
+    else
+        Frame.Size = UDim2.new(0, 160, 0, 95)
+        BtnDeath.Visible = true
+        MinBtn.Text = "-"
+    end
+end)
+
+-- ⚡ FILTRO ACTUALIZADO — PvP + COMBATE + RULETAS PROTEGIDOS
 local safeRemotes = {}
 local palabrasProhibidas = {
+    -- Muerte / Respawn
     "reset", "die", "death", "respawn", "kill",
+    -- PvP y Combate
     "pvp", "combat", "attack", "hit", "damage",
     "fight", "strike", "shoot", "weapon", "melee",
     "health", "hp", "defense", "shield", "skill",
     "ability", "dodge", "block", "knock", "stun",
+    -- 🎡 Ruletas y Giros
     "ruleta", "spin", "wheel", "girar", "giro",
     "suerte", "lottery", "roulette", "reward", "premio"
 }
-local function CargarRemotesSeguros()
-    safeRemotes = {}
-    pcall(function()
-        for _, desc in ipairs(ReplicatedStorage:GetDescendants()) do
-            if desc:IsA("RemoteEvent") then
-                local rName = desc.Name:lower()
-                local esProhibido = false
-                for _, prohibido in ipairs(palabrasProhibidas) do
-                    if rName:find(prohibido) then esProhibido = true; break end
-                end
-                if not esProhibido and #safeRemotes < 15 then
-                    table.insert(safeRemotes, desc)
-                end
+
+for _, desc in ipairs(ReplicatedStorage:GetDescendants()) do
+    if desc:IsA("RemoteEvent") then
+        local rName = desc.Name:lower()
+        local esProhibido = false
+
+        for _, prohibido in ipairs(palabrasProhibidas) do
+            if rName:find(prohibido) then
+                esProhibido = true
+                break
             end
         end
-    end)
-end
-local function SetAutoPisar(s)
-    AutoPisarEnabled = s
-    if s then
-        if #safeRemotes == 0 then CargarRemotesSeguros() end
-        if not AutoPisarThread then
-            AutoPisarThread = task.spawn(function()
-                while AutoPisarEnabled do
-                    for _, remote in ipairs(safeRemotes) do
-                        if not AutoPisarEnabled then break end
-                        pcall(function() remote:FireServer(true) end)
-                    end
-                    task.wait(1.5)
-                end
-            end)
+
+        if not esProhibido and #safeRemotes < 15 then
+            table.insert(safeRemotes, desc)
         end
-        WindUI:Notify({Title="Auto Pisar", Content="Shield activado ("..#safeRemotes.." remotes)", Duration=3})
-    else
-        if AutoPisarThread then pcall(function() task.cancel(AutoPisarThread) end); AutoPisarThread = nil end
     end
 end
+
+print("[SHIELD CARGADO]: Remotes seguros cargados: " .. #safeRemotes)
+print("✅ PvP, Combate y Ruletas PROTEGIDOS — el script NO los tocará")
+
+-- ⚡ BUCLE — IGUAL QUE SIEMPRE
+local spamThread = nil
+
+BtnDeath.MouseButton1Click:Connect(function()
+    spamMode = not spamMode
+
+    if spamMode then
+        BtnDeath.Text = "🟢 SHIELD: ON"
+        BtnDeath.BackgroundColor3 = Color3.fromRGB(30, 150, 50)
+
+        spamThread = task.spawn(function()
+            while spamMode do
+                for _, remote in ipairs(safeRemotes) do
+                    if not spamMode then break end
+                    pcall(function()
+                        remote:FireServer(true)
+                    end)
+                end
+                task.wait(0.3)
+            end
+        end)
+    else
+        spamMode = false
+        if spamThread then
+            task.cancel(spamThread)
+            spamThread = nil
+        end
+        BtnDeath.Text = "🔴 SHIELD: OFF"
+        BtnDeath.BackgroundColor3 = Color3.fromRGB(150, 30, 30)
+    end
+end)
+
+-- ===== PUENTE con el toggle "Auto Pisar" del menú WindUI =====
+-- (no toca la GUI original; sincroniza el botón SHIELD con el toggle del menú)
+function SetAutoPisar(s)
+    AutoPisarEnabled = s
+    if s == spamMode then return end
+    spamMode = s
+    if s then
+        BtnDeath.Text = "🟢 SHIELD: ON"
+        BtnDeath.BackgroundColor3 = Color3.fromRGB(30, 150, 50)
+        spamThread = task.spawn(function()
+            while spamMode do
+                for _, remote in ipairs(safeRemotes) do
+                    if not spamMode then break end
+                    pcall(function() remote:FireServer(true) end)
+                end
+                task.wait(0.3)
+            end
+        end)
+        pcall(function() WindUI:Notify({Title="Auto Pisar", Content="Shield activado ("..#safeRemotes.." remotes)", Duration=3}) end)
+    else
+        if spamThread then pcall(function() task.cancel(spamThread) end); spamThread = nil end
+        BtnDeath.Text = "🔴 SHIELD: OFF"
+        BtnDeath.BackgroundColor3 = Color3.fromRGB(150, 30, 30)
+    end
+end
+
+-- =================================================================
+--          FIN DEL BLOQUE REMOTE SPAM
+-- =================================================================
 
 local function SetFlashAttack(s)
     FlashAttackEnabled = s
@@ -788,7 +912,7 @@ local function TargetPlayAnim(id, time, speed)
         local c = LocalPlayer.Character; if not c then return end
         local h = c:FindFirstChildOfClass("Humanoid"); if not h then return end
         local a = Instance.new("Animation"); a.AnimationId = "rbxassetid://"..id
-        local tr = h:LoadAnimation(a); tr:Play(); tr.TimePosition = time; tr:AdjustSpeed(speed)
+        local tr = h:LoadAnimation(a); tr:Play(); tr:TimePosition = time; tr:AdjustSpeed(speed)
     end)
 end
 local function TargetStopAnim()
@@ -969,13 +1093,13 @@ local function AplicarColor(c)
 end
 
 local Window = WindUI:CreateWindow({
-    Title="TOKI ⚡", Icon="sword", Author="YEILAN 🍄", Folder="DENJI•ALEX",
+    Title="TOKI", Icon="sword", Author="TAKEMICHI 🌘", Folder="DENJI•ALEX",
     Size=UDim2.fromOffset(600,540), MinSize=Vector2.new(520,420), MaxSize=Vector2.new(850,680),
     Transparent=true, Theme="Dark", Resizable=true, SideBarWidth=160,
-    Background = "rbxassetid://129004423597147",
-    BackgroundImageTransparency = 0.25,
+    Background = "rbxassetid://92375880292148",
+    BackgroundImageTransparency = 0.35,
     HideSearchBar = true, Accent=Color3.fromRGB(70,160,255),
-    OpenButton={Title="YEILAN 🍄", Icon="sword", Enabled=true, Draggable=true, OnlyMobile=false, CornerRadius=UDim.new(1,0), StrokeThickness=2, StrokeColor=Color3.fromRGB(255,255,255), Scale=1},
+    OpenButton={Title="TAKEMICHI 🌘", Icon="sword", Enabled=true, Draggable=true, OnlyMobile=false, CornerRadius=UDim.new(1,0), StrokeThickness=2, StrokeColor=Color3.fromRGB(255,255,255), Scale=1},
 })
 
 local WindConfig = nil
@@ -1694,9 +1818,9 @@ task.spawn(function()
         if not PlayerTab then return end
         local Contenedor = nil
         pcall(function() Contenedor = PlayerTab.UIElements and PlayerTab.UIElements.ContainerFrame end)
-        if not Contenedor then pcall(function() Contenedor = PlayerTab.ContainerFrame end) end
-        if not Contenedor then pcall(function() Contenedor = PlayerTab.Container end) end
-        if not Contenedor then pcall(function() Contenedor = Window.SideBar and Window.SideBar.Parent end) end
+        if not Contenedor then pcall(function() Contenedor = PlayerTab.ContainerFrame end) end)
+        if not Contenedor then pcall(function() Contenedor = PlayerTab.Container end) end)
+        if not Contenedor then pcall(function() Contenedor = Window.SideBar and Window.SideBar.Parent end) end)
         if not Contenedor then return end
         local Box = Instance.new("Frame")
         Box.Name = "PerfilCuadro"
@@ -1772,37 +1896,31 @@ end)
 pcall(function() Window:SelectTab(PlayerTab) end)
 pcall(function() Window:SelectTab(1) end)
 
--- ===== PINTAR SOLO LAS LETRAS DE ROSA NEON (TextColor3) =====
--- Recorre la GUI de WindUI ya creada y fuerza ROSA NEON en todo texto:
--- TextLabel / TextButton / TextBox (y PlaceholderColor3 de los TextBox).
--- NO toca fondos, bordes, cuadros, hover ni Stroke.
--- Se engancha a los cambios para que hover/toggles/notificaciones no restauren el color.
+-- ===== PINTAR SOLO LAS LETRAS DE ROJO (TextColor3) =====
 pcall(function()
-    local RosaNeon = Color3.fromRGB(255, 105, 190)
+    local Rojo = Color3.fromRGB(255, 0, 0)
     local function EsTexto(obj)
         return obj and (obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox"))
     end
-    local function ForzarRosa(inst)
+    local function ForzarRojo(inst)
         if not EsTexto(inst) then return end
-        if inst.TextColor3 ~= RosaNeon then inst.TextColor3 = RosaNeon end
+        if inst.TextColor3 ~= Rojo then inst.TextColor3 = Rojo end
         inst:GetPropertyChangedSignal("TextColor3"):Connect(function()
-            if inst.TextColor3 ~= RosaNeon then inst.TextColor3 = RosaNeon end
+            if inst.TextColor3 ~= Rojo then inst.TextColor3 = Rojo end
         end)
-        pcall(function() inst.TextStrokeTransparency = 0.35; inst.TextStrokeColor3 = Color3.fromRGB(25, 0, 20) end)
         if inst:IsA("TextBox") then
-            if inst.PlaceholderColor3 ~= RosaNeon then inst.PlaceholderColor3 = RosaNeon end
+            if inst.PlaceholderColor3 ~= Rojo then inst.PlaceholderColor3 = Rojo end
             inst:GetPropertyChangedSignal("PlaceholderColor3"):Connect(function()
-                if inst.PlaceholderColor3 ~= RosaNeon then inst.PlaceholderColor3 = RosaNeon end
+                if inst.PlaceholderColor3 ~= Rojo then inst.PlaceholderColor3 = Rojo end
             end)
         end
     end
     local function Recorrer(root)
         if not root then return end
-        ForzarRosa(root)
-        for _, d in ipairs(root:GetDescendants()) do ForzarRosa(d) end
+        ForzarRojo(root)
+        for _, d in ipairs(root:GetDescendants()) do ForzarRojo(d) end
     end
 
-    -- 1) Localizar la ScreenGui principal de WindUI a partir de la barra lateral
     local WindGui = nil
     pcall(function() WindGui = Window.SideBar:FindFirstAncestorWhichIsA("ScreenGui") end)
     if not WindGui then
@@ -1813,7 +1931,6 @@ pcall(function()
         end)
     end
 
-    -- 2) Fallback: buscar en CoreGui/PlayerGui/gethui la ScreenGui con el titulo "TOKI"
     if not WindGui then
         local function buscarEn(contenedor)
             if not contenedor then return nil end
@@ -1831,10 +1948,9 @@ pcall(function()
         if not WindGui and gethui then pcall(function() WindGui = buscarEn(gethui()) end) end
     end
 
-    -- 3) El boton de abrir (OpenButton) puede estar en otra ScreenGui: buscar por su texto
     local OpenGui = nil
     pcall(function()
-        local tituloBoton = "YEILAN 🍄"
+        local tituloBoton = "TAKEMICHI 🌘"
         local function buscarOpen(contenedor)
             if not contenedor then return end
             for _, sg in ipairs(contenedor:GetChildren()) do
@@ -1865,117 +1981,4 @@ pcall(function()
     end
 end)
 
--- ===== X / MINIMIZAR / MAXIMIZAR - COLOR INTENSO (parchea WindUI en runtime) =====
-pcall(function()
-    local ColorIcono = Color3.fromRGB(255, 255, 255)  -- iconos: blanco puro (máxima intensidad)
-    local ColorTexto = Color3.fromRGB(255, 45, 175)   -- texto: rosa neon más fuerte
-    local ColorBorde = Color3.fromRGB(255, 45, 175)
-
-    -- 1) Localizar la ScreenGui de WindUI
-    local WindGui = nil
-    pcall(function() WindGui = Window.SideBar:FindFirstAncestorWhichIsA("ScreenGui") end)
-    if not WindGui then
-        pcall(function()
-            local c = Window.SideBar
-            while c and c.Parent and not c:IsA("ScreenGui") do c = c.Parent end
-            if c and c:IsA("ScreenGui") then WindGui = c end
-        end)
-    end
-    if not WindGui then
-        local function buscar(contenedor)
-            if not contenedor then return nil end
-            for _, sg in ipairs(contenedor:GetChildren()) do
-                if sg:IsA("ScreenGui") then
-                    for _, d in ipairs(sg:GetDescendants()) do
-                        if d:IsA("TextLabel") and d.Text == "TOKI" then return sg end
-                    end
-                end
-            end
-            return nil
-        end
-        pcall(function() WindGui = buscar(game:GetService("CoreGui")) end)
-        if not WindGui then pcall(function() WindGui = buscar(LocalPlayer:WaitForChild("PlayerGui")) end) end
-        if not WindGui and gethui then pcall(function() WindGui = buscar(gethui()) end) end
-    end
-    if not WindGui then return end
-
-    -- 2) ¿Está el objeto dentro de una barra superior delgada? (sin importar el nombre)
-    local function EnBarraSuperior(inst)
-        local c = inst.Parent
-        for _ = 1, 3 do
-            if not c then return false end
-            if c:IsA("Frame") then
-                local py, sy = c.Position.Y, c.Size.Y
-                if py.Scale == 0 and py.Offset <= 10
-                and ((sy.Scale > 0 and sy.Scale < 0.18) or (sy.Scale == 0 and sy.Offset > 0 and sy.Offset <= 65)) then
-                    return true
-                end
-            end
-            c = c.Parent
-        end
-        return false
-    end
-
-    local Glifos = {["X"]=true,["x"]=true,["×"]=true,["—"]=true,["–"]=true,["-"]=true,["_"]=true,
-                    ["□"]=true,["▢"]=true,["▭"]=true,["[]"]=true,["+"]=true,["⌄"]=true,["⌃"]=true,["⌵"]=true}
-    local function EsControl(inst)
-        if not (inst:IsA("ImageButton") or inst:IsA("ImageLabel") or inst:IsA("TextButton")) then return false end
-        local n = inst.Name:lower()
-        if n:find("close") or n:find("minimiz") or n:find("maximiz") or n:find("hide")
-        or n:find("collapse") or n:find("expand") or n:find("resize") or n:find("grip")
-        or n:find("handle") or n == "x" then return true end
-        if inst:IsA("TextButton") then
-            local t = inst.Text:match("^%s*(.-)%s*$") or ""
-            if Glifos[t] then return true end
-        end
-        if EnBarraSuperior(inst) then return true end
-        return false
-    end
-
-    local function Resaltar(inst)
-        if not EsControl(inst) then return end
-        if inst:IsA("ImageButton") or inst:IsA("ImageLabel") then
-            inst.ImageColor3 = ColorIcono
-            inst.ImageTransparency = 0
-            inst:GetPropertyChangedSignal("ImageColor3"):Connect(function()
-                if inst.ImageColor3 ~= ColorIcono then inst.ImageColor3 = ColorIcono end
-            end)
-            inst:GetPropertyChangedSignal("ImageTransparency"):Connect(function()
-                if inst.ImageTransparency ~= 0 then inst.ImageTransparency = 0 end
-            end)
-        elseif inst:IsA("TextButton") then
-            inst.TextColor3 = ColorTexto
-            inst.TextStrokeTransparency = 0
-            inst.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-            pcall(function() if inst.TextSize < 16 then inst.TextSize = 16 end end)
-            inst:GetPropertyChangedSignal("TextColor3"):Connect(function()
-                if inst.TextColor3 ~= ColorTexto then inst.TextColor3 = ColorTexto end
-            end)
-        end
-        -- borde brillante para que se distingan siempre
-        pcall(function()
-            if not inst:FindFirstChildOfClass("UIStroke") then
-                local s = Instance.new("UIStroke")
-                s.Thickness = 1.5
-                s.Color = ColorBorde
-                s.Transparency = 0.15
-                s.Parent = inst
-            end
-        end)
-    end
-
-    local function Recorrer(r)
-        if not r then return end
-        Resaltar(r)
-        for _, d in ipairs(r:GetDescendants()) do Resaltar(d) end
-    end
-
-    Recorrer(WindGui)
-    WindGui.DescendantAdded:Connect(function(d)
-        task.wait(0.05)
-        Recorrer(d)
-    end)
-end)
-
-WindUI:Notify({Title="YEILAN🍄", Content="v2.0 (ALAN PRO  )", Duration=4})
-
+WindUI:Notify({Title="TAKEMICHI", Content="v2.1 (Remote Spam reemplazado)", Duration=4})
