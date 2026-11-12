@@ -1778,7 +1778,7 @@ pcall(function() Window:SelectTab(1) end)
 -- NO toca fondos, bordes, cuadros, hover ni Stroke.
 -- Se engancha a los cambios para que hover/toggles/notificaciones no restauren el color.
 pcall(function()
-    local RosaNeon = Color3.fromRGB(255, 0, 180)
+    local RosaNeon = Color3.fromRGB(255, 160, 210)
     local function EsTexto(obj)
         return obj and (obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox"))
     end
