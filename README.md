@@ -1,5 +1,17 @@
 local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
 
+-- =========================================================
+--  SUPRESION DE NOTIFICACIONES (whitelist)
+--  Todas las WindUI:Notify(...) quedan silenciadas,
+--  solo se muestra la final con Title == "TAKEMICHI".
+-- =========================================================
+local _NotifyOriginal = WindUI.Notify
+function WindUI:Notify(data, ...)
+    if type(data) == "table" and data.Title == "TAKEMICHI" then
+        return _NotifyOriginal(self, data, ...)
+    end
+end
+
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TeleportService = game:GetService("TeleportService")
@@ -1103,7 +1115,7 @@ MainA3:Button({Title="Reiniciar Personaje", Icon="refresh-cw", Justify="Center",
 MainTab:Space({Size=12})
 MainTab:Section({Title="Scripts Externos", TextSize=18}); MainTab:Space({Size=6})
 local ExtScripts = MainTab:Section({Title="", Box=true, BoxBorder=true, Opened=true})
-ExtScripts:Button({TitleH"Teleport visual Boys", Desc="Ejecutar script", Icon="play", Justify="Left", Callback=function()
+ExtScripts:Button({Title="Teleport visual Boys", Desc="Ejecutar script", Icon="play", Justify="Left", Callback=function()
     pcall(function()
         loadstring(game:HttpGet("https://pastebin.com/raw/4vL0qwVd"))()
         WindUI:Notify({Title="Teleport visual Boys", Content="Script ejecutado", Duration=3})
