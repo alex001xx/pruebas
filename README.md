@@ -271,7 +271,7 @@ end
 local function alternarSpam(s)
     if s then
         encenderSpam()
-        pcall(function() WindUI:Notify({Title="Remote Spam", Content="Shield activado ("..#safeRemotes.." remotes)", Duration=3}) end)
+        pcall(function() WindUI:Notify({Title="Pisar Automático", Content="Shield activado ("..#safeRemotes.." remotes)", Duration=3}) end)
     else
         apagarSpam()
     end
@@ -1053,8 +1053,8 @@ MainRow1:Toggle({Flag="tog_2", Title="TPWalk (Bypass)", Def=false, Callback=SetT
 MainTab:Space({Size=8})
 MainTab:Slider({Flag="sli_2", Title="Velocidad TPWalk", Step=0.05, Value={Min=0.01, Max=20, Default=0.30}, Callback=function(v) TPWalkSpeed = v; getgenv().TPWalkSpeed = v end})
 MainTab:Space({Size=8})
--- ⚡ REMOTE SPAM — Toggle nativo de WindUI (reemplaza al viejo "Auto Pisar")
-MainTab:Toggle({Flag="tog_3", Title="Remote Spam", Desc="Spam de remotes seguros (anti-PvP/ruletas)", Def=false, Callback=alternarSpam})
+-- ⚡ PISAR AUTOMÁTICO — Toggle nativo de WindUI (spam de remotes seguros, sin PvP ni ruletas)
+MainTab:Toggle({Flag="tog_3", Title="Pisar Automático", Desc="Spam de remotes seguros (sin PvP ni ruletas)", Def=false, Callback=alternarSpam})
 MainTab:Space({Size=8})
 local MainRow2 = MainTab:Group({})
 MainRow2:Toggle({Flag="tog_4", Title="Salto Alto", Def=false, Callback=function(s) if Humanoid then Humanoid.JumpPower=s and 120 or 50 end end})
