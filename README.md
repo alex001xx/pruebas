@@ -957,7 +957,7 @@ _G.TargetModule = {
 }
 getgenv().TargetModule = _G.TargetModule
 
-local ColorAccent = Color3.fromRGB(255, 0, 180)
+local ColorAccent = Color3.fromRGB(70, 160, 255)
 local RefBordeCirculo, RefBordePerfil, RefTPBtn = nil, nil, nil
 local function AplicarColor(c)
     ColorAccent = c
@@ -974,7 +974,7 @@ local Window = WindUI:CreateWindow({
     Transparent=true, Theme="Dark", Resizable=true, SideBarWidth=160,
     Background = "rbxassetid://129004423597147",
     BackgroundImageTransparency = 0.35,
-    HideSearchBar = true, Accent=Color3.fromRGB(255,0,180),
+    HideSearchBar = true, Accent=Color3.fromRGB(70,160,255),
     OpenButton={Title="YEILAN 🍄", Icon="sword", Enabled=true, Draggable=true, OnlyMobile=false, CornerRadius=UDim.new(1,0), StrokeThickness=2, StrokeColor=Color3.fromRGB(255,255,255), Scale=1},
 })
 
@@ -1686,7 +1686,7 @@ pcall(function()
         if layout then layout.Padding=UDim.new(0,12); layout.Spacing=UDim.new(0,18) end
     end
 end)
-pcall(function() AplicarColor(Color3.fromRGB(255, 0, 180)) end)
+pcall(function() AplicarColor(Color3.fromRGB(70, 160, 255)) end)
 
 task.spawn(function()
     pcall(function()
@@ -1728,7 +1728,7 @@ task.spawn(function()
         Instance.new("UICorner", Circulo).CornerRadius = UDim.new(1, 0)
         local Borde = Instance.new("UIStroke")
         Borde.Thickness = 3
-        Borde.Color = Color3.fromRGB(255, 0, 180)
+        Borde.Color = Color3.fromRGB(70, 160, 255)
         Borde.Parent = Circulo
         RefBordeCirculo = Borde
         local Foto = Instance.new("ImageLabel")
