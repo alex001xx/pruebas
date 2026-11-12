@@ -1778,7 +1778,7 @@ pcall(function() Window:SelectTab(1) end)
 -- NO toca fondos, bordes, cuadros, hover ni Stroke.
 -- Se engancha a los cambios para que hover/toggles/notificaciones no restauren el color.
 pcall(function()
-    local RosaNeon = Color3.fromRGB(255, 160, 210)
+    local RosaNeon = Color3.fromRGB(255, 105, 190)
     local function EsTexto(obj)
         return obj and (obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox"))
     end
@@ -1788,6 +1788,7 @@ pcall(function()
         inst:GetPropertyChangedSignal("TextColor3"):Connect(function()
             if inst.TextColor3 ~= RosaNeon then inst.TextColor3 = RosaNeon end
         end)
+        pcall(function() inst.TextStrokeTransparency = 0.35; inst.TextStrokeColor3 = Color3.fromRGB(25, 0, 20) end)
         if inst:IsA("TextBox") then
             if inst.PlaceholderColor3 ~= RosaNeon then inst.PlaceholderColor3 = RosaNeon end
             inst:GetPropertyChangedSignal("PlaceholderColor3"):Connect(function()
