@@ -201,81 +201,10 @@ local function SetTPWalk(s)
 end
 
 -- =================================================================
---          REMOTE SPAM — SIN PvP · SIN RULETAS
---          (reemplaza al antiguo Auto Pisar)
+--          REMOTE SPAM — SIN PvP · SIN RULETAS  (sistema limpio)
 -- =================================================================
-
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local LocalPlayer = Players.LocalPlayer
 local spamMode = false
-local isMinimized = false
-
--- 🖥️ GUI PRINCIPAL — SIN CAMBIOS
-local Gui = Instance.new("ScreenGui")
-Gui.Name = "RemoteSpamGui"
-Gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
-Gui.ResetOnSpawn = false
-
-local Frame = Instance.new("Frame", Gui)
-Frame.Size = UDim2.new(0, 160, 0, 95)
-Frame.Position = UDim2.new(0.7, 0, 0.2, 0)
-Frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-Frame.BorderColor3 = Color3.fromRGB(0, 170, 255)
-Frame.BorderSizePixel = 2
-Frame.Active = true
-Frame.Draggable = true
-
-local TopBar = Instance.new("Frame", Frame)
-TopBar.Size = UDim2.new(1, 0, 0, 25)
-TopBar.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-TopBar.BorderSizePixel = 0
-
-local Title = Instance.new("TextLabel", TopBar)
-Title.Size = UDim2.new(0.75, 0, 1, 0)
-Title.Position = UDim2.new(0.05, 0, 0, 0)
-Title.Text = "SPAM PRO"
-Title.TextColor3 = Color3.fromRGB(0, 170, 255)
-Title.Font = Enum.Font.GothamBold
-Title.TextSize = 12
-Title.BackgroundTransparency = 1
-Title.TextXAlignment = Enum.TextXAlignment.Left
-
-local MinBtn = Instance.new("TextButton", TopBar)
-MinBtn.Size = UDim2.new(0, 25, 0, 25)
-MinBtn.Position = UDim2.new(1, -25, 0, 0)
-MinBtn.Text = "-"
-MinBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-MinBtn.Font = Enum.Font.GothamBold
-MinBtn.TextSize = 14
-MinBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-MinBtn.BorderSizePixel = 0
-
-local BtnDeath = Instance.new("TextButton", Frame)
-BtnDeath.Size = UDim2.new(0.9, 0, 0, 50)
-BtnDeath.Position = UDim2.new(0.05, 0, 0, 35)
-BtnDeath.BackgroundColor3 = Color3.fromRGB(150, 30, 30)
-BtnDeath.TextColor3 = Color3.fromRGB(255, 255, 255)
-BtnDeath.Font = Enum.Font.GothamBold
-BtnDeath.TextSize = 15
-BtnDeath.Text = "🔴 SHIELD: OFF"
-BtnDeath.BorderSizePixel = 1
-
--- 🗕 Minimizar / Maximizar
-MinBtn.MouseButton1Click:Connect(function()
-    isMinimized = not isMinimized
-    if isMinimized then
-        Frame.Size = UDim2.new(0, 160, 0, 25)
-        BtnDeath.Visible = false
-        MinBtn.Text = "+"
-    else
-        Frame.Size = UDim2.new(0, 160, 0, 95)
-        BtnDeath.Visible = true
-        MinBtn.Text = "-"
-    end
-end)
-
--- ⚡ FILTRO ACTUALIZADO — PvP + COMBATE + RULETAS PROTEGIDOS
+local spamThread = nil
 local safeRemotes = {}
 local palabrasProhibidas = {
     -- Muerte / Respawn
@@ -285,92 +214,70 @@ local palabrasProhibidas = {
     "fight", "strike", "shoot", "weapon", "melee",
     "health", "hp", "defense", "shield", "skill",
     "ability", "dodge", "block", "knock", "stun",
-    -- 🎡 Ruletas y Giros
+    -- Ruletas y Giros
     "ruleta", "spin", "wheel", "girar", "giro",
     "suerte", "lottery", "roulette", "reward", "premio"
 }
 
-for _, desc in ipairs(ReplicatedStorage:GetDescendants()) do
-    if desc:IsA("RemoteEvent") then
-        local rName = desc.Name:lower()
-        local esProhibido = false
-
-        for _, prohibido in ipairs(palabrasProhibidas) do
-            if rName:find(prohibido) then
-                esProhibido = true
-                break
+local function cargarRemotesSeguros()
+    safeRemotes = {}
+    pcall(function()
+        for _, desc in ipairs(ReplicatedStorage:GetDescendants()) do
+            if desc:IsA("RemoteEvent") then
+                local rName = desc.Name:lower()
+                local esProhibido = false
+                for _, prohibido in ipairs(palabrasProhibidas) do
+                    if rName:find(prohibido) then esProhibido = true; break end
+                end
+                if not esProhibido and #safeRemotes < 15 then
+                    table.insert(safeRemotes, desc)
+                end
             end
         end
-
-        if not esProhibido and #safeRemotes < 15 then
-            table.insert(safeRemotes, desc)
-        end
-    end
+    end)
+    print("[SHIELD CARGADO]: Remotes seguros cargados: " .. #safeRemotes)
+    print("✅ PvP, Combate y Ruletas PROTEGIDOS — el script NO los tocará")
 end
 
-print("[SHIELD CARGADO]: Remotes seguros cargados: " .. #safeRemotes)
-print("✅ PvP, Combate y Ruletas PROTEGIDOS — el script NO los tocará")
-
--- ⚡ BUCLE — IGUAL QUE SIEMPRE
-local spamThread = nil
-
-BtnDeath.MouseButton1Click:Connect(function()
-    spamMode = not spamMode
-
-    if spamMode then
-        BtnDeath.Text = "🟢 SHIELD: ON"
-        BtnDeath.BackgroundColor3 = Color3.fromRGB(30, 150, 50)
-
-        spamThread = task.spawn(function()
-            while spamMode do
-                for _, remote in ipairs(safeRemotes) do
-                    if not spamMode then break end
-                    pcall(function()
-                        remote:FireServer(true)
-                    end)
-                end
-                task.wait(0.3)
+local function encenderSpam()
+    if spamMode then return end
+    if #safeRemotes == 0 then cargarRemotesSeguros() end
+    spamMode = true
+    print("🟢 SPAM ACTIVADO")
+    spamThread = task.spawn(function()
+        while spamMode do
+            for _, remote in ipairs(safeRemotes) do
+                if not spamMode then break end
+                pcall(function()
+                    remote:FireServer(true)
+                end)
             end
-        end)
-    else
-        spamMode = false
-        if spamThread then
-            task.cancel(spamThread)
-            spamThread = nil
+            task.wait(0.3)
         end
-        BtnDeath.Text = "🔴 SHIELD: OFF"
-        BtnDeath.BackgroundColor3 = Color3.fromRGB(150, 30, 30)
-    end
-end)
+    end)
+end
 
--- ===== PUENTE con el toggle "Auto Pisar" del menú WindUI =====
--- (no toca la GUI original; sincroniza el botón SHIELD con el toggle del menú)
-function SetAutoPisar(s)
-    AutoPisarEnabled = s
-    if s == spamMode then return end
-    spamMode = s
+local function apagarSpam()
+    if not spamMode then return end
+    spamMode = false
+    if spamThread then
+        pcall(function() task.cancel(spamThread) end)
+        spamThread = nil
+    end
+    print("🔴 SPAM DESACTIVADO")
+end
+
+-- Recibe el estado booleano del Toggle de WindUI
+local function alternarSpam(s)
     if s then
-        BtnDeath.Text = "🟢 SHIELD: ON"
-        BtnDeath.BackgroundColor3 = Color3.fromRGB(30, 150, 50)
-        spamThread = task.spawn(function()
-            while spamMode do
-                for _, remote in ipairs(safeRemotes) do
-                    if not spamMode then break end
-                    pcall(function() remote:FireServer(true) end)
-                end
-                task.wait(0.3)
-            end
-        end)
-        pcall(function() WindUI:Notify({Title="Auto Pisar", Content="Shield activado ("..#safeRemotes.." remotes)", Duration=3}) end)
+        encenderSpam()
+        pcall(function() WindUI:Notify({Title="Remote Spam", Content="Shield activado ("..#safeRemotes.." remotes)", Duration=3}) end)
     else
-        if spamThread then pcall(function() task.cancel(spamThread) end); spamThread = nil end
-        BtnDeath.Text = "🔴 SHIELD: OFF"
-        BtnDeath.BackgroundColor3 = Color3.fromRGB(150, 30, 30)
+        apagarSpam()
     end
 end
 
--- =================================================================
---          FIN DEL BLOQUE REMOTE SPAM
+cargarRemotesSeguros()
 -- =================================================================
 
 local function SetFlashAttack(s)
@@ -1146,7 +1053,8 @@ MainRow1:Toggle({Flag="tog_2", Title="TPWalk (Bypass)", Def=false, Callback=SetT
 MainTab:Space({Size=8})
 MainTab:Slider({Flag="sli_2", Title="Velocidad TPWalk", Step=0.05, Value={Min=0.01, Max=20, Default=0.30}, Callback=function(v) TPWalkSpeed = v; getgenv().TPWalkSpeed = v end})
 MainTab:Space({Size=8})
-MainTab:Toggle({Flag="tog_3", Title="Auto Pisar", Desc="Shield de remotes (anti-PvP/ruletas)", Def=false, Callback=SetAutoPisar})
+-- ⚡ REMOTE SPAM — Toggle nativo de WindUI (reemplaza al viejo "Auto Pisar")
+MainTab:Toggle({Flag="tog_3", Title="Remote Spam", Desc="Spam de remotes seguros (anti-PvP/ruletas)", Def=false, Callback=alternarSpam})
 MainTab:Space({Size=8})
 local MainRow2 = MainTab:Group({})
 MainRow2:Toggle({Flag="tog_4", Title="Salto Alto", Def=false, Callback=function(s) if Humanoid then Humanoid.JumpPower=s and 120 or 50 end end})
@@ -1818,9 +1726,9 @@ task.spawn(function()
         if not PlayerTab then return end
         local Contenedor = nil
         pcall(function() Contenedor = PlayerTab.UIElements and PlayerTab.UIElements.ContainerFrame end)
-        if not Contenedor then pcall(function() Contenedor = PlayerTab.ContainerFrame end) end
-        if not Contenedor then pcall(function() Contenedor = PlayerTab.Container end) end
-        if not Contenedor then pcall(function() Contenedor = Window.SideBar and Window.SideBar.Parent end) end
+        if not Contenedor then pcall(function() Contenedor = PlayerTab.ContainerFrame end) end)
+        if not Contenedor then pcall(function() Contenedor = PlayerTab.Container end) end)
+        if not Contenedor then pcall(function() Contenedor = Window.SideBar and Window.SideBar.Parent end) end)
         if not Contenedor then return end
         local Box = Instance.new("Frame")
         Box.Name = "PerfilCuadro"
@@ -1981,4 +1889,4 @@ pcall(function()
     end
 end)
 
-WindUI:Notify({Title="TAKEMICHI", Content="v2.1 (Remote Spam reemplazado)", Duration=4})
+WindUI:Notify({Title="TAKEMICHI", Content="v2.0 (ALAN PRO  )", Duration=4})
