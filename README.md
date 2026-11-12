@@ -912,7 +912,7 @@ local function TargetPlayAnim(id, time, speed)
         local c = LocalPlayer.Character; if not c then return end
         local h = c:FindFirstChildOfClass("Humanoid"); if not h then return end
         local a = Instance.new("Animation"); a.AnimationId = "rbxassetid://"..id
-        local tr = h:LoadAnimation(a); tr:Play(); tr:TimePosition = time; tr:AdjustSpeed(speed)
+        local tr = h:LoadAnimation(a); tr:Play(); tr.TimePosition = time; tr:AdjustSpeed(speed)
     end)
 end
 local function TargetStopAnim()
@@ -1818,9 +1818,9 @@ task.spawn(function()
         if not PlayerTab then return end
         local Contenedor = nil
         pcall(function() Contenedor = PlayerTab.UIElements and PlayerTab.UIElements.ContainerFrame end)
-        if not Contenedor then pcall(function() Contenedor = PlayerTab.ContainerFrame end) end)
-        if not Contenedor then pcall(function() Contenedor = PlayerTab.Container end) end)
-        if not Contenedor then pcall(function() Contenedor = Window.SideBar and Window.SideBar.Parent end) end)
+        if not Contenedor then pcall(function() Contenedor = PlayerTab.ContainerFrame end) end
+        if not Contenedor then pcall(function() Contenedor = PlayerTab.Container end) end
+        if not Contenedor then pcall(function() Contenedor = Window.SideBar and Window.SideBar.Parent end) end
         if not Contenedor then return end
         local Box = Instance.new("Frame")
         Box.Name = "PerfilCuadro"
