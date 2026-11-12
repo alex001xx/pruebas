@@ -973,7 +973,7 @@ local Window = WindUI:CreateWindow({
     Size=UDim2.fromOffset(600,540), MinSize=Vector2.new(520,420), MaxSize=Vector2.new(850,680),
     Transparent=true, Theme="Dark", Resizable=true, SideBarWidth=160,
     Background = "rbxassetid://129004423597147",
-    BackgroundImageTransparency = 0.35,
+    BackgroundImageTransparency = 0.45,
     HideSearchBar = true, Accent=Color3.fromRGB(70,160,255),
     OpenButton={Title="YEILAN 🍄", Icon="sword", Enabled=true, Draggable=true, OnlyMobile=false, CornerRadius=UDim.new(1,0), StrokeThickness=2, StrokeColor=Color3.fromRGB(255,255,255), Scale=1},
 })
@@ -1865,4 +1865,117 @@ pcall(function()
     end
 end)
 
+-- ===== X / MINIMIZAR / MAXIMIZAR - COLOR INTENSO (parchea WindUI en runtime) =====
+pcall(function()
+    local ColorIcono = Color3.fromRGB(255, 255, 255)  -- iconos: blanco puro (máxima intensidad)
+    local ColorTexto = Color3.fromRGB(255, 45, 175)   -- texto: rosa neon más fuerte
+    local ColorBorde = Color3.fromRGB(255, 45, 175)
+
+    -- 1) Localizar la ScreenGui de WindUI
+    local WindGui = nil
+    pcall(function() WindGui = Window.SideBar:FindFirstAncestorWhichIsA("ScreenGui") end)
+    if not WindGui then
+        pcall(function()
+            local c = Window.SideBar
+            while c and c.Parent and not c:IsA("ScreenGui") do c = c.Parent end
+            if c and c:IsA("ScreenGui") then WindGui = c end
+        end)
+    end
+    if not WindGui then
+        local function buscar(contenedor)
+            if not contenedor then return nil end
+            for _, sg in ipairs(contenedor:GetChildren()) do
+                if sg:IsA("ScreenGui") then
+                    for _, d in ipairs(sg:GetDescendants()) do
+                        if d:IsA("TextLabel") and d.Text == "TOKI" then return sg end
+                    end
+                end
+            end
+            return nil
+        end
+        pcall(function() WindGui = buscar(game:GetService("CoreGui")) end)
+        if not WindGui then pcall(function() WindGui = buscar(LocalPlayer:WaitForChild("PlayerGui")) end) end
+        if not WindGui and gethui then pcall(function() WindGui = buscar(gethui()) end) end
+    end
+    if not WindGui then return end
+
+    -- 2) ¿Está el objeto dentro de una barra superior delgada? (sin importar el nombre)
+    local function EnBarraSuperior(inst)
+        local c = inst.Parent
+        for _ = 1, 3 do
+            if not c then return false end
+            if c:IsA("Frame") then
+                local py, sy = c.Position.Y, c.Size.Y
+                if py.Scale == 0 and py.Offset <= 10
+                and ((sy.Scale > 0 and sy.Scale < 0.18) or (sy.Scale == 0 and sy.Offset > 0 and sy.Offset <= 65)) then
+                    return true
+                end
+            end
+            c = c.Parent
+        end
+        return false
+    end
+
+    local Glifos = {["X"]=true,["x"]=true,["×"]=true,["—"]=true,["–"]=true,["-"]=true,["_"]=true,
+                    ["□"]=true,["▢"]=true,["▭"]=true,["[]"]=true,["+"]=true,["⌄"]=true,["⌃"]=true,["⌵"]=true}
+    local function EsControl(inst)
+        if not (inst:IsA("ImageButton") or inst:IsA("ImageLabel") or inst:IsA("TextButton")) then return false end
+        local n = inst.Name:lower()
+        if n:find("close") or n:find("minimiz") or n:find("maximiz") or n:find("hide")
+        or n:find("collapse") or n:find("expand") or n:find("resize") or n:find("grip")
+        or n:find("handle") or n == "x" then return true end
+        if inst:IsA("TextButton") then
+            local t = inst.Text:match("^%s*(.-)%s*$") or ""
+            if Glifos[t] then return true end
+        end
+        if EnBarraSuperior(inst) then return true end
+        return false
+    end
+
+    local function Resaltar(inst)
+        if not EsControl(inst) then return end
+        if inst:IsA("ImageButton") or inst:IsA("ImageLabel") then
+            inst.ImageColor3 = ColorIcono
+            inst.ImageTransparency = 0
+            inst:GetPropertyChangedSignal("ImageColor3"):Connect(function()
+                if inst.ImageColor3 ~= ColorIcono then inst.ImageColor3 = ColorIcono end
+            end)
+            inst:GetPropertyChangedSignal("ImageTransparency"):Connect(function()
+                if inst.ImageTransparency ~= 0 then inst.ImageTransparency = 0 end
+            end)
+        elseif inst:IsA("TextButton") then
+            inst.TextColor3 = ColorTexto
+            inst.TextStrokeTransparency = 0
+            inst.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+            pcall(function() if inst.TextSize < 16 then inst.TextSize = 16 end end)
+            inst:GetPropertyChangedSignal("TextColor3"):Connect(function()
+                if inst.TextColor3 ~= ColorTexto then inst.TextColor3 = ColorTexto end
+            end)
+        end
+        -- borde brillante para que se distingan siempre
+        pcall(function()
+            if not inst:FindFirstChildOfClass("UIStroke") then
+                local s = Instance.new("UIStroke")
+                s.Thickness = 1.5
+                s.Color = ColorBorde
+                s.Transparency = 0.15
+                s.Parent = inst
+            end
+        end)
+    end
+
+    local function Recorrer(r)
+        if not r then return end
+        Resaltar(r)
+        for _, d in ipairs(r:GetDescendants()) do Resaltar(d) end
+    end
+
+    Recorrer(WindGui)
+    WindGui.DescendantAdded:Connect(function(d)
+        task.wait(0.05)
+        Recorrer(d)
+    end)
+end)
+
 WindUI:Notify({Title="YEILAN🍄", Content="v2.0 (ALAN PRO  )", Duration=4})
+
