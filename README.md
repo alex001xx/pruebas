@@ -1,5 +1,5 @@
 -- ==================================================
--- 📋 AA.toki | v28 (ABRAZO BUG + SELECCIÓN MÚLTIPLE)
+-- 📋 AA.toki | v29 (SELECCIÓN MÚLTIPLE + scroll fix + auto reconexión)
 -- ==================================================
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -417,6 +417,12 @@ local entradasLista = {}
 local seleccionMultipleActiva = false
 local seleccionados = {} -- [Player] = true
 
+-- 🔄 AUTO RECONEXIÓN: si un objetivo sale del servidor y vuelve a entrar,
+-- se vuelve a seleccionar automáticamente (por nombre de usuario).
+local pendingSingleName = nil -- nombre del objetivo único que salió
+local reconexionPendienteMulti = {} -- [nombre] = true, para selección múltiple
+local UMBRAL_ARRASTRE = 10 -- píxeles; por debajo se considera clic/toca, por encima scroll
+
 local function contarSeleccionados()
     local c = 0
     for _ in pairs(seleccionados) do c = c + 1 end
@@ -645,6 +651,7 @@ local function establecerObjetivo(plr)
     if plr == jugadorSeleccionado then return end
     local anterior = jugadorSeleccionado
     jugadorSeleccionado = plr
+    pendingSingleName = nil -- el usuario cambió/quitó el objetivo, cancelar reconexión automática
     if hitboxActivo and anterior and anterior ~= plr and hitboxOriginalSize[anterior] then
         if anterior.Character and anterior.Character:FindFirstChild("HumanoidRootPart") then
             anterior.Character.HumanoidRootPart.Size = hitboxOriginalSize[anterior]
@@ -707,12 +714,32 @@ function actualizarListaJugadores()
         nameLabel.TextSize = 13
         nameLabel.TextXAlignment = Enum.TextXAlignment.Left
         nameLabel.Parent = playerEntry
+        -- 🖱️ Detección CLIC vs SCROLL: sólo selecciona al SOLTAR y si no hubo arrastre.
+        -- Así puedes arrastrar la lista para hacer scroll sin que se seleccione nadie.
+        local pressStart = nil
         playerEntry.InputBegan:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-                if seleccionMultipleActiva then
-                    alternarSeleccionMultiple(plr)
-                else
-                    establecerObjetivo(plr)
+                pressStart = Vector2.new(input.Position.X, input.Position.Y)
+            end
+        end)
+        playerEntry.InputChanged:Connect(function(input)
+            if pressStart and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+                local delta = (Vector2.new(input.Position.X, input.Position.Y) - pressStart).Magnitude
+                if delta > UMBRAL_ARRASTRE then pressStart = nil end -- es scroll, cancelar clic
+            end
+        end)
+        playerEntry.InputEnded:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                if pressStart then
+                    local delta = (Vector2.new(input.Position.X, input.Position.Y) - pressStart).Magnitude
+                    pressStart = nil
+                    if delta <= UMBRAL_ARRASTRE then
+                        if seleccionMultipleActiva then
+                            alternarSeleccionMultiple(plr)
+                        else
+                            establecerObjetivo(plr)
+                        end
+                    end
                 end
             end
         end)
@@ -721,18 +748,50 @@ function actualizarListaJugadores()
     scrollingFrame.CanvasSize = UDim2.new(0, 0, 0, #listaJugadores * 44)
 end
 
-Players.PlayerAdded:Connect(actualizarListaJugadores)
+Players.PlayerAdded:Connect(function(plr)
+    actualizarListaJugadores()
+    -- 🔄 Si este jugador salió estando seleccionado y vuelve a entrar, re-seleccionarlo
+    if pendingSingleName == plr.Name then
+        pendingSingleName = nil
+        establecerObjetivo(plr)
+        statusLabel.Text = "🔄 Re-seleccionado: " .. plr.Name
+        statusLabel.TextColor3 = Color3.fromRGB(180, 255, 230)
+    elseif reconexionPendienteMulti[plr.Name] then
+        reconexionPendienteMulti[plr.Name] = nil
+        if plr ~= LocalPlayer then
+            seleccionados[plr] = true
+            actualizarBotonSeleccionMultiple()
+            actualizarBotonHitbox()
+            refrescarColoresLista()
+            statusLabel.Text = "🔄 Re-añadido: " .. plr.Name .. " (total " .. contarSeleccionados() .. ")"
+            statusLabel.TextColor3 = Color3.fromRGB(180, 255, 230)
+        end
+    end
+end)
+
 Players.PlayerRemoving:Connect(function(plr)
     hitboxOriginalSize[plr] = nil
     entradasLista[plr] = nil
-    seleccionados[plr] = nil
+    originalPositions[plr] = nil
     if plr == jugadorSeleccionado then
-        establecerObjetivo(nil)
+        -- 🔄 El objetivo único salió: marcar para re-seleccionar al volver (script sigue encendido)
+        pendingSingleName = plr.Name
+        jugadorSeleccionado = nil
+        actualizarListaJugadores()
+        refrescarColoresLista()
+        actualizarBotonHitbox()
+        actualizarBotonSeleccionMultiple()
+        statusLabel.Text = "⏳ " .. plr.Name .. " salió — esperando reconexión..."
+        statusLabel.TextColor3 = Color3.fromRGB(255, 220, 120)
     else
+        if seleccionados[plr] then
+            reconexionPendienteMulti[plr.Name] = true
+            seleccionados[plr] = nil
+            actualizarBotonSeleccionMultiple()
+            actualizarBotonHitbox()
+        end
         actualizarListaJugadores()
     end
-    actualizarBotonSeleccionMultiple()
-    actualizarBotonHitbox()
 end)
 
 local function obtenerJugadorMasCercano()
@@ -880,6 +939,7 @@ btnSeleccionMultiple.MouseButton1Click:Connect(function()
             end
         end
         seleccionados = {}
+        reconexionPendienteMulti = {}
         bordeActivo(btnSeleccionMultiple, false)
         statusLabel.Text = "Status: Listo"
         statusLabel.TextColor3 = COLOR_TEXTO
@@ -1081,4 +1141,4 @@ end)
 task.wait(0.3)
 actualizarListaJugadores()
 
-print("✅ AA.toki v28 (con SELECCIÓN MÚLTIPLE) cargado correctamente")
+print("✅ AA.toki v29 (scroll fix + auto reconexión) cargado correctamente")
