@@ -1,5 +1,5 @@
 -- ==================================================
--- 📋 AA.toki | v29 (SELECCIÓN MÚLTIPLE + scroll fix + auto reconexión)
+-- 📋 AA.toki | v32 (DEATH MODE optimizado 0.8s)
 -- ==================================================
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -30,6 +30,10 @@ local MIN_ANCHO = 150
 local MIN_ALTO_FRAME = 70
 local ID_FONDO = "rbxassetid://79902517665758"
 
+-- ➕ Pestañas: alto de la barra de tabs y desplazamiento vertical del contenido
+local ALTO_TABS = 24
+local ALTO_SUPERIOR = 22 + ALTO_TABS -- barra de título + barra de pestañas
+
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "AA.toki"
 screenGui.Parent = PlayerGui
@@ -40,13 +44,13 @@ local framePrincipal = Instance.new("Frame")
 framePrincipal.Parent = screenGui
 framePrincipal.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
 framePrincipal.BackgroundTransparency = 0.35
-framePrincipal.Size = UDim2.new(0, ANCHO_BASE, 0, ALTO_BASE + 22)
+framePrincipal.Size = UDim2.new(0, ANCHO_BASE, 0, ALTO_BASE + ALTO_SUPERIOR)
 framePrincipal.Position = UDim2.new(0.02, 0, 0.15, 0)
 framePrincipal.Active = true
 framePrincipal.Draggable = true
 framePrincipal.ClipsDescendants = true
 framePrincipal:SetAttribute("AnchoOriginal", ANCHO_BASE)
-framePrincipal:SetAttribute("AltoOriginal", ALTO_BASE)
+framePrincipal:SetAttribute("AltoOriginal", ALTO_BASE + ALTO_TABS)
 
 local bgImage = Instance.new("ImageLabel")
 bgImage.Name = "BackgroundImage"
@@ -94,11 +98,79 @@ btnMin.TextSize = 13
 btnMin.ZIndex = 11
 btnMin.Parent = barra
 
+-- ==================================================
+-- ➕ BARRA DE PESTAÑAS (debajo de la barra de título)
+-- ==================================================
+local contentAdicionales -- forward declaration (se crea en la Pestaña 2)
+local tabActiva = "principal"
+
+local barraTabs = Instance.new("Frame")
+barraTabs.Size = UDim2.new(1, 0, 0, ALTO_TABS)
+barraTabs.Position = UDim2.new(0, 0, 0, 22)
+barraTabs.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+barraTabs.BackgroundTransparency = 0.4
+barraTabs.BorderSizePixel = 0
+barraTabs.ZIndex = 10
+barraTabs.Parent = framePrincipal
+
+local function crearBotonTab(texto, escalaX)
+    local b = Instance.new("TextButton")
+    b.Size = UDim2.new(0.5, -3, 1, -4)
+    b.Position = UDim2.new(escalaX, 1, 0, 2)
+    b.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    b.BackgroundTransparency = 0.25
+    b.Text = texto
+    b.TextColor3 = COLOR_TEXTO
+    b.Font = Enum.Font.GothamBold
+    b.TextSize = 11
+    b.ZIndex = 11
+    b.Parent = barraTabs
+    Instance.new("UICorner", b).CornerRadius = UDim.new(0, 4)
+    return b
+end
+
+local btnTabPrincipal = crearBotonTab("📋 Principal", 0)
+local btnTabAdicionales = crearBotonTab("➕ Adicionales", 0.5)
+
+local function resaltarTab(nombre)
+    if nombre == "principal" then
+        btnTabPrincipal.BackgroundColor3 = BTN_AQUA_ACTIVA
+        btnTabPrincipal.BackgroundTransparency = 0
+        btnTabPrincipal.TextColor3 = Color3.fromRGB(15, 15, 15)
+        btnTabAdicionales.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+        btnTabAdicionales.BackgroundTransparency = 0.25
+        btnTabAdicionales.TextColor3 = COLOR_TEXTO
+    else
+        btnTabAdicionales.BackgroundColor3 = BTN_AQUA_ACTIVA
+        btnTabAdicionales.BackgroundTransparency = 0
+        btnTabAdicionales.TextColor3 = Color3.fromRGB(15, 15, 15)
+        btnTabPrincipal.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+        btnTabPrincipal.BackgroundTransparency = 0.25
+        btnTabPrincipal.TextColor3 = COLOR_TEXTO
+    end
+end
+
+btnTabPrincipal.MouseButton1Click:Connect(function()
+    tabActiva = "principal"
+    content.Visible = true
+    contentAdicionales.Visible = false
+    resaltarTab("principal")
+end)
+
+btnTabAdicionales.MouseButton1Click:Connect(function()
+    tabActiva = "adicionales"
+    content.Visible = false
+    contentAdicionales.Visible = true
+    resaltarTab("adicionales")
+end)
+
+resaltarTab("principal")
+
 local content = Instance.new("ScrollingFrame")
 content.Name = "Content"
 content.BackgroundTransparency = 1
-content.Position = UDim2.new(0, 0, 0, 22)
-content.Size = UDim2.new(1, 0, 1, -22)
+content.Position = UDim2.new(0, 0, 0, ALTO_SUPERIOR)
+content.Size = UDim2.new(1, 0, 1, -ALTO_SUPERIOR)
 content.ClipsDescendants = true
 content.BorderSizePixel = 0
 content.ScrollBarThickness = 0
@@ -274,8 +346,6 @@ btnSeleccionMultiple.ZIndex = 3
 btnSeleccionMultiple.Parent = content
 estilizarBoton(btnSeleccionMultiple)
 
-local btnAutopisar, btnAutoagarre = filaDosBotones(8, 34, "⚡ AUTOPISAR: OFF", "🫵 AGARRE: OFF", 9)
-
 local btnTPGuardar, btnDeath = filaDosBotones(9, 34, "💾 TP -500", "💀 DEATH 0.8s", 10)
 
 local btnAbrazo = Instance.new("TextButton")
@@ -312,6 +382,138 @@ uiListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 uiListLayout.SortOrder = Enum.SortOrder.Name
 uiListLayout.Padding = UDim.new(0, 6)
 uiListLayout.Parent = scrollingFrame
+
+-- ==================================================
+-- ➕ PESTAÑA 2: ADICIONALES
+-- ==================================================
+contentAdicionales = Instance.new("ScrollingFrame")
+contentAdicionales.Name = "Adicionales"
+contentAdicionales.BackgroundTransparency = 1
+contentAdicionales.Position = UDim2.new(0, 0, 0, ALTO_SUPERIOR)
+contentAdicionales.Size = UDim2.new(1, 0, 1, -ALTO_SUPERIOR)
+contentAdicionales.ClipsDescendants = true
+contentAdicionales.BorderSizePixel = 0
+contentAdicionales.ScrollBarThickness = 0
+contentAdicionales.ScrollBarImageTransparency = 1
+contentAdicionales.ScrollingDirection = Enum.ScrollingDirection.Y
+contentAdicionales.AutomaticCanvasSize = Enum.AutomaticSize.Y
+contentAdicionales.CanvasSize = UDim2.new(0, 0, 0, 0)
+contentAdicionales.ZIndex = 2
+contentAdicionales.Visible = false
+contentAdicionales.Parent = framePrincipal
+
+local pad2 = Instance.new("UIPadding")
+pad2.PaddingTop = UDim.new(0, 8)
+pad2.PaddingBottom = UDim.new(0, 12)
+pad2.PaddingLeft = UDim.new(0, 8)
+pad2.PaddingRight = UDim.new(0, 8)
+pad2.Parent = contentAdicionales
+
+local layout2 = Instance.new("UIListLayout")
+layout2.FillDirection = Enum.FillDirection.Vertical
+layout2.HorizontalAlignment = Enum.HorizontalAlignment.Center
+layout2.SortOrder = Enum.SortOrder.LayoutOrder
+layout2.Padding = UDim.new(0, 6)
+layout2.Parent = contentAdicionales
+
+-- 🛴 SEPARADOR
+local sepScooter = Instance.new("TextLabel")
+sepScooter.BackgroundTransparency = 1
+sepScooter.Size = UDim2.new(1, 0, 0, 14)
+sepScooter.LayoutOrder = 1
+sepScooter.Text = "── 🛴 SCOOTER ──"
+sepScooter.TextColor3 = Color3.fromRGB(230, 230, 230)
+sepScooter.Font = Enum.Font.GothamBold
+sepScooter.TextSize = 10
+sepScooter.Parent = contentAdicionales
+
+-- ℹ️ INFO SCOOTER
+local infoScooter = Instance.new("TextLabel")
+infoScooter.BackgroundTransparency = 1
+infoScooter.Size = UDim2.new(1, 0, 0, 30)
+infoScooter.LayoutOrder = 2
+infoScooter.Text = "Equipa sola la scooter\nde tu mochila automáticamente"
+infoScooter.TextColor3 = COLOR_TEXTO
+infoScooter.Font = Enum.Font.Gotham
+infoScooter.TextSize = 10
+infoScooter.TextWrapped = true
+infoScooter.Parent = contentAdicionales
+
+-- 🛴 BOTÓN SCOOTER
+local btnScooter = Instance.new("TextButton")
+btnScooter.Size = UDim2.new(1, 0, 0, 38)
+btnScooter.LayoutOrder = 3
+btnScooter.Text = "🛴 SCOOTER: OFF"
+btnScooter.Font = Enum.Font.GothamBold
+btnScooter.TextSize = 13
+btnScooter.ZIndex = 3
+btnScooter.Parent = contentAdicionales
+estilizarBoton(btnScooter)
+
+-- 📦 VARIABLES SCOOTER
+local NOMBRES_SCOOTER = {
+    "scoot", "scooter", "scuter", "escooter",
+    "patin", "patineta", "monopatin", "hoverboard"
+}
+local scooterActivo = false
+local scooterThread = nil
+
+-- 🔍 BUSCAR SCOOTER
+local function buscarScooter()
+    local mochila = LocalPlayer:FindFirstChildOfClass("Backpack")
+    if not mochila then return nil end
+    for _, obj in ipairs(mochila:GetDescendants()) do
+        if obj:IsA("Tool") then
+            local n = obj.Name:lower()
+            for _, clave in ipairs(NOMBRES_SCOOTER) do
+                if n:find(clave, 1, true) then return obj end
+            end
+        end
+    end
+    return nil
+end
+
+-- ⚡ EQUIPAR SCOOTER
+local function equiparScooter()
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hum or hum.Health <= 0 then return end
+    -- Si ya tiene una equipada, no hacemos nada
+    for _, obj in ipairs(char:GetChildren()) do
+        if obj:IsA("Tool") then
+            local n = obj.Name:lower()
+            for _, clave in ipairs(NOMBRES_SCOOTER) do
+                if n:find(clave, 1, true) then return end
+            end
+        end
+    end
+    -- Buscamos y equipamos
+    local tool = buscarScooter()
+    if tool then pcall(function() hum:EquipTool(tool) end) end
+end
+
+-- 🖱️ CLICK BOTÓN SCOOTER
+btnScooter.MouseButton1Click:Connect(function()
+    scooterActivo = not scooterActivo
+    if scooterActivo then
+        btnScooter.Text = "🛴 SCOOTER: ON"
+        bordeActivo(btnScooter, true)
+        scooterThread = task.spawn(function()
+            while scooterActivo do
+                equiparScooter()
+                task.wait(0.5)
+            end
+        end)
+    else
+        if scooterThread then task.cancel(scooterThread); scooterThread = nil end
+        btnScooter.Text = "🛴 SCOOTER: OFF"
+        bordeActivo(btnScooter, false)
+    end
+end)
+
+-- ✅ FIN PESTAÑA 2
+print("✅ Pestaña Adicionales cargada correctamente")
 
 local letraA = Instance.new("TextLabel")
 letraA.Size = UDim2.new(1, -28, 0, 16)
@@ -379,12 +581,21 @@ btnMin.MouseButton1Click:Connect(function()
     local alto = framePrincipal:GetAttribute("AltoOriginal")
     if minimizado then
         content.Visible = false
+        contentAdicionales.Visible = false
+        barraTabs.Visible = false
         gripResize.Visible = false
         letraA.Visible = false
         framePrincipal.Size = UDim2.new(0, ancho, 0, 22)
         btnMin.Text = "+"
     else
-        content.Visible = true
+        barraTabs.Visible = true
+        if tabActiva == "principal" then
+            content.Visible = true
+            contentAdicionales.Visible = false
+        else
+            content.Visible = false
+            contentAdicionales.Visible = true
+        end
         gripResize.Visible = true
         letraA.Visible = true
         framePrincipal.Size = UDim2.new(0, ancho, 0, alto + 22)
@@ -406,10 +617,6 @@ local lastPosition = nil
 -- 🎯 ABRAZO BUG (tu código nuevo, tal cual)
 local autoMode = false
 local targetSaved = nil
-
-local deathActivo = false
-local deathConnection = nil
-local deathTimerTask = nil
 
 local entradasLista = {}
 
@@ -447,141 +654,220 @@ local function iterarObjetivos(fn)
 end
 
 -- ==================================================
--- ⚡🫵💀 CACHÉ DE REMOTES
+-- 💀 DEATH MODE — OPTIMIZADO | 0.8s POR CLIC
+-- (integrado al botón 💀 DEATH ya existente, sin GUI flotante aparte)
 -- ==================================================
-local palabrasProhibidasAutopisar = {
-    "reset","die","death","respawn","kill",
-    "pvp","combat","attack","hit","damage",
-    "fight","strike","shoot","weapon","melee",
-    "health","hp","defense","shield","skill",
-    "ability","dodge","block","knock","stun",
-    "ruleta","spin","wheel","girar","giro",
-    "suerte","lottery","roulette","reward","premio"
+local BtnDeath = btnDeath
+local isActive = false
+local cicloActivo = false
+
+-- 📋 FILTROS DE REMOTES
+local IncluirPalabras = {
+    "death", "died", "kill", "damage", "dmg", "attack", "hit", "combat",
+    "pvp", "fight", "strike", "slay", "health", "hp", "hurt", "injure",
+    "respawn", "revive", "regen", "heal", "spawn", "reset", "clear",
+    "release", "free", "unlock", "escape", "untrap", "liberate",
+    "die", "destroy", "break", "drop", "cancel", "stop", "end",
+    "knockback", "stun", "paralyze", "push", "fling", "launch", "explode"
 }
 
-local EXCLUIR_DEATH = {"stomp","pisar","pisada","step","stepped","suelo","floor","tile","baldosa","footstep"}
-local function debeExcluirDeath(nombre)
-    local n = string.lower(nombre)
-    for _, palabra in ipairs(EXCLUIR_DEATH) do
-        if string.find(n, palabra) then return true end
-    end
+local ExcluirPalabras = {
+    "roulette", "spin", "wheel", "gacha", "ruleta", "footstep", "foot", "step",
+    "trail", "particle", "effect", "visual", "emote", "dance", "animation", "pose",
+    "shop", "buy", "coin", "gem", "currency", "money", "chat", "message",
+    "notification", "popup", "music", "sound", "audio", "ambient", "join", "leave",
+    "invite", "friend", "cosmetic", "skin", "hat", "clothing", "quest", "mission",
+    "task", "daily"
+}
+
+local function DebeIncluirRemote(Nombre)
+    local NombreMinus = string.lower(Nombre)
+    for _, v in ipairs(ExcluirPalabras) do if NombreMinus:find(v) then return false end end
+    for _, v in ipairs(IncluirPalabras) do if NombreMinus:find(v) then return true end end
     return false
 end
 
-local safeRemotesAutopisar = {}
-local safeRemotesAutoagarre = {}
-local cachedDeathRemotes = {}
-
-local function escanearRemotes()
-    local tAutopisar, tAutoagarre, tDeath = {}, {}, {}
-    for _, desc in ipairs(ReplicatedStorage:GetDescendants()) do
-        if desc:IsA("RemoteEvent") then
-            local rName = desc.Name:lower()
-            if not debeExcluirDeath(desc.Name) then table.insert(tDeath, desc) end
-            if not (rName:find("reset") or rName:find("die") or rName:find("death") or rName:find("respawn") or rName:find("kill")) then
-                if #tAutoagarre < 15 then table.insert(tAutoagarre, desc) end
-            end
-            local prohibido = false
-            for _, p in ipairs(palabrasProhibidasAutopisar) do
-                if rName:find(p) then prohibido = true; break end
-            end
-            if not prohibido and #tAutopisar < 15 then table.insert(tAutopisar, desc) end
-        end
-    end
-    safeRemotesAutopisar = tAutopisar
-    safeRemotesAutoagarre = tAutoagarre
-    cachedDeathRemotes = tDeath
+-- 🌀 IMPULSO
+local function ImpulsoSalvaje(Parte)
+    if not Parte then return end
+    local fuerza = 80000 + math.random(20000, 150000)
+    Parte.AssemblyLinearVelocity = Vector3.new(
+        math.random(-10, 110),
+        math.random(600, 1200),
+        -fuerza * 0.5
+    )
 end
 
-escanearRemotes()
-task.spawn(function()
-    while true do
-        task.wait(2)
-        local tDeath = {}
-        for _, desc in ipairs(ReplicatedStorage:GetDescendants()) do
-            if desc:IsA("RemoteEvent") and not debeExcluirDeath(desc.Name) then table.insert(tDeath, desc) end
+-- 🔓 LIBERAR PERSONAJE
+local function RompeAgarresYLibera(Character)
+    local Humanoid = Character:FindFirstChildOfClass("Humanoid")
+    local RootPart = Character:FindFirstChild("HumanoidRootPart")
+    local misPartes = {}
+
+    if RootPart then
+        pcall(function() if RootPart:CanSetNetworkOwnership() then RootPart:SetNetworkOwner(LocalPlayer) end end)
+        pcall(function() RootPart.Anchored = false; RootPart.CanCollide = true; RootPart.Transparency = 0 end)
+        ImpulsoSalvaje(RootPart)
+    end
+
+    if Humanoid then
+        Humanoid.PlatformStand = false
+        Humanoid.Sit = false
+        Humanoid.AutoRotate = false
+        Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
+        Humanoid:SetStateEnabled(Enum.HumanoidStateType.Physics, false)
+        Humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
+        Humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+        Humanoid:SetStateEnabled(Enum.HumanoidStateType.GettingUp, false)
+        Humanoid:SetStateEnabled(Enum.HumanoidStateType.Climbing, false)
+        Humanoid:SetStateEnabled(Enum.HumanoidStateType.Dead, true)
+    end
+
+    for _, p in ipairs(Character:GetDescendants()) do
+        if p:IsA("BasePart") then
+            misPartes[p] = true
+            pcall(function() p.Transparency = 0; p.Anchored = false; p.CanCollide = true end)
+            ImpulsoSalvaje(p)
         end
-        cachedDeathRemotes = tDeath
     end
-end)
 
-local autopisarActivo = false
-local autopisarThread = nil
-local autoagarreActivo = false
-local autoagarreThread = nil
+    local listaDestruir = {
+        "WeldConstraint", "Weld", "Motor6D", "ManualWeld", "JointInstance",
+        "RodConstraint", "RopeConstraint", "SpringConstraint", "Constraint",
+        "AlignPosition", "AlignOrientation", "HingeConstraint", "BallSocketConstraint",
+        "PrismaticConstraint", "CylindricalConstraint", "TorsionSpringConstraint",
+        "UniversalConstraint", "LineForce", "VectorForce", "Torque", "AngularVelocity",
+        "LinearVelocity", "BodyVelocity", "BodyForce", "BodyAngularVelocity",
+        "BodyPosition", "BodyGyro", "Attachment", "ParticleEmitter", "Sound"
+    }
 
-btnAutopisar.MouseButton1Click:Connect(function()
-    autopisarActivo = not autopisarActivo
-    if autopisarActivo then
-        btnAutopisar.Text = "⚡ AUTOPISAR: ON"
-        bordeActivo(btnAutopisar, true)
-        autopisarThread = task.spawn(function()
-            while autopisarActivo do
-                local remotes = safeRemotesAutopisar
-                for i = 1, #remotes do
-                    if not autopisarActivo then break end
-                    pcall(function() remotes[i]:FireServer(true) end)
-                end
-                task.wait(0.3)
+    for _, clase in ipairs(listaDestruir) do
+        for _, obj in ipairs(Character:GetDescendants()) do
+            if obj:IsA(clase) and not misPartes[obj] then pcall(function() obj:Destroy() end) end
+        end
+    end
+
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        if obj:IsA("Constraint") or obj:IsA("WeldConstraint") or obj:IsA("Weld") or obj:IsA("JointInstance") then
+            local ok0, p0 = pcall(function() return obj.Part0 end)
+            local ok1, p1 = pcall(function() return obj.Part1 end)
+            if ok0 and ok1 and p0 and p1 and (misPartes[p0] or misPartes[p1]) then
+                pcall(function() obj:Destroy() end)
             end
-        end)
-    else
-        if autopisarThread then task.cancel(autopisarThread); autopisarThread = nil end
-        btnAutopisar.Text = "⚡ AUTOPISAR: OFF"
-        bordeActivo(btnAutopisar, false)
+        end
     end
-end)
-
-btnAutoagarre.MouseButton1Click:Connect(function()
-    autoagarreActivo = not autoagarreActivo
-    if autoagarreActivo then
-        btnAutoagarre.Text = "🫵 AGARRE: ON"
-        bordeActivo(btnAutoagarre, true)
-        autoagarreThread = task.spawn(function()
-            while autoagarreActivo do
-                local remotes = safeRemotesAutoagarre
-                for i = 1, #remotes do
-                    if not autoagarreActivo then break end
-                    pcall(function() remotes[i]:FireServer(true) end)
-                end
-                task.wait(0.3)
-            end
-        end)
-    else
-        if autoagarreThread then task.cancel(autoagarreThread); autoagarreThread = nil end
-        btnAutoagarre.Text = "🫵 AGARRE: OFF"
-        bordeActivo(btnAutoagarre, false)
-    end
-end)
-
--- ==================================================
--- 💀 DEATH = 0.8s POR CLIC
--- ==================================================
-local function apagarDeath()
-    deathActivo = false
-    if deathConnection then deathConnection:Disconnect(); deathConnection = nil end
-    deathTimerTask = nil
-    btnDeath.Text = "💀 DEATH 0.8s"
-    bordeActivo(btnDeath, false)
 end
 
-btnDeath.MouseButton1Click:Connect(function()
-    if deathConnection then deathConnection:Disconnect(); deathConnection = nil end
-    if deathTimerTask then task.cancel(deathTimerTask); deathTimerTask = nil end
-    deathActivo = true
-    btnDeath.Text = "⚡ DEATH 0.8s"
-    bordeActivo(btnDeath, true)
-    deathConnection = RunService.Heartbeat:Connect(function()
-        if not deathActivo then return end
-        local char = LocalPlayer.Character
-        local remotes = cachedDeathRemotes
-        for i = 1, #remotes do
-            local r = remotes[i]
-            if r.Parent then pcall(function() r:FireServer(char, math.huge) end) end
+-- 💀 VIDA A CERO
+local function VidaCeroExtremo(Humanoid)
+    local function BucleVida()
+        if not isActive or Humanoid.Health <= 0 or not Humanoid.Parent then return end
+        pcall(function()
+            Humanoid.Health = 0
+            Humanoid:TakeDamage(math.huge)
+            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Dead, true)
+        end)
+        task.spawn(BucleVida)
+    end
+    for _ = 1, 8 do task.spawn(BucleVida) end
+end
+
+-- ⚡ REMOTES
+local function ReboteRemotesHiper(Character)
+    task.spawn(function()
+        while isActive do
+            pcall(function()
+                for _, remote in ipairs(ReplicatedStorage:GetDescendants()) do
+                    if remote:IsA("RemoteEvent") and DebeIncluirRemote(remote.Name) then
+                        task.spawn(function() pcall(function() remote:FireServer(Character, "death", 0, math.huge, os.time()) end) end)
+                    elseif remote:IsA("RemoteFunction") and DebeIncluirRemote(remote.Name) then
+                        task.spawn(function() pcall(function() remote:InvokeServer(Character, "death", 0) end) end)
+                    end
+                end
+            end)
+            task.wait(0.003)
         end
     end)
-    deathTimerTask = task.delay(0.8, apagarDeath)
-end)
+
+    task.spawn(function()
+        local Humanoid = Character:FindFirstChildOfClass("Humanoid")
+        while isActive and Humanoid and Humanoid.Parent do
+            pcall(function() Humanoid.Died:Fire(); Humanoid.HealthChanged:Fire(0) end)
+            task.wait(0.002)
+        end
+    end)
+end
+
+-- 🔁 CICLO PRINCIPAL
+local function IniciarCiclo()
+    if not isActive then return end
+    local Character = LocalPlayer.Character
+    if not Character then
+        pcall(function() LocalPlayer:LoadCharacter() end)
+        task.wait(0.1)
+        if isActive then IniciarCiclo() end
+        return
+    end
+
+    local Humanoid = Character:FindFirstChildOfClass("Humanoid")
+    if not Humanoid then task.wait(0.05); if isActive then IniciarCiclo() end return end
+
+    ReboteRemotesHiper(Character)
+
+    local LiberarLoop = RunService.RenderStepped:Connect(function()
+        if not isActive or Humanoid.Health <= 0 or not Humanoid.Parent then
+            LiberarLoop:Disconnect()
+            return
+        end
+        RompeAgarresYLibera(Character)
+    end)
+
+    VidaCeroExtremo(Humanoid)
+
+    local DiedConn = Humanoid.Died:Connect(function()
+        DiedConn:Disconnect()
+        LiberarLoop:Disconnect()
+        BtnDeath.Text = "⏳ EN ESPERA..."
+        LocalPlayer.CharacterAdded:Connect(function(NuevoPersonaje)
+            NuevoPersonaje:WaitForChild("Humanoid", 3)
+            task.wait(0.08)
+            if isActive then IniciarCiclo() end
+        end)
+    end)
+end
+
+-- ⏳ ACTIVADOR 0.8s (ajustado de 0.9s a 0.8s)
+local function restaurarBotonDeath()
+    if not cicloActivo then
+        BtnDeath.Text = "💀 DEATH 0.8s"
+        BtnDeath.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        BtnDeath.BackgroundTransparency = 0.85
+        bordeActivo(BtnDeath, false)
+    end
+end
+
+local function ActivarPor08s()
+    if cicloActivo then return end
+    cicloActivo = true
+    isActive = true
+    BtnDeath.Text = "⚡ ACTIVO — 0.8s"
+    BtnDeath.BackgroundColor3 = Color3.fromRGB(255, 170, 0)
+    BtnDeath.BackgroundTransparency = 0.25
+    bordeActivo(BtnDeath, true)
+    IniciarCiclo()
+
+    task.wait(0.8)
+
+    isActive = false
+    cicloActivo = false
+    BtnDeath.Text = "✅ LISTO"
+    BtnDeath.BackgroundColor3 = Color3.fromRGB(0, 160, 80)
+    BtnDeath.BackgroundTransparency = 0.25
+    bordeActivo(BtnDeath, false)
+    task.delay(1.5, restaurarBotonDeath)
+end
+
+btnDeath.MouseButton1Click:Connect(ActivarPor08s)
 
 -- ==================================================
 -- 🔄 ESTADOS DE BOTONES
@@ -1141,4 +1427,4 @@ end)
 task.wait(0.3)
 actualizarListaJugadores()
 
-print("✅ AA.toki v29 (scroll fix + auto reconexión) cargado correctamente")
+print("✅ AA.toki v32 (death mode optimizado 0.8s) cargado correctamente")
