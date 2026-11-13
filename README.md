@@ -1,5 +1,5 @@
 -- ==================================================
--- 📋 AA.toki | v33 (death mode lento + fix pestañas)
+-- 📋 AA.toki | v35 (botones pequeños para móvil 411px)
 -- ==================================================
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -7,6 +7,197 @@ local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+-- ==================================================
+-- 🌐 TRADUCCIÓN AUTOMÁTICA POR IDIOMA / REGIÓN
+-- Detecta el país/idioma del jugador vía LocaleId.
+-- Soporta: es (por defecto), en, ja, zh (simplificado), pt (Brasil).
+-- ==================================================
+local LOCALE_ID = (LocalPlayer.LocaleId or "en_us"):lower():gsub("-", "_")
+local IDIOMA = LOCALE_ID:sub(1, 2)
+local IDIOMAS_SOPORTADOS = { en = true, ja = true, zh = true, pt = true, es = true }
+if not IDIOMAS_SOPORTADOS[IDIOMA] then IDIOMA = "en" end -- otros países → inglés
+
+local TR = {
+    en = {
+        ["📋 Principal"] = "📋 Main",
+        ["➕ Adicionales"] = "➕ Extras",
+        ["Status: Off | Objetivo: Ninguno"] = "Status: Off | Target: None",
+        ["Usuario o apodo..."] = "Username or nickname...",
+        ["🔍 Cercano"] = "🔍 Nearest",
+        ["📋 Lista"] = "📋 List",
+        ["📋 Cerrar"] = "📋 Close",
+        ["✅ ACTIVAR"] = "✅ ENABLE",
+        ["❌ DESACTIVAR"] = "❌ DISABLE",
+        ["HITBOX: OFF"] = "HITBOX: OFF",
+        ["HITBOX ON: sin objetivo"] = "HITBOX ON: no target",
+        ["AVATAR NO ENCONTRADO"] = "AVATAR NOT FOUND",
+        ["SELECCIONA ALGUIEN"] = "SELECT SOMEONE",
+        ["☑️ SELECCIÓN MÚLTIPLE: OFF"] = "☑️ MULTI-SELECT: OFF",
+        ["☑️ MÚLTIPLE: ON ("] = "☑️ MULTI: ON (",
+        ["💀 DEATH 0.8s"] = "💀 DEATH 0.8s",
+        ["⚡ ACTIVO 0.8s"] = "⚡ ACTIVE 0.8s",
+        ["⏳ ESPERA..."] = "⏳ WAIT...",
+        ["⏳ EN ESPERA..."] = "⏳ WAITING...",
+        ["🛑 DETENER"] = "🛑 STOP",
+        ["Equipa sola la scooter\nde tu mochila automáticamente"] = "Auto-equips the scooter\nfrom your backpack",
+        ["🛴 SCOOTER: OFF"] = "🛴 SCOOTER: OFF",
+        ["🛴 SCOOTER: ON"] = "🛴 SCOOTER: ON",
+        ["❌ Sin personaje"] = "❌ No character",
+        ["✅ Posición guardada!"] = "✅ Position saved!",
+        ["✅ ¡TP -500!"] = "✅ TP -500!",
+        ["Status: Listo"] = "Status: Ready",
+        ["❌ Nadie cerca"] = "❌ Nobody near",
+        ["Fijado: "] = "Locked: ",
+        ["¡Selecciona un jugador primero!"] = "Select a player first!",
+        ["No se encontró jugador"] = "Player not found",
+        ["❌ No se encontró: "] = "❌ Not found: ",
+        ["Objetivo: "] = "Target: ",
+        ["✅ Activo | Objetivo: "] = "✅ Active | Target: ",
+        ["Status: Off | Objetivo: "] = "Status: Off | Target: ",
+        [" salió — esperando reconexión..."] = " left — waiting for reconnection...",
+        ["🔄 Re-seleccionado: "] = "🔄 Re-selected: ",
+        ["🔄 Re-añadido: "] = "🔄 Re-added: ",
+        ["✓ Añadido: "] = "✓ Added: ",
+        ["➖ Quitado: "] = "➖ Removed: ",
+        [" (total "] = " (total ",
+        ["☑️ Modo múltiple ON — toca jugadores en la lista"] = "☑️ Multi mode ON — tap players in list",
+        ["HITBOX ON x"] = "HITBOX ON x",
+        ["✅ TP visual ON x"] = "✅ Visual TP ON x",
+        ["  • TÚ"] = "  • YOU",
+    },
+    ja = {
+        ["📋 Principal"] = "📋 メイン",
+        ["➕ Adicionales"] = "➕ 追加",
+        ["Status: Off | Objetivo: Ninguno"] = "状態: オフ | 対象: なし",
+        ["Usuario o apodo..."] = "ユーザー名 or ニックネーム...",
+        ["🔍 Cercano"] = "🔍 最寄り",
+        ["📋 Lista"] = "📋 リスト",
+        ["📋 Cerrar"] = "📋 閉じる",
+        ["✅ ACTIVAR"] = "✅ 有効化",
+        ["❌ DESACTIVAR"] = "❌ 無効化",
+        ["HITBOX: OFF"] = "ヒットボックス: オフ",
+        ["HITBOX ON: sin objetivo"] = "ヒットボックスON: 対象なし",
+        ["AVATAR NO ENCONTRADO"] = "アバターが見つかりません",
+        ["SELECCIONA ALGUIEN"] = "誰か選んでください",
+        ["☑️ SELECCIÓN MÚLTIPLE: OFF"] = "☑️ 複数選択: オフ",
+        ["☑️ MÚLTIPLE: ON ("] = "☑️ 複数: ON (",
+        ["⚡ ACTIVO 0.8s"] = "⚡ アクティブ 0.8秒",
+        ["⏳ ESPERA..."] = "⏳ 待機中...",
+        ["⏳ EN ESPERA..."] = "⏳ 待機中...",
+        ["🛑 DETENER"] = "🛑 停止",
+        ["Equipa sola la scooter\nde tu mochila automáticamente"] = "リュックからスクーターを\n自動装備します",
+        ["❌ Sin personaje"] = "❌ キャラクターなし",
+        ["✅ Posición guardada!"] = "✅ 位置を保存!",
+        ["Status: Listo"] = "状態: 準備完了",
+        ["❌ Nadie cerca"] = "❌ 近くに誰もいません",
+        ["Fijado: "] = "固定: ",
+        ["¡Selecciona un jugador primero!"] = "先にプレイヤーを選んでください!",
+        ["No se encontró jugador"] = "プレイヤーが見つかりません",
+        ["❌ No se encontró: "] = "❌ 見つかりません: ",
+        ["Objetivo: "] = "対象: ",
+        ["✅ Activo | Objetivo: "] = "✅ アクティブ | 対象: ",
+        ["Status: Off | Objetivo: "] = "状態: オフ | 対象: ",
+        [" salió — esperando reconexión..."] = " が退出 — 再接続待ち...",
+        ["🔄 Re-seleccionado: "] = "🔄 再選択: ",
+        ["🔄 Re-añadido: "] = "🔄 再追加: ",
+        ["✓ Añadido: "] = "✓ 追加: ",
+        ["➖ Quitado: "] = "➖ 削除: ",
+        ["☑️ Modo múltiple ON — toca jugadores en la lista"] = "☑️ 複数モードON — リストをタップ",
+        ["HITBOX ON x"] = "ヒットボックスON x",
+        ["✅ TP visual ON x"] = "✅ 視覚TP ON x",
+        ["  • TÚ"] = "  • あなた",
+    },
+    zh = {
+        ["📋 Principal"] = "📋 主页",
+        ["➕ Adicionales"] = "➕ 附加",
+        ["Status: Off | Objetivo: Ninguno"] = "状态: 关 | 目标: 无",
+        ["Usuario o apodo..."] = "用户名或昵称...",
+        ["🔍 Cercano"] = "🔍 最近",
+        ["📋 Lista"] = "📋 列表",
+        ["📋 Cerrar"] = "📋 关闭",
+        ["✅ ACTIVAR"] = "✅ 启用",
+        ["❌ DESACTIVAR"] = "❌ 禁用",
+        ["HITBOX: OFF"] = "命中框: 关",
+        ["HITBOX ON: sin objetivo"] = "命中框开: 无目标",
+        ["AVATAR NO ENCONTRADO"] = "未找到角色",
+        ["SELECCIONA ALGUIEN"] = "请选择某人",
+        ["☑️ SELECCIÓN MÚLTIPLE: OFF"] = "☑️ 多选: 关",
+        ["☑️ MÚLTIPLE: ON ("] = "☑️ 多选: 开 (",
+        ["⚡ ACTIVO 0.8s"] = "⚡ 激活 0.8秒",
+        ["⏳ ESPERA..."] = "⏳ 等待中...",
+        ["⏳ EN ESPERA..."] = "⏳ 等待中...",
+        ["🛑 DETENER"] = "🛑 停止",
+        ["Equipa sola la scooter\nde tu mochila automáticamente"] = "自动从背包装备\n滑板车",
+        ["❌ Sin personaje"] = "❌ 无角色",
+        ["✅ Posición guardada!"] = "✅ 位置已保存!",
+        ["Status: Listo"] = "状态: 就绪",
+        ["❌ Nadie cerca"] = "❌ 附近没人",
+        ["Fijado: "] = "锁定: ",
+        ["¡Selecciona un jugador primero!"] = "请先选择玩家!",
+        ["No se encontró jugador"] = "未找到玩家",
+        ["❌ No se encontró: "] = "❌ 未找到: ",
+        ["Objetivo: "] = "目标: ",
+        ["✅ Activo | Objetivo: "] = "✅ 已激活 | 目标: ",
+        ["Status: Off | Objetivo: "] = "状态: 关 | 目标: ",
+        [" salió — esperando reconexión..."] = " 已离开 — 等待重连...",
+        ["🔄 Re-seleccionado: "] = "🔄 重新选中: ",
+        ["🔄 Re-añadido: "] = "🔄 重新添加: ",
+        ["✓ Añadido: "] = "✓ 已添加: ",
+        ["➖ Quitado: "] = "➖ 已移除: ",
+        ["☑️ Modo múltiple ON — toca jugadores en la lista"] = "☑️ 多选模式开 — 点列表玩家",
+        ["HITBOX ON x"] = "命中框开 x",
+        ["✅ TP visual ON x"] = "✅ 视觉传送开 x",
+        ["  • TÚ"] = "  • 你",
+    },
+    pt = {
+        ["📋 Principal"] = "📋 Principal",
+        ["➕ Adicionales"] = "➕ Extras",
+        ["Status: Off | Objetivo: Ninguno"] = "Status: Off | Alvo: Nenhum",
+        ["Usuario o apodo..."] = "Usuário ou apelido...",
+        ["🔍 Cercano"] = "🔍 Próximo",
+        ["📋 Lista"] = "📋 Lista",
+        ["📋 Cerrar"] = "📋 Fechar",
+        ["✅ ACTIVAR"] = "✅ ATIVAR",
+        ["❌ DESACTIVAR"] = "❌ DESATIVAR",
+        ["HITBOX ON: sin objetivo"] = "HITBOX ON: sem alvo",
+        ["AVATAR NO ENCONTRADO"] = "AVATAR NÃO ENCONTRADO",
+        ["SELECCIONA ALGUIEN"] = "SELECIONE ALGUÉM",
+        ["☑️ SELECCIÓN MÚLTIPLE: OFF"] = "☑️ SELEÇÃO MÚLTIPLA: OFF",
+        ["☑️ MÚLTIPLE: ON ("] = "☑️ MÚLTIPLO: ON (",
+        ["⚡ ACTIVO 0.8s"] = "⚡ ATIVO 0.8s",
+        ["⏳ ESPERA..."] = "⏳ ESPERA...",
+        ["⏳ EN ESPERA..."] = "⏳ AGUARDANDO...",
+        ["🛑 DETENER"] = "🛑 PARAR",
+        ["Equipa sola la scooter\nde tu mochila automáticamente"] = "Equipa a scooter sozinha\ndo inventário automaticamente",
+        ["❌ Sin personaje"] = "❌ Sem personagem",
+        ["✅ Posición guardada!"] = "✅ Posição salva!",
+        ["Status: Listo"] = "Status: Pronto",
+        ["❌ Nadie cerca"] = "❌ Ninguém por perto",
+        ["Fijado: "] = "Fixado: ",
+        ["¡Selecciona un jugador primero!"] = "Selecione um jogador primeiro!",
+        ["No se encontró jugador"] = "Jogador não encontrado",
+        ["❌ No se encontró: "] = "❌ Não encontrado: ",
+        ["Objetivo: "] = "Alvo: ",
+        ["✅ Activo | Objetivo: "] = "✅ Ativo | Alvo: ",
+        ["Status: Off | Objetivo: "] = "Status: Off | Alvo: ",
+        [" salió — esperando reconexión..."] = " saiu — aguardando reconexão...",
+        ["🔄 Re-seleccionado: "] = "🔄 Re-selecionado: ",
+        ["🔄 Re-añadido: "] = "🔄 Re-adicionado: ",
+        ["✓ Añadido: "] = "✓ Adicionado: ",
+        ["➖ Quitado: "] = "➖ Removido: ",
+        ["☑️ Modo múltiple ON — toca jugadores en la lista"] = "☑️ Modo múltiplo ON — toque na lista",
+        ["✅ TP visual ON x"] = "✅ TP visual ON x",
+        ["  • TÚ"] = "  • VOCÊ",
+    },
+}
+
+local function T(texto)
+    local t = TR[IDIOMA]
+    if t and t[texto] ~= nil then return t[texto] end
+    return texto
+end
+
 
 local COLOR_TEXTO = Color3.fromRGB(230, 230, 230)
 local COLOR_BARRA = Color3.fromRGB(35, 35, 35)
@@ -24,14 +215,14 @@ local COLOR_MULTI = Color3.fromRGB(30, 100, 85) -- resaltado selección múltipl
 
 local TAMANO_HITBOX = 100000
 local DISTANCIA_TP_GUARDADO = -500
-local ANCHO_BASE = 340
-local ALTO_BASE = 352
+local ANCHO_BASE = 300
+local ALTO_BASE = 270
 local MIN_ANCHO = 150
 local MIN_ALTO_FRAME = 70
 local ID_FONDO = "rbxassetid://79902517665758"
 
 -- ➕ Pestañas: alto de la barra de tabs y desplazamiento vertical del contenido
-local ALTO_TABS = 24
+local ALTO_TABS = 20
 local ALTO_SUPERIOR = 22 + ALTO_TABS -- barra de título + barra de pestañas
 
 local screenGui = Instance.new("ScreenGui")
@@ -81,7 +272,7 @@ tituloBarra.BackgroundTransparency = 1
 tituloBarra.Text = "AA.toki"
 tituloBarra.TextColor3 = COLOR_TEXTO
 tituloBarra.Font = Enum.Font.GothamBold
-tituloBarra.TextSize = 11
+tituloBarra.TextSize = 10
 tituloBarra.TextXAlignment = Enum.TextXAlignment.Left
 tituloBarra.ZIndex = 11
 tituloBarra.Parent = barra
@@ -94,7 +285,7 @@ btnMin.BackgroundTransparency = 0.3
 btnMin.Text = "-"
 btnMin.TextColor3 = Color3.fromRGB(255, 255, 255)
 btnMin.Font = Enum.Font.GothamBold
-btnMin.TextSize = 13
+btnMin.TextSize = 11
 btnMin.ZIndex = 11
 btnMin.Parent = barra
 
@@ -122,15 +313,15 @@ local function crearBotonTab(texto, escalaX)
     b.Text = texto
     b.TextColor3 = COLOR_TEXTO
     b.Font = Enum.Font.GothamBold
-    b.TextSize = 11
+    b.TextSize = 10
     b.ZIndex = 11
     b.Parent = barraTabs
     Instance.new("UICorner", b).CornerRadius = UDim.new(0, 4)
     return b
 end
 
-local btnTabPrincipal = crearBotonTab("📋 Principal", 0)
-local btnTabAdicionales = crearBotonTab("➕ Adicionales", 0.5)
+local btnTabPrincipal = crearBotonTab(T("📋 Principal"), 0)
+local btnTabAdicionales = crearBotonTab(T("➕ Adicionales"), 0.5)
 
 local function resaltarTab(nombre)
     if nombre == "principal" then
@@ -182,17 +373,17 @@ content.ZIndex = 2
 content.Parent = framePrincipal
 
 local pad = Instance.new("UIPadding")
-pad.PaddingTop = UDim.new(0, 8)
-pad.PaddingBottom = UDim.new(0, 12)
-pad.PaddingLeft = UDim.new(0, 8)
-pad.PaddingRight = UDim.new(0, 8)
+pad.PaddingTop = UDim.new(0, 6)
+pad.PaddingBottom = UDim.new(0, 8)
+pad.PaddingLeft = UDim.new(0, 6)
+pad.PaddingRight = UDim.new(0, 6)
 pad.Parent = content
 
 local layout = Instance.new("UIListLayout")
 layout.FillDirection = Enum.FillDirection.Vertical
 layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 layout.SortOrder = Enum.SortOrder.LayoutOrder
-layout.Padding = UDim.new(0, 6)
+layout.Padding = UDim.new(0, 4)
 layout.Parent = content
 
 local function estilizarBoton(btn)
@@ -259,12 +450,12 @@ end
 local function separador(orden, texto)
     local s = Instance.new("TextLabel")
     s.BackgroundTransparency = 1
-    s.Size = UDim2.new(1, 0, 0, 14)
+    s.Size = UDim2.new(1, 0, 0, 12)
     s.LayoutOrder = orden
     s.Text = texto
     s.TextColor3 = Color3.fromRGB(230, 230, 230)
     s.Font = Enum.Font.GothamBold
-    s.TextSize = 10
+    s.TextSize = 9
     s.Parent = content
     return s
 end
@@ -272,17 +463,17 @@ end
 local statusLabel = Instance.new("TextLabel")
 statusLabel.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 statusLabel.BackgroundTransparency = 0.5
-statusLabel.Size = UDim2.new(1, 0, 0, 24)
+statusLabel.Size = UDim2.new(1, 0, 0, 20)
 statusLabel.LayoutOrder = 1
-statusLabel.Text = "Status: Off | Objetivo: Ninguno"
+statusLabel.Text = T("Status: Off | Objetivo: Ninguno")
 statusLabel.TextColor3 = COLOR_TEXTO
 statusLabel.Font = Enum.Font.Gotham
-statusLabel.TextSize = 11
+statusLabel.TextSize = 10
 statusLabel.Parent = content
 
 local filaManual = Instance.new("Frame")
 filaManual.BackgroundTransparency = 1
-filaManual.Size = UDim2.new(1, 0, 0, 30)
+filaManual.Size = UDim2.new(1, 0, 0, 26)
 filaManual.LayoutOrder = 2
 filaManual.Parent = content
 
@@ -292,11 +483,11 @@ txtManual.BackgroundTransparency = 0.3
 txtManual.Size = UDim2.new(1, -75, 1, 0)
 txtManual.Position = UDim2.new(0, 0, 0, 0)
 txtManual.Text = ""
-txtManual.PlaceholderText = "Usuario o apodo..."
+txtManual.PlaceholderText = T("Usuario o apodo...")
 txtManual.PlaceholderColor3 = Color3.fromRGB(140, 140, 140)
 txtManual.TextColor3 = COLOR_TEXTO
 txtManual.Font = Enum.Font.Gotham
-txtManual.TextSize = 12
+txtManual.TextSize = 10
 txtManual.ClearTextOnFocus = false
 txtManual.TextXAlignment = Enum.TextXAlignment.Left
 txtManual.Parent = filaManual
@@ -312,48 +503,48 @@ btnManualOK.ZIndex = 3
 btnManualOK.Parent = filaManual
 estilizarBoton(btnManualOK)
 
-local btnSeleccionarCercano, btnToggleLista = filaDosBotones(3, 32, "🔍 Cercano", "📋 Lista", 10)
+local btnSeleccionarCercano, btnToggleLista = filaDosBotones(3, 26, T("🔍 Cercano"), T("📋 Lista"), 10)
 
 local btnToggle = Instance.new("TextButton")
-btnToggle.Size = UDim2.new(1, 0, 0, 38)
+btnToggle.Size = UDim2.new(1, 0, 0, 30)
 btnToggle.LayoutOrder = 4
-btnToggle.Text = "✅ ACTIVAR"
+btnToggle.Text = T("✅ ACTIVAR")
 btnToggle.Font = Enum.Font.GothamBold
-btnToggle.TextSize = 13
+btnToggle.TextSize = 11
 btnToggle.ZIndex = 3
 btnToggle.Parent = content
 estilizarBoton(btnToggle)
 
-separador(5, "── 🖤 HITBOX EXPANDER (100K) ──")
+separador(5, T("── 🖤 HITBOX EXPANDER (100K) ──"))
 local hitboxToggle = Instance.new("TextButton")
-hitboxToggle.Size = UDim2.new(1, 0, 0, 34)
+hitboxToggle.Size = UDim2.new(1, 0, 0, 28)
 hitboxToggle.LayoutOrder = 6
-hitboxToggle.Text = "HITBOX: OFF"
+hitboxToggle.Text = T("HITBOX: OFF")
 hitboxToggle.Font = Enum.Font.GothamBold
-hitboxToggle.TextSize = 13
+hitboxToggle.TextSize = 11
 hitboxToggle.ZIndex = 3
 hitboxToggle.Parent = content
 estilizarBoton(hitboxToggle)
 
 -- ☑️ NUEVO: SELECCIÓN MÚLTIPLE (debajo del botón de hitbox)
 local btnSeleccionMultiple = Instance.new("TextButton")
-btnSeleccionMultiple.Size = UDim2.new(1, 0, 0, 34)
+btnSeleccionMultiple.Size = UDim2.new(1, 0, 0, 28)
 btnSeleccionMultiple.LayoutOrder = 7
-btnSeleccionMultiple.Text = "☑️ SELECCIÓN MÚLTIPLE: OFF"
+btnSeleccionMultiple.Text = T("☑️ SELECCIÓN MÚLTIPLE: OFF")
 btnSeleccionMultiple.Font = Enum.Font.GothamBold
-btnSeleccionMultiple.TextSize = 12
+btnSeleccionMultiple.TextSize = 10
 btnSeleccionMultiple.ZIndex = 3
 btnSeleccionMultiple.Parent = content
 estilizarBoton(btnSeleccionMultiple)
 
-local btnTPGuardar, btnDeath = filaDosBotones(9, 34, "💾 TP -500", "💀 DEATH 0.8s", 10)
+local btnTPGuardar, btnDeath = filaDosBotones(9, 28, T("💾 TP -500"), T("💀 DEATH 0.8s"), 10)
 
 local btnAbrazo = Instance.new("TextButton")
-btnAbrazo.Size = UDim2.new(1, 0, 0, 34)
+btnAbrazo.Size = UDim2.new(1, 0, 0, 28)
 btnAbrazo.LayoutOrder = 10
-btnAbrazo.Text = "🎯 ABRAZO BUG"
+btnAbrazo.Text = T("🎯 ABRAZO BUG")
 btnAbrazo.Font = Enum.Font.GothamBold
-btnAbrazo.TextSize = 12
+btnAbrazo.TextSize = 10
 btnAbrazo.ZIndex = 3
 btnAbrazo.Parent = content
 estilizarBoton(btnAbrazo)
@@ -380,7 +571,7 @@ local uiListLayout = Instance.new("UIListLayout")
 uiListLayout.FillDirection = Enum.FillDirection.Vertical
 uiListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 uiListLayout.SortOrder = Enum.SortOrder.Name
-uiListLayout.Padding = UDim.new(0, 6)
+uiListLayout.Padding = UDim.new(0, 4)
 uiListLayout.Parent = scrollingFrame
 
 -- ==================================================
@@ -403,49 +594,49 @@ contentAdicionales.Visible = false
 contentAdicionales.Parent = framePrincipal
 
 local pad2 = Instance.new("UIPadding")
-pad2.PaddingTop = UDim.new(0, 8)
-pad2.PaddingBottom = UDim.new(0, 12)
-pad2.PaddingLeft = UDim.new(0, 8)
-pad2.PaddingRight = UDim.new(0, 8)
+pad2.PaddingTop = UDim.new(0, 6)
+pad2.PaddingBottom = UDim.new(0, 8)
+pad2.PaddingLeft = UDim.new(0, 6)
+pad2.PaddingRight = UDim.new(0, 6)
 pad2.Parent = contentAdicionales
 
 local layout2 = Instance.new("UIListLayout")
 layout2.FillDirection = Enum.FillDirection.Vertical
 layout2.HorizontalAlignment = Enum.HorizontalAlignment.Center
 layout2.SortOrder = Enum.SortOrder.LayoutOrder
-layout2.Padding = UDim.new(0, 6)
+layout2.Padding = UDim.new(0, 4)
 layout2.Parent = contentAdicionales
 
 -- 🛴 SEPARADOR
 local sepScooter = Instance.new("TextLabel")
 sepScooter.BackgroundTransparency = 1
-sepScooter.Size = UDim2.new(1, 0, 0, 14)
+sepScooter.Size = UDim2.new(1, 0, 0, 12)
 sepScooter.LayoutOrder = 1
-sepScooter.Text = "── 🛴 SCOOTER ──"
+sepScooter.Text = T("── 🛴 SCOOTER ──")
 sepScooter.TextColor3 = Color3.fromRGB(230, 230, 230)
 sepScooter.Font = Enum.Font.GothamBold
-sepScooter.TextSize = 10
+sepScooter.TextSize = 9
 sepScooter.Parent = contentAdicionales
 
 -- ℹ️ INFO SCOOTER
 local infoScooter = Instance.new("TextLabel")
 infoScooter.BackgroundTransparency = 1
-infoScooter.Size = UDim2.new(1, 0, 0, 30)
+infoScooter.Size = UDim2.new(1, 0, 0, 26)
 infoScooter.LayoutOrder = 2
-infoScooter.Text = "Equipa sola la scooter\nde tu mochila automáticamente"
+infoScooter.Text = T("Equipa sola la scooter\nde tu mochila automáticamente")
 infoScooter.TextColor3 = COLOR_TEXTO
 infoScooter.Font = Enum.Font.Gotham
-infoScooter.TextSize = 10
+infoScooter.TextSize = 9
 infoScooter.TextWrapped = true
 infoScooter.Parent = contentAdicionales
 
 -- 🛴 BOTÓN SCOOTER
 local btnScooter = Instance.new("TextButton")
-btnScooter.Size = UDim2.new(1, 0, 0, 38)
+btnScooter.Size = UDim2.new(1, 0, 0, 30)
 btnScooter.LayoutOrder = 3
-btnScooter.Text = "🛴 SCOOTER: OFF"
+btnScooter.Text = T("🛴 SCOOTER: OFF")
 btnScooter.Font = Enum.Font.GothamBold
-btnScooter.TextSize = 13
+btnScooter.TextSize = 11
 btnScooter.ZIndex = 3
 btnScooter.Parent = contentAdicionales
 estilizarBoton(btnScooter)
@@ -497,7 +688,7 @@ end
 btnScooter.MouseButton1Click:Connect(function()
     scooterActivo = not scooterActivo
     if scooterActivo then
-        btnScooter.Text = "🛴 SCOOTER: ON"
+        btnScooter.Text = T("🛴 SCOOTER: ON")
         bordeActivo(btnScooter, true)
         scooterThread = task.spawn(function()
             while scooterActivo do
@@ -507,7 +698,7 @@ btnScooter.MouseButton1Click:Connect(function()
         end)
     else
         if scooterThread then task.cancel(scooterThread); scooterThread = nil end
-        btnScooter.Text = "🛴 SCOOTER: OFF"
+        btnScooter.Text = T("🛴 SCOOTER: OFF")
         bordeActivo(btnScooter, false)
     end
 end)
@@ -516,28 +707,28 @@ end)
 print("✅ Pestaña Adicionales cargada correctamente")
 
 local letraA = Instance.new("TextLabel")
-letraA.Size = UDim2.new(1, -28, 0, 16)
+letraA.Size = UDim2.new(1, -28, 0, 14)
 letraA.Position = UDim2.new(0, 6, 1, -16)
 letraA.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 letraA.BackgroundTransparency = 0.5
 letraA.Text = "A"
 letraA.TextColor3 = Color3.fromRGB(255, 255, 255)
 letraA.Font = Enum.Font.GothamBold
-letraA.TextSize = 12
+letraA.TextSize = 10
 letraA.TextTransparency = 0.3
 letraA.TextXAlignment = Enum.TextXAlignment.Left
 letraA.ZIndex = 12
 letraA.Parent = framePrincipal
 
 local gripResize = Instance.new("TextButton")
-gripResize.Size = UDim2.new(0, 18, 0, 18)
-gripResize.Position = UDim2.new(1, -18, 1, -18)
+gripResize.Size = UDim2.new(0, 16, 0, 16)
+gripResize.Position = UDim2.new(1, -16, 1, -16)
 gripResize.BackgroundColor3 = Color3.fromRGB(90, 90, 90)
 gripResize.BackgroundTransparency = 0.4
 gripResize.Text = "◢"
 gripResize.TextColor3 = Color3.fromRGB(255, 255, 255)
 gripResize.Font = Enum.Font.GothamBold
-gripResize.TextSize = 12
+gripResize.TextSize = 10
 gripResize.Active = true
 gripResize.ZIndex = 20
 gripResize.Parent = framePrincipal
@@ -831,7 +1022,7 @@ local function IniciarCicloDeath()
     local DiedConn = Humanoid.Died:Connect(function()
         DiedConn:Disconnect()
         LiberarLoop:Disconnect()
-        btnDeath.Text = "⏳ EN ESPERA..."
+        btnDeath.Text = T("⏳ EN ESPERA...")
         LocalPlayer.CharacterAdded:Connect(function(NuevoPersonaje)
             NuevoPersonaje:WaitForChild("Humanoid", 3)
             task.wait(0.08)
@@ -845,7 +1036,7 @@ local function ActivarDeathPor08s()
     if deathCicloActivo then return end
     deathCicloActivo = true
     deathIsActive = true
-    btnDeath.Text = "⚡ ACTIVO 0.8s"
+    btnDeath.Text = T("⚡ ACTIVO 0.8s")
     bordeActivo(btnDeath, true)
     IniciarCicloDeath()
 
@@ -853,7 +1044,7 @@ local function ActivarDeathPor08s()
 
     deathIsActive = false
     deathCicloActivo = false
-    btnDeath.Text = "💀 DEATH 0.8s"
+    btnDeath.Text = T("💀 DEATH 0.8s")
     bordeActivo(btnDeath, false)
 end
 
@@ -865,10 +1056,10 @@ btnDeath.MouseButton1Click:Connect(ActivarDeathPor08s)
 local function actualizarBotonToggle()
     if teleportEnabled then
         bordeActivo(btnToggle, true)
-        btnToggle.Text = "❌ DESACTIVAR"
+        btnToggle.Text = T("❌ DESACTIVAR")
     else
         bordeActivo(btnToggle, false)
-        btnToggle.Text = "✅ ACTIVAR"
+        btnToggle.Text = T("✅ ACTIVAR")
     end
 end
 
@@ -876,23 +1067,23 @@ local function actualizarBotonHitbox()
     if hitboxActivo then
         bordeActivo(hitboxToggle, true)
         if seleccionMultipleActiva then
-            hitboxToggle.Text = "HITBOX ON x" .. contarSeleccionados()
+            hitboxToggle.Text = T("HITBOX ON x") .. contarSeleccionados()
         else
-            hitboxToggle.Text = jugadorSeleccionado and ("HITBOX ON: " .. jugadorSeleccionado.Name:sub(1, 10)) or "HITBOX ON: sin objetivo"
+            hitboxToggle.Text = jugadorSeleccionado and ("HITBOX ON: " .. jugadorSeleccionado.Name:sub(1, 10)) or T("HITBOX ON: sin objetivo")
         end
     else
         bordeActivo(hitboxToggle, false)
-        hitboxToggle.Text = "HITBOX: OFF"
+        hitboxToggle.Text = T("HITBOX: OFF")
     end
 end
 
 local function actualizarBotonSeleccionMultiple()
     if seleccionMultipleActiva then
         bordeActivo(btnSeleccionMultiple, true)
-        btnSeleccionMultiple.Text = "☑️ MÚLTIPLE: ON (" .. contarSeleccionados() .. ")"
+        btnSeleccionMultiple.Text = T("☑️ MÚLTIPLE: ON (") .. contarSeleccionados() .. ")"
     else
         bordeActivo(btnSeleccionMultiple, false)
-        btnSeleccionMultiple.Text = "☑️ SELECCIÓN MÚLTIPLE: OFF"
+        btnSeleccionMultiple.Text = T("☑️ SELECCIÓN MÚLTIPLE: OFF")
     end
 end
 
@@ -905,10 +1096,10 @@ local function refrescarColoresLista()
     for plr, entry in pairs(entradasLista) do
         if entry and entry.Parent then
             local nameLabel = entry:FindFirstChildOfClass("TextLabel")
-            local baseTexto = plr.DisplayName .. " (@" .. plr.Name .. ")" .. (plr == LocalPlayer and "  • TÚ" or "")
+            local baseTexto = plr.DisplayName .. " (@" .. plr.Name .. ")" .. (plr == LocalPlayer and T("  • TÚ") or "")
             if seleccionMultipleActiva and seleccionados[plr] then
                 entry.BackgroundColor3 = COLOR_MULTI
-                if nameLabel then nameLabel.Text = "✓ " .. baseTexto end
+                if nameLabel then nameLabel.Text = T("✓ ") .. baseTexto end
             elseif plr == jugadorSeleccionado then
                 entry.BackgroundColor3 = COLOR_SELECCIONADO
                 if nameLabel then nameLabel.Text = baseTexto end
@@ -937,10 +1128,10 @@ local function establecerObjetivo(plr)
     refrescarColoresLista()
     actualizarBotonHitbox()
     if plr then
-        statusLabel.Text = "Objetivo: " .. plr.Name
+        statusLabel.Text = T("Objetivo: ") .. plr.Name
         statusLabel.TextColor3 = Color3.fromRGB(180, 255, 230)
     else
-        statusLabel.Text = "Status: Off | Objetivo: Ninguno"
+        statusLabel.Text = T("Status: Off | Objetivo: Ninguno")
         statusLabel.TextColor3 = COLOR_TEXTO
     end
 end
@@ -973,7 +1164,7 @@ function actualizarListaJugadores()
     local listaJugadores = Players:GetPlayers()
     for _, plr in ipairs(listaJugadores) do
         local playerEntry = Instance.new("Frame")
-        playerEntry.Size = UDim2.new(1, 0, 0, 38)
+        playerEntry.Size = UDim2.new(1, 0, 0, 30)
         playerEntry.BackgroundColor3 = (jugadorSeleccionado == plr) and COLOR_SELECCIONADO or (plr == LocalPlayer and COLOR_TU or COLOR_ENTRY)
         playerEntry.BackgroundTransparency = 0.2
         playerEntry.BorderSizePixel = 0
@@ -984,10 +1175,10 @@ function actualizarListaJugadores()
         nameLabel.Size = UDim2.new(1, -15, 1, 0)
         nameLabel.Position = UDim2.new(0, 8, 0, 0)
         nameLabel.BackgroundTransparency = 1
-        nameLabel.Text = plr.DisplayName .. " (@" .. plr.Name .. ")" .. (plr == LocalPlayer and "  • TÚ" or "")
+        nameLabel.Text = plr.DisplayName .. " (@" .. plr.Name .. ")" .. (plr == LocalPlayer and T("  • TÚ") or "")
         nameLabel.TextColor3 = COLOR_TEXTO
         nameLabel.Font = Enum.Font.GothamSemibold
-        nameLabel.TextSize = 13
+        nameLabel.TextSize = 11
         nameLabel.TextXAlignment = Enum.TextXAlignment.Left
         nameLabel.Parent = playerEntry
         -- 🖱️ Detección CLIC vs SCROLL: sólo selecciona al SOLTAR y si no hubo arrastre.
@@ -1021,7 +1212,7 @@ function actualizarListaJugadores()
         end)
     end
     refrescarColoresLista() -- aplicar ✓ / color a los ya seleccionados
-    scrollingFrame.CanvasSize = UDim2.new(0, 0, 0, #listaJugadores * 44)
+    scrollingFrame.CanvasSize = UDim2.new(0, 0, 0, #listaJugadores * 36)
 end
 
 Players.PlayerAdded:Connect(function(plr)
@@ -1030,7 +1221,7 @@ Players.PlayerAdded:Connect(function(plr)
     if pendingSingleName == plr.Name then
         pendingSingleName = nil
         establecerObjetivo(plr)
-        statusLabel.Text = "🔄 Re-seleccionado: " .. plr.Name
+        statusLabel.Text = T("🔄 Re-seleccionado: ") .. plr.Name
         statusLabel.TextColor3 = Color3.fromRGB(180, 255, 230)
     elseif reconexionPendienteMulti[plr.Name] then
         reconexionPendienteMulti[plr.Name] = nil
@@ -1039,7 +1230,7 @@ Players.PlayerAdded:Connect(function(plr)
             actualizarBotonSeleccionMultiple()
             actualizarBotonHitbox()
             refrescarColoresLista()
-            statusLabel.Text = "🔄 Re-añadido: " .. plr.Name .. " (total " .. contarSeleccionados() .. ")"
+            statusLabel.Text = T("🔄 Re-añadido: ") .. plr.Name .. T(" (total ") .. contarSeleccionados() .. ")"
             statusLabel.TextColor3 = Color3.fromRGB(180, 255, 230)
         end
     end
@@ -1057,7 +1248,7 @@ Players.PlayerRemoving:Connect(function(plr)
         refrescarColoresLista()
         actualizarBotonHitbox()
         actualizarBotonSeleccionMultiple()
-        statusLabel.Text = "⏳ " .. plr.Name .. " salió — esperando reconexión..."
+        statusLabel.Text = "⏳ " .. plr.Name .. T(" salió — esperando reconexión...")
         statusLabel.TextColor3 = Color3.fromRGB(255, 220, 120)
     else
         if seleccionados[plr] then
@@ -1102,15 +1293,15 @@ local function seleccionarManual()
     if encontrado then
         if seleccionMultipleActiva then
             alternarSeleccionMultiple(encontrado)
-            statusLabel.Text = (seleccionados[encontrado] and "✓ Añadido: " or "➖ Quitado: ") .. encontrado.Name .. "  (total " .. contarSeleccionados() .. ")"
+            statusLabel.Text = (seleccionados[encontrado] and T("✓ Añadido: ") or T("➖ Quitado: ")) .. encontrado.Name .. "  (total " .. contarSeleccionados() .. ")"
             statusLabel.TextColor3 = Color3.fromRGB(180, 255, 230)
         else
             establecerObjetivo(encontrado)
-            statusLabel.Text = "Objetivo: " .. encontrado.Name .. " (" .. encontrado.DisplayName .. ")"
+            statusLabel.Text = T("Objetivo: ") .. encontrado.Name .. " (" .. encontrado.DisplayName .. ")"
             statusLabel.TextColor3 = Color3.fromRGB(180, 255, 230)
         end
     else
-        statusLabel.Text = "❌ No se encontró: " .. txtManual.Text
+        statusLabel.Text = T("❌ No se encontró: ") .. txtManual.Text
         statusLabel.TextColor3 = Color3.fromRGB(255, 120, 120)
     end
 end
@@ -1181,7 +1372,7 @@ hitboxToggle.MouseButton1Click:Connect(function()
     if hitboxActivo then
         if not hayObjetivosActivos() then
             hitboxActivo = false
-            hitboxToggle.Text = seleccionMultipleActiva and "SELECCIONA ALGUIEN" or "AVATAR NO ENCONTRADO"
+            hitboxToggle.Text = seleccionMultipleActiva and T("SELECCIONA ALGUIEN") or T("AVATAR NO ENCONTRADO")
             task.wait(1.2)
             actualizarBotonHitbox()
             return
@@ -1204,7 +1395,7 @@ btnSeleccionMultiple.MouseButton1Click:Connect(function()
             seleccionados[jugadorSeleccionado] = true
         end
         bordeActivo(btnSeleccionMultiple, true)
-        statusLabel.Text = "☑️ Modo múltiple ON — toca jugadores en la lista"
+        statusLabel.Text = T("☑️ Modo múltiple ON — toca jugadores en la lista")
         statusLabel.TextColor3 = Color3.fromRGB(180, 255, 230)
     else
         -- Al desactivar: restaura hitbox de los seleccionados y limpia el set
@@ -1217,7 +1408,7 @@ btnSeleccionMultiple.MouseButton1Click:Connect(function()
         seleccionados = {}
         reconexionPendienteMulti = {}
         bordeActivo(btnSeleccionMultiple, false)
-        statusLabel.Text = "Status: Listo"
+        statusLabel.Text = T("Status: Listo")
         statusLabel.TextColor3 = COLOR_TEXTO
     end
     actualizarBotonSeleccionMultiple()
@@ -1231,14 +1422,14 @@ end)
 local function guardarYTeletransportar()
     local character = LocalPlayer.Character
     if not character or not character:FindFirstChild("HumanoidRootPart") then
-        statusLabel.Text = "❌ Sin personaje"; task.delay(1.5, function() statusLabel.Text = "Status: Listo" end); return
+        statusLabel.Text = T("❌ Sin personaje"); task.delay(1.5, function() statusLabel.Text = T("Status: Listo") end); return
     end
     lastPosition = character.HumanoidRootPart.Position
-    statusLabel.Text = "✅ Posición guardada!"
+    statusLabel.Text = T("✅ Posición guardada!")
     task.wait(0.3)
     character:PivotTo(CFrame.new(lastPosition + Vector3.new(0, DISTANCIA_TP_GUARDADO, 0)))
-    statusLabel.Text = "✅ ¡TP -500!"
-    task.delay(1.2, function() statusLabel.Text = "Status: Listo" end)
+    statusLabel.Text = T("✅ ¡TP -500!")
+    task.delay(1.2, function() statusLabel.Text = T("Status: Listo") end)
 end
 
 btnTPGuardar.MouseButton1Click:Connect(guardarYTeletransportar)
@@ -1312,15 +1503,15 @@ btnAbrazo.MouseButton1Click:Connect(function()
     if not autoMode then
         local target = obtenerJugadorMasCercano()
         if not target then
-            statusLabel.Text = "❌ Nadie cerca"
-            task.delay(1.2, function() statusLabel.Text = "Status: Listo" end)
+            statusLabel.Text = T("❌ Nadie cerca")
+            task.delay(1.2, function() statusLabel.Text = T("Status: Listo") end)
             return
         end
 
         autoMode = true
         targetSaved = target
-        statusLabel.Text = "Fijado: " .. target.Name
-        btnAbrazo.Text = "🛑 DETENER"
+        statusLabel.Text = T("Fijado: ") .. target.Name
+        btnAbrazo.Text = T("🛑 DETENER")
         bordeActivo(btnAbrazo, true)
 
         task.spawn(function()
@@ -1334,16 +1525,16 @@ btnAbrazo.MouseButton1Click:Connect(function()
             end
             autoMode = false
             targetSaved = nil
-            btnAbrazo.Text = "🎯 ABRAZO BUG"
+            btnAbrazo.Text = T("🎯 ABRAZO BUG")
             bordeActivo(btnAbrazo, false)
-            statusLabel.Text = "Status: Listo"
+            statusLabel.Text = T("Status: Listo")
         end)
     else
         autoMode = false
         targetSaved = nil
-        btnAbrazo.Text = "🎯 ABRAZO BUG"
+        btnAbrazo.Text = T("🎯 ABRAZO BUG")
         bordeActivo(btnAbrazo, false)
-        statusLabel.Text = "Status: Listo"
+        statusLabel.Text = T("Status: Listo")
     end
 end)
 
@@ -1356,14 +1547,14 @@ btnToggleLista.MouseButton1Click:Connect(function()
     local altoBase = framePrincipal:GetAttribute("AltoOriginal") or ALTO_BASE
     framePrincipal:SetAttribute("AnchoOriginal", ancho)
     if listaAbierta then
-        areaLista.Size = UDim2.new(1, 0, 0, 245)
-        framePrincipal.Size = UDim2.new(0, ancho, 0, altoBase + 22 + 245)
-        btnToggleLista.Text = "📋 Cerrar"
+        areaLista.Size = UDim2.new(1, 0, 0, 200)
+        framePrincipal.Size = UDim2.new(0, ancho, 0, altoBase + 22 + 200)
+        btnToggleLista.Text = T("📋 Cerrar")
         actualizarListaJugadores()
     else
         areaLista.Size = UDim2.new(1, 0, 0, 0)
         framePrincipal.Size = UDim2.new(0, ancho, 0, altoBase + 22)
-        btnToggleLista.Text = "📋 Lista"
+        btnToggleLista.Text = T("📋 Lista")
     end
 end)
 
@@ -1372,14 +1563,14 @@ btnSeleccionarCercano.MouseButton1Click:Connect(function()
     if cercano then
         if seleccionMultipleActiva then
             alternarSeleccionMultiple(cercano)
-            statusLabel.Text = (seleccionados[cercano] and "✓ Añadido cercano: " or "➖ Quitado: ") .. cercano.Name .. "  (total " .. contarSeleccionados() .. ")"
+            statusLabel.Text = (seleccionados[cercano] and "✓ Añadido cercano: " or T("➖ Quitado: ")) .. cercano.Name .. "  (total " .. contarSeleccionados() .. ")"
             statusLabel.TextColor3 = Color3.fromRGB(180, 255, 230)
         else
             establecerObjetivo(cercano)
         end
     else
         establecerObjetivo(nil)
-        statusLabel.Text = "No se encontró jugador"
+        statusLabel.Text = T("No se encontró jugador")
         statusLabel.TextColor3 = Color3.fromRGB(255, 120, 120)
     end
 end)
@@ -1387,20 +1578,20 @@ end)
 btnToggle.MouseButton1Click:Connect(function()
     if teleportEnabled then
         teleportEnabled = false
-        statusLabel.Text = "Status: Off | Objetivo: " .. (jugadorSeleccionado and jugadorSeleccionado.Name or "Ninguno")
+        statusLabel.Text = T("Status: Off | Objetivo: ") .. (jugadorSeleccionado and jugadorSeleccionado.Name or "Ninguno")
         statusLabel.TextColor3 = Color3.fromRGB(255, 120, 120)
         restaurarPosicionOriginal()
     else
         if not hayObjetivosActivos() then
-            statusLabel.Text = "¡Selecciona un jugador primero!"
+            statusLabel.Text = T("¡Selecciona un jugador primero!")
             statusLabel.TextColor3 = Color3.fromRGB(255, 120, 120)
             return
         end
         teleportEnabled = true
         if seleccionMultipleActiva then
-            statusLabel.Text = "✅ TP visual ON x" .. contarSeleccionados()
+            statusLabel.Text = T("✅ TP visual ON x") .. contarSeleccionados()
         else
-            statusLabel.Text = "✅ Activo | Objetivo: " .. jugadorSeleccionado.Name
+            statusLabel.Text = T("✅ Activo | Objetivo: ") .. jugadorSeleccionado.Name
         end
         statusLabel.TextColor3 = Color3.fromRGB(180, 255, 230)
     end
@@ -1417,4 +1608,13 @@ end)
 task.wait(0.3)
 actualizarListaJugadores()
 
-print("✅ AA.toki v33 (death mode lento + fix pestañas) cargado correctamente")
+
+-- 🌐 Aplicar el idioma detectado a todo el texto estático de la GUI
+for _, obj in ipairs(screenGui:GetDescendants()) do
+    if obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox") then
+        obj.Text = T(obj.Text)
+        if obj:IsA("TextBox") then obj.PlaceholderText = T(obj.PlaceholderText) end
+    end
+end
+
+print("✅ AA.toki v35 (botones pequeños, idioma=" .. IDIOMA .. ") cargado correctamente")
