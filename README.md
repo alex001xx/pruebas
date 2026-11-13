@@ -47,9 +47,44 @@ local function detectarIdiomaAuto()
 end
 
 local IDIOMAS_SOPORTADOS = { es = true, en = true, ja = true, zh = true, pt = true }
-local IDIOMA = IDIOMA_FORZADO or detectarIdiomaAuto()
+local IDIOMA = detectarIdiomaAuto()
 if not IDIOMAS_SOPORTADOS[IDIOMA] then IDIOMA = "en" end
-print("🌐 AA.toki — idioma detectado:", IDIOMA)
+
+-- ==================================================
+-- 💾 PERSISTENCIA DEL IDIOMA (recuerda el último que eligieron con 🌐)
+-- Se guarda en _G (misma sesión de juego) y en archivo (entre ejecuciones).
+-- Solo se sobrescribe cuando el usuario toca el botón 🌐.
+-- ==================================================
+local ARCHIVO_IDIOMA = "aatoki_idioma.txt"
+
+local function cargarIdiomaGuardado()
+	-- 1) _G: persiste si vuelven a ejecutar el script en la misma partida
+	if _G.AATOKI_IDIOMA and IDIOMAS_SOPORTADOS[_G.AATOKI_IDIOMA] then
+		return _G.AATOKI_IDIOMA
+	end
+	-- 2) Archivo: persiste aunque cierren y vuelvan a abrir el juego
+	local ok, contenido = pcall(function()
+		if readfile then return readfile(ARCHIVO_IDIOMA) end
+		return nil
+	end)
+	if ok and type(contenido) == "string" and contenido ~= "" then
+		local cod = normalizarCodigo(contenido)
+		if cod and IDIOMAS_SOPORTADOS[cod] then return cod end
+	end
+	return nil
+end
+
+local function guardarIdioma(cod)
+	_G.AATOKI_IDIOMA = cod
+	pcall(function()
+		if writefile then writefile(ARCHIVO_IDIOMA, cod) end
+	end)
+end
+
+local idiomaGuardado = cargarIdiomaGuardado()
+if idiomaGuardado then IDIOMA = idiomaGuardado end
+if IDIOMA_FORZADO then IDIOMA = IDIOMA_FORZADO end -- override manual del desarrollador gana
+print("🌐 AA.toki — idioma:", IDIOMA, idiomaGuardado and "(recordado)" or "(auto)")
 
 -- ==================================================
 -- 📚 TABLAS DE TRADUCCIÓN (COMPLETADAS)
@@ -1683,6 +1718,7 @@ btnIdioma.MouseButton1Click:Connect(function()
 	end
 	idx = idx % #ORDEN_IDIOMAS + 1
 	IDIOMA = ORDEN_IDIOMAS[idx]
+	guardarIdioma(IDIOMA) -- 💾 recuerda este idioma para la próxima ejecución
 	aplicarIdiomaATodo()
 	refrescarTextosDinamicos()
 	statusLabel.Text = "🌐 " .. IDIOMA:upper()
@@ -1690,4 +1726,4 @@ btnIdioma.MouseButton1Click:Connect(function()
 	print("🌐 Idioma cambiado a:", IDIOMA)
 end)
 
-print("✅ AA.toki v36 (botones pequeños + traductor FIX, idioma=" .. IDIOMA .. ") cargado correctamente")
+print("✅ AA.toki v37 (botones pequeños + traductor FIX + idioma persistente, idioma=" .. IDIOMA .. ") cargado correctamente")
