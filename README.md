@@ -1,6 +1,5 @@
-
 -- ==================================================
--- 📋 AA.toki | v38 (UNA SOLA PESTAÑA, versión limpia)
+-- 📋 AA.toki | v39 (UNA SOLA PESTAÑA, botones en filas de 2)
 -- Eliminado: pestaña 2/scooter, AUTOPISAR, AUTOAGARRE,
 --            HITBOX expander y DEATH mode.
 -- Conservado: TP visual (objetivo/múltiple), selección manual +
@@ -31,7 +30,7 @@ local DISTANCIA_TP_GUARDADO = -500
 -- 📏 DIMENSIONES COMPACTAS (móvil 411px)
 -- ==================================================
 local ANCHO_BASE = 210
-local ALTO_BASE = 155
+local ALTO_BASE = 110
 local MIN_ANCHO = 110
 local MIN_ALTO_FRAME = 50
 local ALTO_TITULO = 17
@@ -246,45 +245,12 @@ estilizarBoton(btnManualOK)
 
 local btnSeleccionarCercano, btnToggleLista = filaDosBotones(3, 18, "🔍 Cercano", "📋 Lista", 7)
 
-local btnToggle = Instance.new("TextButton")
-btnToggle.Size = UDim2.new(1, 0, 0, 20)
-btnToggle.LayoutOrder = 4
-btnToggle.Text = "✅ ACTIVAR"
-btnToggle.Font = Enum.Font.GothamBold
-btnToggle.TextSize = 8
-btnToggle.ZIndex = 3
-btnToggle.Parent = content
-estilizarBoton(btnToggle)
+-- Fila de 2: ✅ ACTIVAR | ☑️ SELECCIÓN MÚLTIPLE
+local btnToggle, btnSeleccionMultiple = filaDosBotones(4, 20, "✅ ACTIVAR", "☑️ SELECCIÓN MÚLTIPLE: OFF", 7)
+btnSeleccionMultiple.TextSize = 6 -- texto más largo, más pequeño para que quepa
 
-local btnSeleccionMultiple = Instance.new("TextButton")
-btnSeleccionMultiple.Size = UDim2.new(1, 0, 0, 20)
-btnSeleccionMultiple.LayoutOrder = 5
-btnSeleccionMultiple.Text = "☑️ SELECCIÓN MÚLTIPLE: OFF"
-btnSeleccionMultiple.Font = Enum.Font.GothamBold
-btnSeleccionMultiple.TextSize = 7
-btnSeleccionMultiple.ZIndex = 3
-btnSeleccionMultiple.Parent = content
-estilizarBoton(btnSeleccionMultiple)
-
-local btnTPGuardar = Instance.new("TextButton")
-btnTPGuardar.Size = UDim2.new(1, 0, 0, 20)
-btnTPGuardar.LayoutOrder = 6
-btnTPGuardar.Text = "💾 TP -500"
-btnTPGuardar.Font = Enum.Font.GothamBold
-btnTPGuardar.TextSize = 8
-btnTPGuardar.ZIndex = 3
-btnTPGuardar.Parent = content
-estilizarBoton(btnTPGuardar)
-
-local btnAbrazo = Instance.new("TextButton")
-btnAbrazo.Size = UDim2.new(1, 0, 0, 20)
-btnAbrazo.LayoutOrder = 7
-btnAbrazo.Text = "🎯 ABRAZO BUG"
-btnAbrazo.Font = Enum.Font.GothamBold
-btnAbrazo.TextSize = 7
-btnAbrazo.ZIndex = 3
-btnAbrazo.Parent = content
-estilizarBoton(btnAbrazo)
+-- Fila de 2: 💾 TP -500 | 🎯 ABRAZO BUG
+local btnTPGuardar, btnAbrazo = filaDosBotones(6, 20, "💾 TP -500", "🎯 ABRAZO BUG", 7)
 
 local areaLista = Instance.new("Frame")
 areaLista.Name = "AreaLista"
@@ -876,4 +842,4 @@ end)
 task.wait(0.3)
 actualizarListaJugadores()
 
-print("✅ AA.toki v38 (una pestaña, limpio, botones pequeños) cargado correctamente")
+print("✅ AA.toki v39 (una pestaña, botones en filas de 2) cargado correctamente")
