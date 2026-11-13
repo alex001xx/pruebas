@@ -1,325 +1,25 @@
 -- ==================================================
--- 📋 AA.toki | v36 (botones aún más pequeños + traductor FIX)
--- - UI reducida para móvil 411px (ancho 210, botones 18-20, texto 7-8)
--- - Traductor corregido: detección por LocalizationService (Roblox + Sistema)
---   con fallback a Player.LocaleId y a "en". NUNCA más el script se rompe
---   por acceder a una propiedad que no existe (todo va en pcall).
--- - Botón 🌐 en la barra superior para cambiar de idioma manualmente:
---   ES → EN → PT → JA → ZH (cambia TODO el texto al instante).
--- - Completadas las claves que faltaban en las tablas de JA/ZH/PT
---   (separadores, 💾 TP -500, 🎯 ABRAZO BUG, 🛴 SCOOTER, 💀 DEATH, etc.).
+-- 📋 AA.toki | v30.1 (botones pequeños p/móvil 411px + FIX PESTAÑAS)
+-- - GUI reducida al mismo tamaño compacto que la otra versión.
+-- - FIX PESTAÑAS: "content" ahora es forward-declared y NO se redeclara
+--   con "local" después (antes, al tocar una pestaña, content era nil y
+--   el script fallaba silenciosamente, así que no cambiaba de pestaña).
 -- ==================================================
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local LocalizationService = game:GetService("LocalizationService")
-
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
--- ==================================================
--- 🌐 IDIOMA — DETECCIÓN ROBUSTA + OVERRIDE MANUAL
--- ==================================================
--- Si quieres forzar un idioma SIN depender de la detección automática,
--- pon aquí: "es", "en", "pt", "ja" o "zh". En nil = automático.
-local IDIOMA_FORZADO = nil
-
-local function normalizarCodigo(s)
-	if type(s) ~= "string" or s == "" then return nil end
-	s = s:lower():gsub("-", "_"):gsub("%s+", "")
-	if #s < 2 then return nil end
-	return s:sub(1, 2)
-end
-
-local function detectarIdiomaAuto()
-	local ok, id, cod
-	-- 1) Idioma elegido DENTRO de Roblox (el más fiable)
-	ok, id = pcall(function() return LocalizationService.RobloxLocaleId end)
-	if ok then cod = normalizarCodigo(id); if cod then return cod end end
-	-- 2) Idioma del sistema operativo / dispositivo
-	ok, id = pcall(function() return LocalizationService.SystemLocaleId end)
-	if ok then cod = normalizarCodigo(id); if cod then return cod end end
-	-- 3) Fallback clásico (algunos ejecutores lo devuelven nil; pcall evita el crash)
-	ok, id = pcall(function() return LocalPlayer.LocaleId end)
-	if ok then cod = normalizarCodigo(id); if cod then return cod end end
-	return "en"
-end
-
-local IDIOMAS_SOPORTADOS = { es = true, en = true, ja = true, zh = true, pt = true }
-local IDIOMA = detectarIdiomaAuto()
-if not IDIOMAS_SOPORTADOS[IDIOMA] then IDIOMA = "en" end
-
--- ==================================================
--- 💾 PERSISTENCIA DEL IDIOMA (recuerda el último que eligieron con 🌐)
--- Se guarda en _G (misma sesión de juego) y en archivo (entre ejecuciones).
--- Solo se sobrescribe cuando el usuario toca el botón 🌐.
--- ==================================================
-local ARCHIVO_IDIOMA = "aatoki_idioma.txt"
-
-local function cargarIdiomaGuardado()
-	-- 1) _G: persiste si vuelven a ejecutar el script en la misma partida
-	if _G.AATOKI_IDIOMA and IDIOMAS_SOPORTADOS[_G.AATOKI_IDIOMA] then
-		return _G.AATOKI_IDIOMA
-	end
-	-- 2) Archivo: persiste aunque cierren y vuelvan a abrir el juego
-	local ok, contenido = pcall(function()
-		if readfile then return readfile(ARCHIVO_IDIOMA) end
-		return nil
-	end)
-	if ok and type(contenido) == "string" and contenido ~= "" then
-		local cod = normalizarCodigo(contenido)
-		if cod and IDIOMAS_SOPORTADOS[cod] then return cod end
-	end
-	return nil
-end
-
-local function guardarIdioma(cod)
-	_G.AATOKI_IDIOMA = cod
-	pcall(function()
-		if writefile then writefile(ARCHIVO_IDIOMA, cod) end
-	end)
-end
-
-local idiomaGuardado = cargarIdiomaGuardado()
-if idiomaGuardado then IDIOMA = idiomaGuardado end
-if IDIOMA_FORZADO then IDIOMA = IDIOMA_FORZADO end -- override manual del desarrollador gana
-print("🌐 AA.toki — idioma:", IDIOMA, idiomaGuardado and "(recordado)" or "(auto)")
-
--- ==================================================
--- 📚 TABLAS DE TRADUCCIÓN (COMPLETADAS)
--- ==================================================
-local TR = {
-	en = {
-		["📋 Principal"] = "📋 Main",
-		["➕ Adicionales"] = "➕ Extras",
-		["Status: Off | Objetivo: Ninguno"] = "Status: Off | Target: None",
-		["Usuario o apodo..."] = "Username or nickname...",
-		["🔍 Cercano"] = "🔍 Nearest",
-		["📋 Lista"] = "📋 List",
-		["📋 Cerrar"] = "📋 Close",
-		["✅ ACTIVAR"] = "✅ ENABLE",
-		["❌ DESACTIVAR"] = "❌ DISABLE",
-		["HITBOX: OFF"] = "HITBOX: OFF",
-		["HITBOX ON: sin objetivo"] = "HITBOX ON: no target",
-		["AVATAR NO ENCONTRADO"] = "AVATAR NOT FOUND",
-		["SELECCIONA ALGUIEN"] = "SELECT SOMEONE",
-		["☑️ SELECCIÓN MÚLTIPLE: OFF"] = "☑️ MULTI-SELECT: OFF",
-		["☑️ MÚLTIPLE: ON ("] = "☑️ MULTI: ON (",
-		["💀 DEATH 0.8s"] = "💀 DEATH 0.8s",
-		["⚡ ACTIVO 0.8s"] = "⚡ ACTIVE 0.8s",
-		["⏳ ESPERA..."] = "⏳ WAIT...",
-		["⏳ EN ESPERA..."] = "⏳ WAITING...",
-		["🛑 DETENER"] = "🛑 STOP",
-		["Equipa sola la scooter\nde tu mochila automáticamente"] = "Auto-equips the scooter\nfrom your backpack",
-		["🛴 SCOOTER: OFF"] = "🛴 SCOOTER: OFF",
-		["🛴 SCOOTER: ON"] = "🛴 SCOOTER: ON",
-		["❌ Sin personaje"] = "❌ No character",
-		["✅ Posición guardada!"] = "✅ Position saved!",
-		["✅ ¡TP -500!"] = "✅ TP -500!",
-		["Status: Listo"] = "Status: Ready",
-		["❌ Nadie cerca"] = "❌ Nobody near",
-		["Fijado: "] = "Locked: ",
-		["¡Selecciona un jugador primero!"] = "Select a player first!",
-		["No se encontró jugador"] = "Player not found",
-		["❌ No se encontró: "] = "❌ Not found: ",
-		["Objetivo: "] = "Target: ",
-		["✅ Activo | Objetivo: "] = "✅ Active | Target: ",
-		["Status: Off | Objetivo: "] = "Status: Off | Target: ",
-		[" salió — esperando reconexión..."] = " left — waiting for reconnection...",
-		["🔄 Re-seleccionado: "] = "🔄 Re-selected: ",
-		["🔄 Re-añadido: "] = "🔄 Re-added: ",
-		["✓ Añadido: "] = "✓ Added: ",
-		["➖ Quitado: "] = "➖ Removed: ",
-		[" (total "] = " (total ",
-		["☑️ Modo múltiple ON — toca jugadores en la lista"] = "☑️ Multi mode ON — tap players in list",
-		["HITBOX ON x"] = "HITBOX ON x",
-		["✅ TP visual ON x"] = "✅ Visual TP ON x",
-		[" • TÚ"] = " • YOU",
-		["Ninguno"] = "None",
-		["✓ Añadido cercano: "] = "✓ Nearest added: ",
-		["── 🖤 HITBOX EXPANDER (100K) ──"] = "── 🖤 HITBOX EXPAND (100K) ──",
-		["── 🛴 SCOOTER ──"] = "── 🛴 SCOOTER ──",
-		["💾 TP -500"] = "💾 TP -500",
-		["🎯 ABRAZO BUG"] = "🎯 HUG BUG",
-	},
-	ja = {
-		["📋 Principal"] = "📋 メイン",
-		["➕ Adicionales"] = "➕ 追加",
-		["Status: Off | Objetivo: Ninguno"] = "状態: オフ | 対象: なし",
-		["Usuario o apodo..."] = "ユーザー名 or ニックネーム...",
-		["🔍 Cercano"] = "🔍 最寄り",
-		["📋 Lista"] = "📋 リスト",
-		["📋 Cerrar"] = "📋 閉じる",
-		["✅ ACTIVAR"] = "✅ 有効化",
-		["❌ DESACTIVAR"] = "❌ 無効化",
-		["HITBOX: OFF"] = "ヒットボックス: オフ",
-		["HITBOX ON: sin objetivo"] = "ヒットボックスON: 対象なし",
-		["AVATAR NO ENCONTRADO"] = "アバターが見つかりません",
-		["SELECCIONA ALGUIEN"] = "誰か選んでください",
-		["☑️ SELECCIÓN MÚLTIPLE: OFF"] = "☑️ 複数選択: オフ",
-		["☑️ MÚLTIPLE: ON ("] = "☑️ 複数: ON (",
-		["💀 DEATH 0.8s"] = "💀 デス 0.8秒",
-		["⚡ ACTIVO 0.8s"] = "⚡ アクティブ 0.8秒",
-		["⏳ ESPERA..."] = "⏳ 待機中...",
-		["⏳ EN ESPERA..."] = "⏳ 待機中...",
-		["🛑 DETENER"] = "🛑 停止",
-		["Equipa sola la scooter\nde tu mochila automáticamente"] = "リュックからスクーターを\n自動装備します",
-		["🛴 SCOOTER: OFF"] = "🛴 スクーター: オフ",
-		["🛴 SCOOTER: ON"] = "🛴 スクーター: オン",
-		["❌ Sin personaje"] = "❌ キャラクターなし",
-		["✅ Posición guardada!"] = "✅ 位置を保存!",
-		["✅ ¡TP -500!"] = "✅ TP -500!",
-		["Status: Listo"] = "状態: 準備完了",
-		["❌ Nadie cerca"] = "❌ 近くに誰もいません",
-		["Fijado: "] = "固定: ",
-		["¡Selecciona un jugador primero!"] = "先にプレイヤーを選んでください!",
-		["No se encontró jugador"] = "プレイヤーが見つかりません",
-		["❌ No se encontró: "] = "❌ 見つかりません: ",
-		["Objetivo: "] = "対象: ",
-		["✅ Activo | Objetivo: "] = "✅ アクティブ | 対象: ",
-		["Status: Off | Objetivo: "] = "状態: オフ | 対象: ",
-		[" salió — esperando reconexión..."] = " が退出 — 再接続待ち...",
-		["🔄 Re-seleccionado: "] = "🔄 再選択: ",
-		["🔄 Re-añadido: "] = "🔄 再追加: ",
-		["✓ Añadido: "] = "✓ 追加: ",
-		["➖ Quitado: "] = "➖ 削除: ",
-		[" (total "] = " (合計 ",
-		["☑️ Modo múltiple ON — toca jugadores en la lista"] = "☑️ 複数モードON — リストをタップ",
-		["HITBOX ON x"] = "ヒットボックスON x",
-		["✅ TP visual ON x"] = "✅ 視覚TP ON x",
-		[" • TÚ"] = " • あなた",
-		["Ninguno"] = "なし",
-		["✓ Añadido cercano: "] = "✓ 最寄りを追加: ",
-		["── 🖤 HITBOX EXPANDER (100K) ──"] = "── 🖤 ヒットボックス拡張 (100K) ──",
-		["── 🛴 SCOOTER ──"] = "── 🛴 スクーター ──",
-		["💾 TP -500"] = "💾 TP -500",
-		["🎯 ABRAZO BUG"] = "🎯 ハグバグ",
-	},
-	zh = {
-		["📋 Principal"] = "📋 主页",
-		["➕ Adicionales"] = "➕ 附加",
-		["Status: Off | Objetivo: Ninguno"] = "状态: 关 | 目标: 无",
-		["Usuario o apodo..."] = "用户名或昵称...",
-		["🔍 Cercano"] = "🔍 最近",
-		["📋 Lista"] = "📋 列表",
-		["📋 Cerrar"] = "📋 关闭",
-		["✅ ACTIVAR"] = "✅ 启用",
-		["❌ DESACTIVAR"] = "❌ 禁用",
-		["HITBOX: OFF"] = "命中框: 关",
-		["HITBOX ON: sin objetivo"] = "命中框开: 无目标",
-		["AVATAR NO ENCONTRADO"] = "未找到角色",
-		["SELECCIONA ALGUIEN"] = "请选择某人",
-		["☑️ SELECCIÓN MÚLTIPLE: OFF"] = "☑️ 多选: 关",
-		["☑️ MÚLTIPLE: ON ("] = "☑️ 多选: 开 (",
-		["💀 DEATH 0.8s"] = "💀 死亡 0.8秒",
-		["⚡ ACTIVO 0.8s"] = "⚡ 激活 0.8秒",
-		["⏳ ESPERA..."] = "⏳ 等待中...",
-		["⏳ EN ESPERA..."] = "⏳ 等待中...",
-		["🛑 DETENER"] = "🛑 停止",
-		["Equipa sola la scooter\nde tu mochila automáticamente"] = "自动从背包装备\n滑板车",
-		["🛴 SCOOTER: OFF"] = "🛴 滑板车: 关",
-		["🛴 SCOOTER: ON"] = "🛴 滑板车: 开",
-		["❌ Sin personaje"] = "❌ 无角色",
-		["✅ Posición guardada!"] = "✅ 位置已保存!",
-		["✅ ¡TP -500!"] = "✅ TP -500!",
-		["Status: Listo"] = "状态: 就绪",
-		["❌ Nadie cerca"] = "❌ 附近没人",
-		["Fijado: "] = "锁定: ",
-		["¡Selecciona un jugador primero!"] = "请先选择玩家!",
-		["No se encontró jugador"] = "未找到玩家",
-		["❌ No se encontró: "] = "❌ 未找到: ",
-		["Objetivo: "] = "目标: ",
-		["✅ Activo | Objetivo: "] = "✅ 已激活 | 目标: ",
-		["Status: Off | Objetivo: "] = "状态: 关 | 目标: ",
-		[" salió — esperando reconexión..."] = " 已离开 — 等待重连...",
-		["🔄 Re-seleccionado: "] = "🔄 重新选中: ",
-		["🔄 Re-añadido: "] = "🔄 重新添加: ",
-		["✓ Añadido: "] = "✓ 已添加: ",
-		["➖ Quitado: "] = "➖ 已移除: ",
-		[" (total "] = " (共 ",
-		["☑️ Modo múltiple ON — toca jugadores en la lista"] = "☑️ 多选模式开 — 点列表玩家",
-		["HITBOX ON x"] = "命中框开 x",
-		["✅ TP visual ON x"] = "✅ 视觉传送开 x",
-		[" • TÚ"] = " • 你",
-		["Ninguno"] = "无",
-		["✓ Añadido cercano: "] = "✓ 已添加最近: ",
-		["── 🖤 HITBOX EXPANDER (100K) ──"] = "── 🖤 命中框扩大 (100K) ──",
-		["── 🛴 SCOOTER ──"] = "── 🛴 滑板车 ──",
-		["💾 TP -500"] = "💾 TP -500",
-		["🎯 ABRAZO BUG"] = "🎯 拥抱BUG",
-	},
-	pt = {
-		["📋 Principal"] = "📋 Principal",
-		["➕ Adicionales"] = "➕ Extras",
-		["Status: Off | Objetivo: Ninguno"] = "Status: Off | Alvo: Nenhum",
-		["Usuario o apodo..."] = "Usuário ou apelido...",
-		["🔍 Cercano"] = "🔍 Próximo",
-		["📋 Lista"] = "📋 Lista",
-		["📋 Cerrar"] = "📋 Fechar",
-		["✅ ACTIVAR"] = "✅ ATIVAR",
-		["❌ DESACTIVAR"] = "❌ DESATIVAR",
-		["HITBOX: OFF"] = "HITBOX: OFF",
-		["HITBOX ON: sin objetivo"] = "HITBOX ON: sem alvo",
-		["AVATAR NO ENCONTRADO"] = "AVATAR NÃO ENCONTRADO",
-		["SELECCIONA ALGUIEN"] = "SELECIONE ALGUÉM",
-		["☑️ SELECCIÓN MÚLTIPLE: OFF"] = "☑️ SELEÇÃO MÚLTIPLA: OFF",
-		["☑️ MÚLTIPLE: ON ("] = "☑️ MÚLTIPLO: ON (",
-		["💀 DEATH 0.8s"] = "💀 DEATH 0.8s",
-		["⚡ ACTIVO 0.8s"] = "⚡ ATIVO 0.8s",
-		["⏳ ESPERA..."] = "⏳ ESPERA...",
-		["⏳ EN ESPERA..."] = "⏳ AGUARDANDO...",
-		["🛑 DETENER"] = "🛑 PARAR",
-		["Equipa sola la scooter\nde tu mochila automáticamente"] = "Equipa a scooter sozinha\ndo inventário automaticamente",
-		["🛴 SCOOTER: OFF"] = "🛴 SCOOTER: OFF",
-		["🛴 SCOOTER: ON"] = "🛴 SCOOTER: ON",
-		["❌ Sin personaje"] = "❌ Sem personagem",
-		["✅ Posición guardada!"] = "✅ Posição salva!",
-		["✅ ¡TP -500!"] = "✅ TP -500!",
-		["Status: Listo"] = "Status: Pronto",
-		["❌ Nadie cerca"] = "❌ Ninguém por perto",
-		["Fijado: "] = "Fixado: ",
-		["¡Selecciona un jugador primero!"] = "Selecione um jogador primeiro!",
-		["No se encontró jugador"] = "Jogador não encontrado",
-		["❌ No se encontró: "] = "❌ Não encontrado: ",
-		["Objetivo: "] = "Alvo: ",
-		["✅ Activo | Objetivo: "] = "✅ Ativo | Alvo: ",
-		["Status: Off | Objetivo: "] = "Status: Off | Alvo: ",
-		[" salió — esperando reconexión..."] = " saiu — aguardando reconexão...",
-		["🔄 Re-seleccionado: "] = "🔄 Re-selecionado: ",
-		["🔄 Re-añadido: "] = "🔄 Re-adicionado: ",
-		["✓ Añadido: "] = "✓ Adicionado: ",
-		["➖ Quitado: "] = "➖ Removido: ",
-		[" (total "] = " (total ",
-		["☑️ Modo múltiple ON — toca jugadores en la lista"] = "☑️ Modo múltiplo ON — toque na lista",
-		["HITBOX ON x"] = "HITBOX ON x",
-		["✅ TP visual ON x"] = "✅ TP visual ON x",
-		[" • TÚ"] = " • VOCÊ",
-		["Ninguno"] = "Nenhum",
-		["✓ Añadido cercano: "] = "✓ Adicionado próximo: ",
-		["── 🖤 HITBOX EXPANDER (100K) ──"] = "── 🖤 HITBOX EXPANDER (100K) ──",
-		["── 🛴 SCOOTER ──"] = "── 🛴 SCOOTER ──",
-		["💾 TP -500"] = "💾 TP -500",
-		["🎯 ABRAZO BUG"] = "🎯 ABRAÇO BUG",
-	},
-}
--- Español = idioma base (las claves ya están en español); si IDIOMA=="es", T() devuelve la clave.
-
-local function T(texto)
-	local t = TR[IDIOMA]
-	if t and t[texto] ~= nil then return t[texto] end
-	return texto
-end
-
--- ==================================================
--- 🎨 COLORES
--- ==================================================
 local COLOR_TEXTO = Color3.fromRGB(230, 230, 230)
 local COLOR_BARRA = Color3.fromRGB(35, 35, 35)
 local TRANSPARENCIA_BARRA = 0.35
+
 local BTN_AQUA_ACTIVA = Color3.fromRGB(120, 240, 210)
 local COLOR_CAFE = Color3.fromRGB(75, 48, 22)
 local COLOR_BORDE = Color3.fromRGB(255, 255, 255)
+
 local COLOR_FONDO_LISTA = Color3.fromRGB(25, 25, 25)
 local COLOR_SELECCIONADO = Color3.fromRGB(60, 60, 60)
 local COLOR_ENTRY = Color3.fromRGB(40, 40, 40)
@@ -330,18 +30,18 @@ local TAMANO_HITBOX = 100000
 local DISTANCIA_TP_GUARDADO = -500
 
 -- ==================================================
--- 📏 DIMENSIONES AÚN MÁS PEQUEÑAS (móvil 411px)
+-- 📏 DIMENSIONES COMPACTAS (móvil 411px)
 -- ==================================================
-local ANCHO_BASE = 210          -- antes 230 (v35) / 300 (original)
-local ALTO_BASE = 175           -- antes 200 / 270
+local ANCHO_BASE = 210
+local ALTO_BASE = 195          -- un poco más alto por la fila AUTOPISAR/AGARRE extra
 local MIN_ANCHO = 110
 local MIN_ALTO_FRAME = 55
-local ALTO_TITULO = 17          -- barra superior
-local ALTO_TABS = 15            -- barra de pestañas
+local ALTO_TITULO = 17         -- barra superior (antes 22)
+local ALTO_TABS = 15           -- barra de pestañas (antes 24)
 local ALTO_SUPERIOR = ALTO_TITULO + ALTO_TABS
-local ALTO_ENTRADA_LISTA = 20   -- antes 22 / 30
-local ALTO_LISTA_ABIERTA = 120  -- antes 140 / 200
-local RADIO_ESQUINA = 2         -- antes 3 / 4
+local ALTO_ENTRADA_LISTA = 20  -- antes 38
+local ALTO_LISTA_ABIERTA = 140 -- antes 245
+local RADIO_ESQUINA = 3        -- antes 4
 
 local ID_FONDO = "rbxassetid://79902517665758"
 
@@ -376,9 +76,6 @@ bgImage.Active = false
 bgImage.Selectable = false
 bgImage.Parent = framePrincipal
 
--- ==================================================
--- 🏷️ BARRA SUPERIOR (título + 🌐 idioma + minimizar)
--- ==================================================
 local barra = Instance.new("Frame")
 barra.Size = UDim2.new(1, 0, 0, ALTO_TITULO)
 barra.BackgroundColor3 = COLOR_BARRA
@@ -389,7 +86,7 @@ barra.ZIndex = 10
 barra.Parent = framePrincipal
 
 local tituloBarra = Instance.new("TextLabel")
-tituloBarra.Size = UDim2.new(1, -(ALTO_TITULO * 2 + 8), 1, 0)
+tituloBarra.Size = UDim2.new(1, -(ALTO_TITULO + 8), 1, 0)
 tituloBarra.Position = UDim2.new(0, 4, 0, 0)
 tituloBarra.BackgroundTransparency = 1
 tituloBarra.Text = "AA.toki"
@@ -399,19 +96,6 @@ tituloBarra.TextSize = 7
 tituloBarra.TextXAlignment = Enum.TextXAlignment.Left
 tituloBarra.ZIndex = 11
 tituloBarra.Parent = barra
-
--- 🌐 Botón de idioma (cambia ES→EN→PT→JA→ZH al tocarlo)
-local btnIdioma = Instance.new("TextButton")
-btnIdioma.Size = UDim2.new(0, ALTO_TITULO, 0, ALTO_TITULO)
-btnIdioma.Position = UDim2.new(1, -(ALTO_TITULO * 2), 0, 0)
-btnIdioma.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-btnIdioma.BackgroundTransparency = 0.3
-btnIdioma.Text = "🌐"
-btnIdioma.TextColor3 = Color3.fromRGB(255, 255, 255)
-btnIdioma.Font = Enum.Font.GothamBold
-btnIdioma.TextSize = 8
-btnIdioma.ZIndex = 11
-btnIdioma.Parent = barra
 
 local btnMin = Instance.new("TextButton")
 btnMin.Size = UDim2.new(0, ALTO_TITULO, 0, ALTO_TITULO)
@@ -426,9 +110,9 @@ btnMin.ZIndex = 11
 btnMin.Parent = barra
 
 -- ==================================================
--- ➕ BARRA DE PESTAÑAS
+-- ➕ BARRA DE PESTAÑAS (FIX: content Y contentAdicionales forward-declared)
 -- ==================================================
-local content, contentAdicionales
+local content, contentAdicionales -- forward declarations (se crean abajo)
 local tabActiva = "principal"
 
 local barraTabs = Instance.new("Frame")
@@ -493,6 +177,9 @@ end)
 
 resaltarTab("principal")
 
+-- FIX: SIN "local" — se asigna a la variable forward-declarada arriba.
+-- (Con "local" aquí se creaba una variable NUEVA y los handlers de pestañas
+--  seguían referenciando la vieja, que seguía en nil.)
 content = Instance.new("ScrollingFrame")
 content.Name = "Content"
 content.BackgroundTransparency = 1
@@ -673,6 +360,8 @@ btnSeleccionMultiple.ZIndex = 3
 btnSeleccionMultiple.Parent = content
 estilizarBoton(btnSeleccionMultiple)
 
+local btnAutopisar, btnAutoagarre = filaDosBotones(8, 20, "⚡ AUTOPISAR: OFF", "🫵 AGARRE: OFF", 7)
+
 local btnTPGuardar, btnDeath = filaDosBotones(9, 20, "💾 TP -500", "💀 DEATH 0.8s", 7)
 
 local btnAbrazo = Instance.new("TextButton")
@@ -774,7 +463,10 @@ btnScooter.ZIndex = 3
 btnScooter.Parent = contentAdicionales
 estilizarBoton(btnScooter)
 
-local NOMBRES_SCOOTER = { "scoot", "scooter", "scuter", "escooter", "patin", "patineta", "monopatin", "hoverboard" }
+local NOMBRES_SCOOTER = {
+	"scoot", "scooter", "scuter", "escooter",
+	"patin", "patineta", "monopatin", "hoverboard"
+}
 local scooterActivo = false
 local scooterThread = nil
 
@@ -812,14 +504,17 @@ end
 btnScooter.MouseButton1Click:Connect(function()
 	scooterActivo = not scooterActivo
 	if scooterActivo then
-		btnScooter.Text = T("🛴 SCOOTER: ON")
+		btnScooter.Text = "🛴 SCOOTER: ON"
 		bordeActivo(btnScooter, true)
 		scooterThread = task.spawn(function()
-			while scooterActivo do equiparScooter(); task.wait(0.5) end
+			while scooterActivo do
+				equiparScooter()
+				task.wait(0.5)
+			end
 		end)
 	else
 		if scooterThread then task.cancel(scooterThread); scooterThread = nil end
-		btnScooter.Text = T("🛴 SCOOTER: OFF")
+		btnScooter.Text = "🛴 SCOOTER: OFF"
 		bordeActivo(btnScooter, false)
 	end
 end)
@@ -901,9 +596,11 @@ btnMin.MouseButton1Click:Connect(function()
 	else
 		barraTabs.Visible = true
 		if tabActiva == "principal" then
-			content.Visible = true; contentAdicionales.Visible = false
+			content.Visible = true
+			contentAdicionales.Visible = false
 		else
-			content.Visible = false; contentAdicionales.Visible = true
+			content.Visible = false
+			contentAdicionales.Visible = true
 		end
 		gripResize.Visible = true
 		letraA.Visible = true
@@ -916,22 +613,28 @@ local jugadorSeleccionado = nil
 local teleportEnabled = false
 local listaAbierta = false
 local originalPositions = {}
+
 local hitboxActivo = false
 local hitboxConexion = nil
 local hitboxOriginalSize = {}
+
 local lastPosition = nil
+
 local autoMode = false
 local targetSaved = nil
+
+local deathActivo = false
+local deathConnection = nil
+local deathTimerTask = nil
+
 local entradasLista = {}
+
 local seleccionMultipleActiva = false
 local seleccionados = {}
+
 local pendingSingleName = nil
 local reconexionPendienteMulti = {}
 local UMBRAL_ARRASTRE = 10
-local INTERVALO_REMOTES = 0.25
-local INTERVALO_DIED = 0.20
-local deathIsActive = false
-local deathCicloActivo = false
 
 local function contarSeleccionados()
 	local c = 0
@@ -940,7 +643,9 @@ local function contarSeleccionados()
 end
 
 local function hayObjetivosActivos()
-	if seleccionMultipleActiva then return next(seleccionados) ~= nil end
+	if seleccionMultipleActiva then
+		return next(seleccionados) ~= nil
+	end
 	return jugadorSeleccionado ~= nil
 end
 
@@ -955,191 +660,152 @@ local function iterarObjetivos(fn)
 end
 
 -- ==================================================
--- 💀 DEATH MODE
+-- ⚡🫵💀 CACHÉ DE REMOTES
 -- ==================================================
-local IncluirPalabras = {
-	"death", "died", "kill", "damage", "dmg", "attack", "hit", "combat", "pvp", "fight", "strike", "slay",
-	"health", "hp", "hurt", "injure", "respawn", "revive", "regen", "heal", "spawn", "reset", "clear",
-	"release", "free", "unlock", "escape", "untrap", "liberate", "die", "destroy", "break", "drop",
-	"cancel", "stop", "end", "knockback", "stun", "paralyze", "push", "fling", "launch", "explode"
-}
-local ExcluirPalabras = {
-	"roulette", "spin", "wheel", "gacha", "ruleta", "footstep", "foot", "step", "trail", "particle",
-	"effect", "visual", "emote", "dance", "animation", "pose", "shop", "buy", "coin", "gem", "currency",
-	"money", "chat", "message", "notification", "popup", "music", "sound", "audio", "ambient", "join",
-	"leave", "invite", "friend", "cosmetic", "skin", "hat", "clothing", "quest", "mission", "task", "daily"
+local palabrasProhibidasAutopisar = {
+	"reset","die","death","respawn","kill",
+	"pvp","combat","attack","hit","damage",
+	"fight","strike","shoot","weapon","melee",
+	"health","hp","defense","shield","skill",
+	"ability","dodge","block","knock","stun",
+	"ruleta","spin","wheel","girar","giro",
+	"suerte","lottery","roulette","reward","premio"
 }
 
-local function DebeIncluirRemote(Nombre)
-	local NombreMinus = string.lower(Nombre)
-	for _, v in ipairs(ExcluirPalabras) do if NombreMinus:find(v) then return false end end
-	for _, v in ipairs(IncluirPalabras) do if NombreMinus:find(v) then return true end end
+local EXCLUIR_DEATH = {"stomp","pisar","pisada","step","stepped","suelo","floor","tile","baldosa","footstep"}
+local function debeExcluirDeath(nombre)
+	local n = string.lower(nombre)
+	for _, palabra in ipairs(EXCLUIR_DEATH) do
+		if string.find(n, palabra) then return true end
+	end
 	return false
 end
 
-local function ImpulsoSalvaje(Parte)
-	if not Parte then return end
-	local fuerza = 80000 + math.random(20000, 150000)
-	Parte.AssemblyLinearVelocity = Vector3.new(math.random(-10, 110), math.random(600, 1200), -fuerza * 0.5)
-end
+local safeRemotesAutopisar = {}
+local safeRemotesAutoagarre = {}
+local cachedDeathRemotes = {}
 
-local function RompeAgarresYLibera(Character)
-	local Humanoid = Character:FindFirstChildOfClass("Humanoid")
-	local RootPart = Character:FindFirstChild("HumanoidRootPart")
-	local misPartes = {}
-
-	if RootPart then
-		pcall(function() if RootPart:CanSetNetworkOwnership() then RootPart:SetNetworkOwner(LocalPlayer) end end)
-		pcall(function() RootPart.Anchored = false; RootPart.CanCollide = true; RootPart.Transparency = 0 end)
-		ImpulsoSalvaje(RootPart)
-	end
-
-	if Humanoid then
-		Humanoid.PlatformStand = false
-		Humanoid.Sit = false
-		Humanoid.AutoRotate = false
-		Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
-		Humanoid:SetStateEnabled(Enum.HumanoidStateType.Physics, false)
-		Humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
-		Humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
-		Humanoid:SetStateEnabled(Enum.HumanoidStateType.GettingUp, false)
-		Humanoid:SetStateEnabled(Enum.HumanoidStateType.Climbing, false)
-		Humanoid:SetStateEnabled(Enum.HumanoidStateType.Dead, true)
-	end
-
-	for _, p in ipairs(Character:GetDescendants()) do
-		if p:IsA("BasePart") then
-			misPartes[p] = true
-			pcall(function() p.Transparency = 0; p.Anchored = false; p.CanCollide = true end)
-			ImpulsoSalvaje(p)
-		end
-	end
-
-	local listaDestruir = {
-		"WeldConstraint", "Weld", "Motor6D", "ManualWeld", "JointInstance", "RodConstraint", "RopeConstraint",
-		"SpringConstraint", "Constraint", "AlignPosition", "AlignOrientation", "HingeConstraint",
-		"BallSocketConstraint", "PrismaticConstraint", "CylindricalConstraint", "TorsionSpringConstraint",
-		"UniversalConstraint", "LineForce", "VectorForce", "Torque", "AngularVelocity", "LinearVelocity",
-		"BodyVelocity", "BodyForce", "BodyAngularVelocity", "BodyPosition", "BodyGyro", "Attachment",
-		"ParticleEmitter", "Sound"
-	}
-	for _, clase in ipairs(listaDestruir) do
-		for _, obj in ipairs(Character:GetDescendants()) do
-			if obj:IsA(clase) and not misPartes[obj] then pcall(function() obj:Destroy() end) end
-		end
-	end
-
-	for _, obj in ipairs(workspace:GetDescendants()) do
-		if obj:IsA("Constraint") or obj:IsA("WeldConstraint") or obj:IsA("Weld") or obj:IsA("JointInstance") then
-			local ok0, p0 = pcall(function() return obj.Part0 end)
-			local ok1, p1 = pcall(function() return obj.Part1 end)
-			if ok0 and ok1 and p0 and p1 and (misPartes[p0] or misPartes[p1]) then
-				pcall(function() obj:Destroy() end)
+local function escanearRemotes()
+	local tAutopisar, tAutoagarre, tDeath = {}, {}, {}
+	for _, desc in ipairs(ReplicatedStorage:GetDescendants()) do
+		if desc:IsA("RemoteEvent") then
+			local rName = desc.Name:lower()
+			if not debeExcluirDeath(desc.Name) then table.insert(tDeath, desc) end
+			if not (rName:find("reset") or rName:find("die") or rName:find("death") or rName:find("respawn") or rName:find("kill")) then
+				if #tAutoagarre < 15 then table.insert(tAutoagarre, desc) end
 			end
+			local prohibido = false
+			for _, p in ipairs(palabrasProhibidasAutopisar) do
+				if rName:find(p) then prohibido = true; break end
+			end
+			if not prohibido and #tAutopisar < 15 then table.insert(tAutopisar, desc) end
 		end
 	end
+	safeRemotesAutopisar = tAutopisar
+	safeRemotesAutoagarre = tAutoagarre
+	cachedDeathRemotes = tDeath
 end
 
-local function VidaCeroExtremo(Humanoid)
-	local function BucleVida()
-		if not deathIsActive or Humanoid.Health <= 0 or not Humanoid.Parent then return end
-		pcall(function()
-			Humanoid.Health = 0
-			Humanoid:TakeDamage(math.huge)
-			Humanoid:SetStateEnabled(Enum.HumanoidStateType.Dead, true)
-		end)
-		task.spawn(BucleVida)
+escanearRemotes()
+task.spawn(function()
+	while true do
+		task.wait(2)
+		local tDeath = {}
+		for _, desc in ipairs(ReplicatedStorage:GetDescendants()) do
+			if desc:IsA("RemoteEvent") and not debeExcluirDeath(desc.Name) then table.insert(tDeath, desc) end
+		end
+		cachedDeathRemotes = tDeath
 	end
-	for _ = 1, 8 do task.spawn(BucleVida) end
-end
+end)
 
-local function ReboteRemotesHiper(Character)
-	task.spawn(function()
-		while deathIsActive do
-			pcall(function()
-				for _, remote in ipairs(ReplicatedStorage:GetDescendants()) do
-					if remote:IsA("RemoteEvent") and DebeIncluirRemote(remote.Name) then
-						task.spawn(function() pcall(function() remote:FireServer(Character, "death", 0, math.huge, os.time()) end) end)
-					elseif remote:IsA("RemoteFunction") and DebeIncluirRemote(remote.Name) then
-						task.spawn(function() pcall(function() remote:InvokeServer(Character, "death", 0) end) end)
-					end
+local autopisarActivo = false
+local autopisarThread = nil
+local autoagarreActivo = false
+local autoagarreThread = nil
+
+btnAutopisar.MouseButton1Click:Connect(function()
+	autopisarActivo = not autopisarActivo
+	if autopisarActivo then
+		btnAutopisar.Text = "⚡ AUTOPISAR: ON"
+		bordeActivo(btnAutopisar, true)
+		autopisarThread = task.spawn(function()
+			while autopisarActivo do
+				local remotes = safeRemotesAutopisar
+				for i = 1, #remotes do
+					if not autopisarActivo then break end
+					pcall(function() remotes[i]:FireServer(true) end)
 				end
-			end)
-			task.wait(INTERVALO_REMOTES)
-		end
-	end)
-
-	task.spawn(function()
-		local Humanoid = Character:FindFirstChildOfClass("Humanoid")
-		while deathIsActive and Humanoid and Humanoid.Parent do
-			pcall(function() Humanoid.Died:Fire(); Humanoid.HealthChanged:Fire(0) end)
-			task.wait(INTERVALO_DIED)
-		end
-	end)
-end
-
-local function IniciarCicloDeath()
-	if not deathIsActive then return end
-	local Character = LocalPlayer.Character
-	if not Character then
-		pcall(function() LocalPlayer:LoadCharacter() end)
-		task.wait(0.1)
-		if deathIsActive then IniciarCicloDeath() end
-		return
-	end
-	local Humanoid = Character:FindFirstChildOfClass("Humanoid")
-	if not Humanoid then
-		task.wait(0.05); if deathIsActive then IniciarCicloDeath() end
-		return
-	end
-
-	ReboteRemotesHiper(Character)
-
-	local LiberarLoop = RunService.RenderStepped:Connect(function()
-		if not deathIsActive or Humanoid.Health <= 0 or not Humanoid.Parent then
-			LiberarLoop:Disconnect(); return
-		end
-		RompeAgarresYLibera(Character)
-	end)
-
-	VidaCeroExtremo(Humanoid)
-
-	local DiedConn = Humanoid.Died:Connect(function()
-		DiedConn:Disconnect()
-		LiberarLoop:Disconnect()
-		btnDeath.Text = T("⏳ EN ESPERA...")
-		LocalPlayer.CharacterAdded:Connect(function(NuevoPersonaje)
-			NuevoPersonaje:WaitForChild("Humanoid", 3)
-			task.wait(0.08)
-			if deathIsActive then IniciarCicloDeath() end
+				task.wait(0.3)
+			end
 		end)
-	end)
-end
+	else
+		if autopisarThread then task.cancel(autopisarThread); autopisarThread = nil end
+		btnAutopisar.Text = "⚡ AUTOPISAR: OFF"
+		bordeActivo(btnAutopisar, false)
+	end
+end)
 
-local function ActivarDeathPor08s()
-	if deathCicloActivo then return end
-	deathCicloActivo = true
-	deathIsActive = true
-	btnDeath.Text = T("⚡ ACTIVO 0.8s")
-	bordeActivo(btnDeath, true)
-	IniciarCicloDeath()
-	task.wait(0.8)
-	deathIsActive = false
-	deathCicloActivo = false
-	btnDeath.Text = T("💀 DEATH 0.8s")
+btnAutoagarre.MouseButton1Click:Connect(function()
+	autoagarreActivo = not autoagarreActivo
+	if autoagarreActivo then
+		btnAutoagarre.Text = "🫵 AGARRE: ON"
+		bordeActivo(btnAutoagarre, true)
+		autoagarreThread = task.spawn(function()
+			while autoagarreActivo do
+				local remotes = safeRemotesAutoagarre
+				for i = 1, #remotes do
+					if not autoagarreActivo then break end
+					pcall(function() remotes[i]:FireServer(true) end)
+				end
+				task.wait(0.3)
+			end
+		end)
+	else
+		if autoagarreThread then task.cancel(autoagarreThread); autoagarreThread = nil end
+		btnAutoagarre.Text = "🫵 AGARRE: OFF"
+		bordeActivo(btnAutoagarre, false)
+	end
+end)
+
+-- ==================================================
+-- 💀 DEATH = 0.8s POR CLIC
+-- ==================================================
+local function apagarDeath()
+	deathActivo = false
+	if deathConnection then deathConnection:Disconnect(); deathConnection = nil end
+	deathTimerTask = nil
+	btnDeath.Text = "💀 DEATH 0.8s"
 	bordeActivo(btnDeath, false)
 end
 
-btnDeath.MouseButton1Click:Connect(ActivarDeathPor08s)
+btnDeath.MouseButton1Click:Connect(function()
+	if deathConnection then deathConnection:Disconnect(); deathConnection = nil end
+	if deathTimerTask then task.cancel(deathTimerTask); deathTimerTask = nil end
+	deathActivo = true
+	btnDeath.Text = "⚡ DEATH 0.8s"
+	bordeActivo(btnDeath, true)
+	deathConnection = RunService.Heartbeat:Connect(function()
+		if not deathActivo then return end
+		local char = LocalPlayer.Character
+		local remotes = cachedDeathRemotes
+		for i = 1, #remotes do
+			local r = remotes[i]
+			if r.Parent then pcall(function() r:FireServer(char, math.huge) end) end
+		end
+	end)
+	deathTimerTask = task.delay(0.8, apagarDeath)
+end)
 
 -- ==================================================
 -- 🔄 ESTADOS DE BOTONES
 -- ==================================================
 local function actualizarBotonToggle()
 	if teleportEnabled then
-		bordeActivo(btnToggle, true); btnToggle.Text = T("❌ DESACTIVAR")
+		bordeActivo(btnToggle, true)
+		btnToggle.Text = "❌ DESACTIVAR"
 	else
-		bordeActivo(btnToggle, false); btnToggle.Text = T("✅ ACTIVAR")
+		bordeActivo(btnToggle, false)
+		btnToggle.Text = "✅ ACTIVAR"
 	end
 end
 
@@ -1147,23 +813,23 @@ local function actualizarBotonHitbox()
 	if hitboxActivo then
 		bordeActivo(hitboxToggle, true)
 		if seleccionMultipleActiva then
-			hitboxToggle.Text = T("HITBOX ON x") .. contarSeleccionados()
+			hitboxToggle.Text = "HITBOX ON x" .. contarSeleccionados()
 		else
-			hitboxToggle.Text = jugadorSeleccionado and ("HITBOX ON: " .. jugadorSeleccionado.Name:sub(1, 10)) or T("HITBOX ON: sin objetivo")
+			hitboxToggle.Text = jugadorSeleccionado and ("HITBOX ON: " .. jugadorSeleccionado.Name:sub(1, 10)) or "HITBOX ON: sin objetivo"
 		end
 	else
 		bordeActivo(hitboxToggle, false)
-		hitboxToggle.Text = T("HITBOX: OFF")
+		hitboxToggle.Text = "HITBOX: OFF"
 	end
 end
 
 local function actualizarBotonSeleccionMultiple()
 	if seleccionMultipleActiva then
 		bordeActivo(btnSeleccionMultiple, true)
-		btnSeleccionMultiple.Text = T("☑️ MÚLTIPLE: ON (") .. contarSeleccionados() .. ")"
+		btnSeleccionMultiple.Text = "☑️ MÚLTIPLE: ON (" .. contarSeleccionados() .. ")"
 	else
 		bordeActivo(btnSeleccionMultiple, false)
-		btnSeleccionMultiple.Text = T("☑️ SELECCIÓN MÚLTIPLE: OFF")
+		btnSeleccionMultiple.Text = "☑️ SELECCIÓN MÚLTIPLE: OFF"
 	end
 end
 
@@ -1176,10 +842,10 @@ local function refrescarColoresLista()
 	for plr, entry in pairs(entradasLista) do
 		if entry and entry.Parent then
 			local nameLabel = entry:FindFirstChildOfClass("TextLabel")
-			local baseTexto = plr.DisplayName .. " (@" .. plr.Name .. ")" .. (plr == LocalPlayer and T(" • TÚ") or "")
+			local baseTexto = plr.DisplayName .. " (@" .. plr.Name .. ")" .. (plr == LocalPlayer and "  • TÚ" or "")
 			if seleccionMultipleActiva and seleccionados[plr] then
 				entry.BackgroundColor3 = COLOR_MULTI
-				if nameLabel then nameLabel.Text = T("✓ ") .. baseTexto end
+				if nameLabel then nameLabel.Text = "✓ " .. baseTexto end
 			elseif plr == jugadorSeleccionado then
 				entry.BackgroundColor3 = COLOR_SELECCIONADO
 				if nameLabel then nameLabel.Text = baseTexto end
@@ -1199,22 +865,19 @@ local function establecerObjetivo(plr)
 	local anterior = jugadorSeleccionado
 	jugadorSeleccionado = plr
 	pendingSingleName = nil
-
 	if hitboxActivo and anterior and anterior ~= plr and hitboxOriginalSize[anterior] then
 		if anterior.Character and anterior.Character:FindFirstChild("HumanoidRootPart") then
 			anterior.Character.HumanoidRootPart.Size = hitboxOriginalSize[anterior]
 		end
 		hitboxOriginalSize[anterior] = nil
 	end
-
 	refrescarColoresLista()
 	actualizarBotonHitbox()
-
 	if plr then
-		statusLabel.Text = T("Objetivo: ") .. plr.Name
+		statusLabel.Text = "Objetivo: " .. plr.Name
 		statusLabel.TextColor3 = Color3.fromRGB(180, 255, 230)
 	else
-		statusLabel.Text = T("Status: Off | Objetivo: Ninguno")
+		statusLabel.Text = "Status: Off | Objetivo: Ninguno"
 		statusLabel.TextColor3 = COLOR_TEXTO
 	end
 end
@@ -1242,7 +905,6 @@ function actualizarListaJugadores()
 	for _, child in ipairs(scrollingFrame:GetChildren()) do
 		if child:IsA("Frame") then child:Destroy() end
 	end
-
 	local listaJugadores = Players:GetPlayers()
 	for _, plr in ipairs(listaJugadores) do
 		local playerEntry = Instance.new("Frame")
@@ -1258,7 +920,7 @@ function actualizarListaJugadores()
 		nameLabel.Size = UDim2.new(1, -8, 1, 0)
 		nameLabel.Position = UDim2.new(0, 4, 0, 0)
 		nameLabel.BackgroundTransparency = 1
-		nameLabel.Text = plr.DisplayName .. " (@" .. plr.Name .. ")" .. (plr == LocalPlayer and T(" • TÚ") or "")
+		nameLabel.Text = plr.DisplayName .. " (@" .. plr.Name .. ")" .. (plr == LocalPlayer and "  • TÚ" or "")
 		nameLabel.TextColor3 = COLOR_TEXTO
 		nameLabel.Font = Enum.Font.GothamSemibold
 		nameLabel.TextSize = 7
@@ -1283,13 +945,16 @@ function actualizarListaJugadores()
 					local delta = (Vector2.new(input.Position.X, input.Position.Y) - pressStart).Magnitude
 					pressStart = nil
 					if delta <= UMBRAL_ARRASTRE then
-						if seleccionMultipleActiva then alternarSeleccionMultiple(plr) else establecerObjetivo(plr) end
+						if seleccionMultipleActiva then
+							alternarSeleccionMultiple(plr)
+						else
+							establecerObjetivo(plr)
+						end
 					end
 				end
 			end
 		end)
 	end
-
 	refrescarColoresLista()
 	scrollingFrame.CanvasSize = UDim2.new(0, 0, 0, #listaJugadores * (ALTO_ENTRADA_LISTA + 4))
 end
@@ -1299,7 +964,7 @@ Players.PlayerAdded:Connect(function(plr)
 	if pendingSingleName == plr.Name then
 		pendingSingleName = nil
 		establecerObjetivo(plr)
-		statusLabel.Text = T("🔄 Re-seleccionado: ") .. plr.Name
+		statusLabel.Text = "🔄 Re-seleccionado: " .. plr.Name
 		statusLabel.TextColor3 = Color3.fromRGB(180, 255, 230)
 	elseif reconexionPendienteMulti[plr.Name] then
 		reconexionPendienteMulti[plr.Name] = nil
@@ -1308,7 +973,7 @@ Players.PlayerAdded:Connect(function(plr)
 			actualizarBotonSeleccionMultiple()
 			actualizarBotonHitbox()
 			refrescarColoresLista()
-			statusLabel.Text = T("🔄 Re-añadido: ") .. plr.Name .. T(" (total ") .. contarSeleccionados() .. ")"
+			statusLabel.Text = "🔄 Re-añadido: " .. plr.Name .. " (total " .. contarSeleccionados() .. ")"
 			statusLabel.TextColor3 = Color3.fromRGB(180, 255, 230)
 		end
 	end
@@ -1318,7 +983,6 @@ Players.PlayerRemoving:Connect(function(plr)
 	hitboxOriginalSize[plr] = nil
 	entradasLista[plr] = nil
 	originalPositions[plr] = nil
-
 	if plr == jugadorSeleccionado then
 		pendingSingleName = plr.Name
 		jugadorSeleccionado = nil
@@ -1326,7 +990,7 @@ Players.PlayerRemoving:Connect(function(plr)
 		refrescarColoresLista()
 		actualizarBotonHitbox()
 		actualizarBotonSeleccionMultiple()
-		statusLabel.Text = "⏳ " .. plr.Name .. T(" salió — esperando reconexión...")
+		statusLabel.Text = "⏳ " .. plr.Name .. " salió — esperando reconexión..."
 		statusLabel.TextColor3 = Color3.fromRGB(255, 220, 120)
 	else
 		if seleccionados[plr] then
@@ -1371,15 +1035,15 @@ local function seleccionarManual()
 	if encontrado then
 		if seleccionMultipleActiva then
 			alternarSeleccionMultiple(encontrado)
-			statusLabel.Text = (seleccionados[encontrado] and T("✓ Añadido: ") or T("➖ Quitado: ")) .. encontrado.Name .. T(" (total ") .. contarSeleccionados() .. ")"
+			statusLabel.Text = (seleccionados[encontrado] and "✓ Añadido: " or "➖ Quitado: ") .. encontrado.Name .. "  (total " .. contarSeleccionados() .. ")"
 			statusLabel.TextColor3 = Color3.fromRGB(180, 255, 230)
 		else
 			establecerObjetivo(encontrado)
-			statusLabel.Text = T("Objetivo: ") .. encontrado.Name .. " (" .. encontrado.DisplayName .. ")"
+			statusLabel.Text = "Objetivo: " .. encontrado.Name .. " (" .. encontrado.DisplayName .. ")"
 			statusLabel.TextColor3 = Color3.fromRGB(180, 255, 230)
 		end
 	else
-		statusLabel.Text = T("❌ No se encontró: ") .. txtManual.Text
+		statusLabel.Text = "❌ No se encontró: " .. txtManual.Text
 		statusLabel.TextColor3 = Color3.fromRGB(255, 120, 120)
 	end
 end
@@ -1444,7 +1108,7 @@ hitboxToggle.MouseButton1Click:Connect(function()
 	if hitboxActivo then
 		if not hayObjetivosActivos() then
 			hitboxActivo = false
-			hitboxToggle.Text = seleccionMultipleActiva and T("SELECCIONA ALGUIEN") or T("AVATAR NO ENCONTRADO")
+			hitboxToggle.Text = seleccionMultipleActiva and "SELECCIONA ALGUIEN" or "AVATAR NO ENCONTRADO"
 			task.wait(1.2)
 			actualizarBotonHitbox()
 			return
@@ -1461,9 +1125,11 @@ end)
 btnSeleccionMultiple.MouseButton1Click:Connect(function()
 	seleccionMultipleActiva = not seleccionMultipleActiva
 	if seleccionMultipleActiva then
-		if jugadorSeleccionado and jugadorSeleccionado ~= LocalPlayer then seleccionados[jugadorSeleccionado] = true end
+		if jugadorSeleccionado and jugadorSeleccionado ~= LocalPlayer then
+			seleccionados[jugadorSeleccionado] = true
+		end
 		bordeActivo(btnSeleccionMultiple, true)
-		statusLabel.Text = T("☑️ Modo múltiple ON — toca jugadores en la lista")
+		statusLabel.Text = "☑️ Modo múltiple ON — toca jugadores en la lista"
 		statusLabel.TextColor3 = Color3.fromRGB(180, 255, 230)
 	else
 		for plr, _ in pairs(seleccionados) do
@@ -1475,7 +1141,7 @@ btnSeleccionMultiple.MouseButton1Click:Connect(function()
 		seleccionados = {}
 		reconexionPendienteMulti = {}
 		bordeActivo(btnSeleccionMultiple, false)
-		statusLabel.Text = T("Status: Listo")
+		statusLabel.Text = "Status: Listo"
 		statusLabel.TextColor3 = COLOR_TEXTO
 	end
 	actualizarBotonSeleccionMultiple()
@@ -1489,14 +1155,14 @@ end)
 local function guardarYTeletransportar()
 	local character = LocalPlayer.Character
 	if not character or not character:FindFirstChild("HumanoidRootPart") then
-		statusLabel.Text = T("❌ Sin personaje"); task.delay(1.5, function() statusLabel.Text = T("Status: Listo") end); return
+		statusLabel.Text = "❌ Sin personaje"; task.delay(1.5, function() statusLabel.Text = "Status: Listo" end); return
 	end
 	lastPosition = character.HumanoidRootPart.Position
-	statusLabel.Text = T("✅ Posición guardada!")
+	statusLabel.Text = "✅ Posición guardada!"
 	task.wait(0.3)
 	character:PivotTo(CFrame.new(lastPosition + Vector3.new(0, DISTANCIA_TP_GUARDADO, 0)))
-	statusLabel.Text = T("✅ ¡TP -500!")
-	task.delay(1.2, function() statusLabel.Text = T("Status: Listo") end)
+	statusLabel.Text = "✅ ¡TP -500!"
+	task.delay(1.2, function() statusLabel.Text = "Status: Listo" end)
 end
 
 btnTPGuardar.MouseButton1Click:Connect(guardarYTeletransportar)
@@ -1510,7 +1176,6 @@ local function onCharacterAdded(character)
 		end
 	end)
 end
-
 LocalPlayer.CharacterAdded:Connect(onCharacterAdded)
 if LocalPlayer.Character then onCharacterAdded(LocalPlayer.Character) end
 
@@ -1566,15 +1231,17 @@ btnAbrazo.MouseButton1Click:Connect(function()
 	if not autoMode then
 		local target = obtenerJugadorMasCercano()
 		if not target then
-			statusLabel.Text = T("❌ Nadie cerca")
-			task.delay(1.2, function() statusLabel.Text = T("Status: Listo") end)
+			statusLabel.Text = "❌ Nadie cerca"
+			task.delay(1.2, function() statusLabel.Text = "Status: Listo" end)
 			return
 		end
+
 		autoMode = true
 		targetSaved = target
-		statusLabel.Text = T("Fijado: ") .. target.Name
-		btnAbrazo.Text = T("🛑 DETENER")
+		statusLabel.Text = "Fijado: " .. target.Name
+		btnAbrazo.Text = "🛑 DETENER"
 		bordeActivo(btnAbrazo, true)
+
 		task.spawn(function()
 			while autoMode and task.wait(0.7) do
 				if targetSaved and targetSaved.Character then
@@ -1586,16 +1253,16 @@ btnAbrazo.MouseButton1Click:Connect(function()
 			end
 			autoMode = false
 			targetSaved = nil
-			btnAbrazo.Text = T("🎯 ABRAZO BUG")
+			btnAbrazo.Text = "🎯 ABRAZO BUG"
 			bordeActivo(btnAbrazo, false)
-			statusLabel.Text = T("Status: Listo")
+			statusLabel.Text = "Status: Listo"
 		end)
 	else
 		autoMode = false
 		targetSaved = nil
-		btnAbrazo.Text = T("🎯 ABRAZO BUG")
+		btnAbrazo.Text = "🎯 ABRAZO BUG"
 		bordeActivo(btnAbrazo, false)
-		statusLabel.Text = T("Status: Listo")
+		statusLabel.Text = "Status: Listo"
 	end
 end)
 
@@ -1610,12 +1277,12 @@ btnToggleLista.MouseButton1Click:Connect(function()
 	if listaAbierta then
 		areaLista.Size = UDim2.new(1, 0, 0, ALTO_LISTA_ABIERTA)
 		framePrincipal.Size = UDim2.new(0, ancho, 0, altoBase + ALTO_TITULO + ALTO_LISTA_ABIERTA)
-		btnToggleLista.Text = T("📋 Cerrar")
+		btnToggleLista.Text = "📋 Cerrar"
 		actualizarListaJugadores()
 	else
 		areaLista.Size = UDim2.new(1, 0, 0, 0)
 		framePrincipal.Size = UDim2.new(0, ancho, 0, altoBase + ALTO_TITULO)
-		btnToggleLista.Text = T("📋 Lista")
+		btnToggleLista.Text = "📋 Lista"
 	end
 end)
 
@@ -1624,14 +1291,14 @@ btnSeleccionarCercano.MouseButton1Click:Connect(function()
 	if cercano then
 		if seleccionMultipleActiva then
 			alternarSeleccionMultiple(cercano)
-			statusLabel.Text = (seleccionados[cercano] and T("✓ Añadido cercano: ") or T("➖ Quitado: ")) .. cercano.Name .. T(" (total ") .. contarSeleccionados() .. ")"
+			statusLabel.Text = (seleccionados[cercano] and "✓ Añadido cercano: " or "➖ Quitado: ") .. cercano.Name .. "  (total " .. contarSeleccionados() .. ")"
 			statusLabel.TextColor3 = Color3.fromRGB(180, 255, 230)
 		else
 			establecerObjetivo(cercano)
 		end
 	else
 		establecerObjetivo(nil)
-		statusLabel.Text = T("No se encontró jugador")
+		statusLabel.Text = "No se encontró jugador"
 		statusLabel.TextColor3 = Color3.fromRGB(255, 120, 120)
 	end
 end)
@@ -1639,20 +1306,20 @@ end)
 btnToggle.MouseButton1Click:Connect(function()
 	if teleportEnabled then
 		teleportEnabled = false
-		statusLabel.Text = T("Status: Off | Objetivo: ") .. (jugadorSeleccionado and jugadorSeleccionado.Name or T("Ninguno"))
+		statusLabel.Text = "Status: Off | Objetivo: " .. (jugadorSeleccionado and jugadorSeleccionado.Name or "Ninguno")
 		statusLabel.TextColor3 = Color3.fromRGB(255, 120, 120)
 		restaurarPosicionOriginal()
 	else
 		if not hayObjetivosActivos() then
-			statusLabel.Text = T("¡Selecciona un jugador primero!")
+			statusLabel.Text = "¡Selecciona un jugador primero!"
 			statusLabel.TextColor3 = Color3.fromRGB(255, 120, 120)
 			return
 		end
 		teleportEnabled = true
 		if seleccionMultipleActiva then
-			statusLabel.Text = T("✅ TP visual ON x") .. contarSeleccionados()
+			statusLabel.Text = "✅ TP visual ON x" .. contarSeleccionados()
 		else
-			statusLabel.Text = T("✅ Activo | Objetivo: ") .. jugadorSeleccionado.Name
+			statusLabel.Text = "✅ Activo | Objetivo: " .. jugadorSeleccionado.Name
 		end
 		statusLabel.TextColor3 = Color3.fromRGB(180, 255, 230)
 	end
@@ -1669,61 +1336,4 @@ end)
 task.wait(0.3)
 actualizarListaJugadores()
 
--- ==================================================
--- 🌐 APLICAR IDIOMA A TODA LA GUI (con memoria del original para el botón 🌐)
--- ==================================================
-local function aplicarIdiomaATodo()
-	for _, obj in ipairs(screenGui:GetDescendants()) do
-		if obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox") then
-			local orig = obj:GetAttribute("_orig")
-			if orig then obj.Text = T(orig) end
-			if obj:IsA("TextBox") then
-				local origp = obj:GetAttribute("_origp")
-				if origp then obj.PlaceholderText = T(origp) end
-			end
-		end
-	end
-end
-
--- Guardamos el texto original (en español) y aplicamos el idioma detectado
-for _, obj in ipairs(screenGui:GetDescendants()) do
-	if obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox") then
-		obj:SetAttribute("_orig", obj.Text)
-		obj.Text = T(obj.Text)
-		if obj:IsA("TextBox") then
-			obj:SetAttribute("_origp", obj.PlaceholderText)
-			obj.PlaceholderText = T(obj.PlaceholderText)
-		end
-	end
-end
-
--- Refresca los textos dinámicos (botones con estado) tras cambiar de idioma
-local function refrescarTextosDinamicos()
-	actualizarBotonToggle()
-	actualizarBotonHitbox()
-	actualizarBotonSeleccionMultiple()
-	if deathCicloActivo then btnDeath.Text = T("⚡ ACTIVO 0.8s") else btnDeath.Text = T("💀 DEATH 0.8s") end
-	if autoMode then btnAbrazo.Text = T("🛑 DETENER") else btnAbrazo.Text = T("🎯 ABRAZO BUG") end
-	if scooterActivo then btnScooter.Text = T("🛴 SCOOTER: ON") else btnScooter.Text = T("🛴 SCOOTER: OFF") end
-	if listaAbierta then btnToggleLista.Text = T("📋 Cerrar") else btnToggleLista.Text = T("📋 Lista") end
-	actualizarListaJugadores()
-end
-
--- 🌐 Botón de idioma: cicla ES → EN → PT → JA → ZH y re-traduce todo al instante
-local ORDEN_IDIOMAS = { "es", "en", "pt", "ja", "zh" }
-btnIdioma.MouseButton1Click:Connect(function()
-	local idx = 1
-	for i, cod in ipairs(ORDEN_IDIOMAS) do
-		if cod == IDIOMA then idx = i; break end
-	end
-	idx = idx % #ORDEN_IDIOMAS + 1
-	IDIOMA = ORDEN_IDIOMAS[idx]
-	guardarIdioma(IDIOMA) -- 💾 recuerda este idioma para la próxima ejecución
-	aplicarIdiomaATodo()
-	refrescarTextosDinamicos()
-	statusLabel.Text = "🌐 " .. IDIOMA:upper()
-	statusLabel.TextColor3 = Color3.fromRGB(180, 255, 230)
-	print("🌐 Idioma cambiado a:", IDIOMA)
-end)
-
-print("✅ AA.toki v37 (botones pequeños + traductor FIX + idioma persistente, idioma=" .. IDIOMA .. ") cargado correctamente")
+print("✅ AA.toki v30.1 (botones pequeños + FIX pestañas) cargado correctamente")
