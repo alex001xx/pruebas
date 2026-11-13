@@ -1,5 +1,5 @@
 -- ==================================================
--- 📋 AA.toki | v32 (DEATH MODE optimizado 0.8s)
+-- 📋 AA.toki | v33 (death mode lento + fix pestañas)
 -- ==================================================
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -101,7 +101,7 @@ btnMin.Parent = barra
 -- ==================================================
 -- ➕ BARRA DE PESTAÑAS (debajo de la barra de título)
 -- ==================================================
-local contentAdicionales -- forward declaration (se crea en la Pestaña 2)
+local content, contentAdicionales -- forward declarations (se crean abajo)
 local tabActiva = "principal"
 
 local barraTabs = Instance.new("Frame")
@@ -166,7 +166,7 @@ end)
 
 resaltarTab("principal")
 
-local content = Instance.new("ScrollingFrame")
+content = Instance.new("ScrollingFrame")
 content.Name = "Content"
 content.BackgroundTransparency = 1
 content.Position = UDim2.new(0, 0, 0, ALTO_SUPERIOR)
@@ -657,9 +657,13 @@ end
 -- 💀 DEATH MODE — OPTIMIZADO | 0.8s POR CLIC
 -- (integrado al botón 💀 DEATH ya existente, sin GUI flotante aparte)
 -- ==================================================
-local BtnDeath = btnDeath
-local isActive = false
-local cicloActivo = false
+-- ⚙️ VELOCIDAD DE REMOTES EN DEATH MODE (ajustable)
+-- Más alto = más lento. 0.25 = ~4 disparos por segundo
+local INTERVALO_REMOTES = 0.25
+local INTERVALO_DIED = 0.20
+
+local deathIsActive = false
+local deathCicloActivo = false
 
 -- 📋 FILTROS DE REMOTES
 local IncluirPalabras = {
@@ -761,7 +765,7 @@ end
 -- 💀 VIDA A CERO
 local function VidaCeroExtremo(Humanoid)
     local function BucleVida()
-        if not isActive or Humanoid.Health <= 0 or not Humanoid.Parent then return end
+        if not deathIsActive or Humanoid.Health <= 0 or not Humanoid.Parent then return end
         pcall(function()
             Humanoid.Health = 0
             Humanoid:TakeDamage(math.huge)
@@ -775,7 +779,7 @@ end
 -- ⚡ REMOTES
 local function ReboteRemotesHiper(Character)
     task.spawn(function()
-        while isActive do
+        while deathIsActive do
             pcall(function()
                 for _, remote in ipairs(ReplicatedStorage:GetDescendants()) do
                     if remote:IsA("RemoteEvent") and DebeIncluirRemote(remote.Name) then
@@ -785,37 +789,37 @@ local function ReboteRemotesHiper(Character)
                     end
                 end
             end)
-            task.wait(0.003)
+            task.wait(INTERVALO_REMOTES)
         end
     end)
 
     task.spawn(function()
         local Humanoid = Character:FindFirstChildOfClass("Humanoid")
-        while isActive and Humanoid and Humanoid.Parent do
+        while deathIsActive and Humanoid and Humanoid.Parent do
             pcall(function() Humanoid.Died:Fire(); Humanoid.HealthChanged:Fire(0) end)
-            task.wait(0.002)
+            task.wait(INTERVALO_DIED)
         end
     end)
 end
 
 -- 🔁 CICLO PRINCIPAL
-local function IniciarCiclo()
-    if not isActive then return end
+local function IniciarCicloDeath()
+    if not deathIsActive then return end
     local Character = LocalPlayer.Character
     if not Character then
         pcall(function() LocalPlayer:LoadCharacter() end)
         task.wait(0.1)
-        if isActive then IniciarCiclo() end
+        if deathIsActive then IniciarCicloDeath() end
         return
     end
 
     local Humanoid = Character:FindFirstChildOfClass("Humanoid")
-    if not Humanoid then task.wait(0.05); if isActive then IniciarCiclo() end return end
+    if not Humanoid then task.wait(0.05); if deathIsActive then IniciarCicloDeath() end return end
 
     ReboteRemotesHiper(Character)
 
     local LiberarLoop = RunService.RenderStepped:Connect(function()
-        if not isActive or Humanoid.Health <= 0 or not Humanoid.Parent then
+        if not deathIsActive or Humanoid.Health <= 0 or not Humanoid.Parent then
             LiberarLoop:Disconnect()
             return
         end
@@ -827,47 +831,33 @@ local function IniciarCiclo()
     local DiedConn = Humanoid.Died:Connect(function()
         DiedConn:Disconnect()
         LiberarLoop:Disconnect()
-        BtnDeath.Text = "⏳ EN ESPERA..."
+        btnDeath.Text = "⏳ EN ESPERA..."
         LocalPlayer.CharacterAdded:Connect(function(NuevoPersonaje)
             NuevoPersonaje:WaitForChild("Humanoid", 3)
             task.wait(0.08)
-            if isActive then IniciarCiclo() end
+            if deathIsActive then IniciarCicloDeath() end
         end)
     end)
 end
 
--- ⏳ ACTIVADOR 0.8s (ajustado de 0.9s a 0.8s)
-local function restaurarBotonDeath()
-    if not cicloActivo then
-        BtnDeath.Text = "💀 DEATH 0.8s"
-        BtnDeath.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-        BtnDeath.BackgroundTransparency = 0.85
-        bordeActivo(BtnDeath, false)
-    end
-end
-
-local function ActivarPor08s()
-    if cicloActivo then return end
-    cicloActivo = true
-    isActive = true
-    BtnDeath.Text = "⚡ ACTIVO — 0.8s"
-    BtnDeath.BackgroundColor3 = Color3.fromRGB(255, 170, 0)
-    BtnDeath.BackgroundTransparency = 0.25
-    bordeActivo(BtnDeath, true)
-    IniciarCiclo()
+-- ⏳ ACTIVADOR 0.8s
+local function ActivarDeathPor08s()
+    if deathCicloActivo then return end
+    deathCicloActivo = true
+    deathIsActive = true
+    btnDeath.Text = "⚡ ACTIVO 0.8s"
+    bordeActivo(btnDeath, true)
+    IniciarCicloDeath()
 
     task.wait(0.8)
 
-    isActive = false
-    cicloActivo = false
-    BtnDeath.Text = "✅ LISTO"
-    BtnDeath.BackgroundColor3 = Color3.fromRGB(0, 160, 80)
-    BtnDeath.BackgroundTransparency = 0.25
-    bordeActivo(BtnDeath, false)
-    task.delay(1.5, restaurarBotonDeath)
+    deathIsActive = false
+    deathCicloActivo = false
+    btnDeath.Text = "💀 DEATH 0.8s"
+    bordeActivo(btnDeath, false)
 end
 
-btnDeath.MouseButton1Click:Connect(ActivarPor08s)
+btnDeath.MouseButton1Click:Connect(ActivarDeathPor08s)
 
 -- ==================================================
 -- 🔄 ESTADOS DE BOTONES
@@ -1427,4 +1417,4 @@ end)
 task.wait(0.3)
 actualizarListaJugadores()
 
-print("✅ AA.toki v32 (death mode optimizado 0.8s) cargado correctamente")
+print("✅ AA.toki v33 (death mode lento + fix pestañas) cargado correctamente")
