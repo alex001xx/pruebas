@@ -356,8 +356,6 @@ btnSeleccionMultiple.ZIndex = 3
 btnSeleccionMultiple.Parent = content
 estilizarBoton(btnSeleccionMultiple)
 
-local btnAutopisar, btnAutoagarre = filaDosBotones(8, 20, "⚡ AUTOPISAR: OFF", "🫵 AGARRE: OFF", 7)
-
 local btnTPGuardar, btnDeath = filaDosBotones(9, 20, "💾 TP -500", "💀 DEATH 0.3s", 7)
 
 local btnAbrazo = Instance.new("TextButton")
@@ -682,38 +680,15 @@ local function DebeIncluirRemote(Nombre)
 	return false
 end
 
-local palabrasProhibidasAutopisar = {
-	"reset","die","death","respawn","kill",
-	"pvp","combat","attack","hit","damage",
-	"fight","strike","shoot","weapon","melee",
-	"health","hp","defense","shield","skill",
-	"ability","dodge","block","knock","stun",
-	"ruleta","spin","wheel","girar","giro",
-	"suerte","lottery","roulette","reward","premio"
-}
-
-local safeRemotesAutopisar = {}
-local safeRemotesAutoagarre = {}
 local cachedDeathRemotes = {}
 
 local function escanearRemotes()
-	local tAutopisar, tAutoagarre, tDeath = {}, {}, {}
+	local tDeath = {}
 	for _, desc in ipairs(ReplicatedStorage:GetDescendants()) do
-		if desc:IsA("RemoteEvent") then
-			local rName = desc.Name:lower()
-			if DebeIncluirRemote(desc.Name) then table.insert(tDeath, desc) end
-			if not (rName:find("reset") or rName:find("die") or rName:find("death") or rName:find("respawn") or rName:find("kill")) then
-				if #tAutoagarre < 15 then table.insert(tAutoagarre, desc) end
-			end
-			local prohibido = false
-			for _, p in ipairs(palabrasProhibidasAutopisar) do
-				if rName:find(p) then prohibido = true; break end
-			end
-			if not prohibido and #tAutopisar < 15 then table.insert(tAutopisar, desc) end
+		if desc:IsA("RemoteEvent") and DebeIncluirRemote(desc.Name) then
+			table.insert(tDeath, desc)
 		end
 	end
-	safeRemotesAutopisar = tAutopisar
-	safeRemotesAutoagarre = tAutoagarre
 	cachedDeathRemotes = tDeath
 end
 
@@ -726,55 +701,6 @@ task.spawn(function()
 			if desc:IsA("RemoteEvent") and DebeIncluirRemote(desc.Name) then table.insert(tDeath, desc) end
 		end
 		cachedDeathRemotes = tDeath
-	end
-end)
-
-local autopisarActivo = false
-local autopisarThread = nil
-local autoagarreActivo = false
-local autoagarreThread = nil
-
-btnAutopisar.MouseButton1Click:Connect(function()
-	autopisarActivo = not autopisarActivo
-	if autopisarActivo then
-		btnAutopisar.Text = "⚡ AUTOPISAR: ON"
-		bordeActivo(btnAutopisar, true)
-		autopisarThread = task.spawn(function()
-			while autopisarActivo do
-				local remotes = safeRemotesAutopisar
-				for i = 1, #remotes do
-					if not autopisarActivo then break end
-					pcall(function() remotes[i]:FireServer(true) end)
-				end
-				task.wait(0.3)
-			end
-		end)
-	else
-		if autopisarThread then task.cancel(autopisarThread); autopisarThread = nil end
-		btnAutopisar.Text = "⚡ AUTOPISAR: OFF"
-		bordeActivo(btnAutopisar, false)
-	end
-end)
-
-btnAutoagarre.MouseButton1Click:Connect(function()
-	autoagarreActivo = not autoagarreActivo
-	if autoagarreActivo then
-		btnAutoagarre.Text = "🫵 AGARRE: ON"
-		bordeActivo(btnAutoagarre, true)
-		autoagarreThread = task.spawn(function()
-			while autoagarreActivo do
-				local remotes = safeRemotesAutoagarre
-				for i = 1, #remotes do
-					if not autoagarreActivo then break end
-					pcall(function() remotes[i]:FireServer(true) end)
-				end
-				task.wait(0.3)
-			end
-		end)
-	else
-		if autoagarreThread then task.cancel(autoagarreThread); autoagarreThread = nil end
-		btnAutoagarre.Text = "🫵 AGARRE: OFF"
-		bordeActivo(btnAutoagarre, false)
 	end
 end)
 
@@ -1352,4 +1278,4 @@ end)
 task.wait(0.3)
 actualizarListaJugadores()
 
-print("✅ AA.toki v30.2 (botones pequeños + FIX pestañas + DEATH SPAM 0.3s) cargado correctamente")
+print("✅ AA.toki v30.3 (botones pequeños + FIX pestañas + DEATH SPAM 0.3s, sin autopisar/agarre) cargado correctamente")
