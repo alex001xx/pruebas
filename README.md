@@ -20,6 +20,92 @@ local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LocalPlayer = Players.LocalPlayer
 local PlayerName, DisplayName, UserId = LocalPlayer.Name, LocalPlayer.DisplayName, LocalPlayer.UserId
+
+-- =========================================================
+--  LISTA BLANCA (Whitelist) REMOTA + LOCAL
+--  Solo los UserId autorizados pueden ejecutar el script.
+--  Cualquier otra persona es EXPULSADA de la experiencia.
+--
+--  · WHITELIST_URL (opcional): enlace RAW de Pastebin (o tu API)
+--    con UN UserId POR LINEA. Ejemplo del contenido del paste:
+--        8936772939
+--        -- lineas que empiecen por -- o # se ignoran
+--        123456789
+--    Si dejas WHITELIST_URL = "" solo se usa la lista local.
+--
+--  · WhitelistLocal (fallback): si la web falla o no pusiste URL,
+--    se usa esta lista. Ya viene con el único autorizado.
+--
+--  · KICK_SI_FALLA_REMOTA = true  -> si la web falla, se expulsa
+--    (máxima seguridad). Ponlo en false para usar el fallback local.
+-- =========================================================
+local WHITELIST_URL = "" -- Ej: "https://pastebin.com/raw/TU_CODIGO"
+local KICK_SI_FALLA_REMOTA = false
+
+local WhitelistLocal = {
+    [8936772939] = true, -- ÚNICO usuario autorizado (Dani_Cas08)
+}
+
+local function ParsearWhitelistTexto(texto)
+    -- Devuelve un set { [UserId] = true } a partir de texto plano
+    local set = {}
+    if not texto then return set end
+    for linea in texto:gmatch("[^\r\n]+") do
+        linea = linea:gsub("^%s+", ""):gsub("%s+$", "") -- trim
+        if linea ~= "" and not linea:match("^%-%-") and not linea:match("^#") then
+            local id = tonumber(linea)
+            if id then set[id] = true end
+        end
+    end
+    return set
+end
+
+local function EstaAutorizado()
+    -- 1) Intento de whitelist remota
+    if WHITELIST_URL and WHITELIST_URL ~= "" then
+        local ok, resultado = pcall(function()
+            return game:HttpGet(WHITELIST_URL, true)
+        end)
+        if ok and resultado then
+            local remota = ParsearWhitelistTexto(resultado)
+            if remota[UserId] then return true end
+            -- La remota funcionó y NO estás dentro: denegar.
+            return false, "Tu UserId (" .. tostring(UserId) .. ") no está en la lista remota."
+        else
+            if KICK_SI_FALLA_REMOTA then
+                return false, "No se pudo verificar la lista remota."
+            end
+            -- Si falla y no queremos expulsar por fallo, caemos a la lista local.
+        end
+    end
+
+    -- 2) Whitelist local (fallback). Compara por UserId y por nombre (insensible a mayúsculas).
+    if WhitelistLocal[UserId] then return true end
+    for clave, _ in pairs(WhitelistLocal) do
+        if type(clave) == "string" then
+            local low = clave:lower()
+            if low == PlayerName:lower() or low == DisplayName:lower() then
+                return true
+            end
+        end
+    end
+    return false, "Tu UserId (" .. tostring(UserId) .. ") no está autorizado."
+end
+
+local permitido, motivo = EstaAutorizado()
+if not permitido then
+    pcall(function()
+        WindUI:Notify({
+            Title   = "TAKEMICHI",
+            Content = "⛔ Acceso denegado.\n" .. (motivo or ""),
+            Duration = 6
+        })
+    end)
+    task.wait(1.5) -- deja ver el mensaje antes de expulsar
+    pcall(function() LocalPlayer:Kick("⛔ No estás autorizado para usar este script.") end)
+    error("Acceso denegado — usuario no autorizado. UserId: " .. tostring(UserId), 0)
+end
+
 AntiAFKEnabled, NoFrictionEnabled, NoPushEnabled, NoKnockbackEnabled = false, false, false, false
 FlyEnabled, FlySpeed = false, 60
 FlyConn, FlyVel, FlyGyro, NoclipEnabled, NoclipConn = nil, nil, nil, false, nil
@@ -1738,9 +1824,9 @@ task.spawn(function()
         if not PlayerTab then return end
         local Contenedor = nil
         pcall(function() Contenedor = PlayerTab.UIElements and PlayerTab.UIElements.ContainerFrame end)
-        if not Contenedor then pcall(function() Contenedor = PlayerTab.ContainerFrame end) end
-        if not Contenedor then pcall(function() Contenedor = PlayerTab.Container end) end
-        if not Contenedor then pcall(function() Contenedor = Window.SideBar and Window.SideBar.Parent end) end
+        if not Contenedor then pcall(function() Contenedor = PlayerTab.ContainerFrame end) end)
+        if not Contenedor then pcall(function() Contenedor = PlayerTab.Container end) end)
+        if not Contenedor then pcall(function() Contenedor = Window.SideBar and Window.SideBar.Parent end) end)
         if not Contenedor then return end
         local Box = Instance.new("Frame")
         Box.Name = "PerfilCuadro"
@@ -1902,6 +1988,3 @@ pcall(function()
 end)
 
 WindUI:Notify({Title="NANI 🌥(TMM) ", Content="v2.1 (ALAN PRO 🌥 )", Duration=4})
-
-
-
