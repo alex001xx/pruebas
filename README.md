@@ -1901,7 +1901,7 @@ pcall(function()
     end
 end)
 
-WindUI:Notify({Title="NANI 🌥", Content="v2.1 (ALAN PRO  )", Duration=4})
+WindUI:Notify({Title="NANI 🌥(TMM) ", Content="v2.1 (ALAN PRO 🌥 )", Duration=4})
 
 
 
