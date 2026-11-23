@@ -1,6 +1,7 @@
 -- ==================================================
--- 📋 AA_TOKIxAY1 | v35 (auto agarre suave: sin spam; arranque en OFF; cooldown por botón/prompt)
--- - Anti-kick/crash del auto agarre: cooldown 1.2 s por objetivo, solo conn:Fire(), escaneos poco frecuentes.
+-- 📋 AA_TOKIxAY1 | v36 (anti-kick: SIN funciones de executor de conexiones ni de prompts)
+-- - Eliminadas las funciones que el anti-cheat detectaba (disparo de conexiones y de prompts del mundo).
+-- - Auto agarre: solo pulsa botones de UI con Activate() (API nativa segura); prompts del mundo ya no se disparan.
 -- ==================================================
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -844,19 +845,14 @@ btnAbrazo.MouseButton1Click:Connect(function()
 end)
 
 -- ==================================================
--- 🤝 AUTO AGARRAR (suave) — botones de UI + proximity prompts
+-- 🤝 AUTO AGARRAR (suave, SIN funciones de executor) — solo botones de UI vía Activate()
 -- ==================================================
 local autoGrab = false
 local cachedGrabButton = nil
 local lastButtonScan = 0
 local lastFireButton = nil
 local lastFireButtonAt = 0
-local cachedPrompts = {}
-local lastPromptScan = 0
-local lastFiredPrompt = nil
-local lastFiredPromptAt = 0
 local COOLDOWN_BOTON = 1.2
-local COOLDOWN_PROMPT = 1.2
 
 local function getGrabButtonCached()
 	local now = os.clock()
@@ -903,6 +899,8 @@ local function getGrabButtonCached()
 	return nil
 end
 
+-- Disparo seguro: usa la API nativa GuiButton:Activate() (como un clic real).
+-- Sin funciones de executor: solo Activate() (las detectaba el anti-cheat y expulsaba).
 local function softFireButton(btn)
 	if not btn or not btn:IsA("GuiButton") or not btn.Visible then
 		return false
@@ -912,73 +910,15 @@ local function softFireButton(btn)
 		return false
 	end
 
-	if typeof(getconnections) ~= "function" then return false end
+	local ok = pcall(function()
+		btn:Activate()
+	end)
 
-	local disparado = false
-	for _, sigName in ipairs({ "Activated", "MouseButton1Click" }) do
-		local ok, conns = pcall(getconnections, btn[sigName])
-		if ok and type(conns) == "table" and #conns > 0 then
-			for _, conn in ipairs(conns) do
-				pcall(function()
-					if conn.Fire then
-						conn:Fire()
-					end
-				end)
-			end
-			disparado = true
-		end
-	end
-
-	if disparado then
+	if ok then
 		lastFireButton = btn
 		lastFireButtonAt = os.clock()
 	end
-	return disparado
-end
-
-local function refrescarPromptsCercanos()
-	cachedPrompts = {}
-	pcall(function()
-		for _, obj in ipairs(workspace:GetDescendants()) do
-			if obj:IsA("ProximityPrompt") then
-				table.insert(cachedPrompts, obj)
-			end
-		end
-	end)
-end
-
-local function softWorldPrompt()
-	local char = LocalPlayer.Character
-	local root = char and char:FindFirstChild("HumanoidRootPart")
-	if not root then return false end
-
-	local ahora = os.clock()
-	if ahora - lastPromptScan > 2.5 then
-		lastPromptScan = ahora
-		refrescarPromptsCercanos()
-	end
-
-	for _, obj in ipairs(cachedPrompts) do
-		if obj and obj.Parent and obj.Enabled then
-			local part = obj.Parent and (obj.Parent:IsA("BasePart") and obj.Parent or obj.Parent:FindFirstChildWhichIsA("BasePart", true))
-			if part and (part.Position - root.Position).Magnitude <= math.min(obj.MaxActivationDistance, 12) then
-				if obj == lastFiredPrompt and (ahora - lastFiredPromptAt) < COOLDOWN_PROMPT then
-					return false
-				end
-				local ok = pcall(function()
-					if typeof(fireproximityprompt) == "function" then
-						fireproximityprompt(obj)
-					end
-				end)
-				if ok then
-					lastFiredPrompt = obj
-					lastFiredPromptAt = ahora
-				end
-				return ok
-			end
-		end
-	end
-	return false
+	return ok
 end
 
 local function mostrarAutoGrab(activo)
@@ -1003,8 +943,6 @@ task.spawn(function()
 			local ok, grabBtn = pcall(getGrabButtonCached)
 			if ok and grabBtn then
 				accion = softFireButton(grabBtn)
-			else
-				accion = softWorldPrompt()
 			end
 			if accion then
 				task.wait(math.random(80, 140) / 100)
@@ -1089,4 +1027,4 @@ end)
 task.wait(0.3)
 actualizarListaJugadores()
 
-print("✅ AA_TOKIxAY1 v35 (auto agarre suave con cooldown; arranque OFF; sin scooter/hitbox/death) cargado correctamente")
+print("✅ AA_TOKIxAY1 v36 cargado (auto agarre seguro vía Activate(); arranque OFF)")
