@@ -1,9 +1,8 @@
 -- ==================================================
--- 📋 AA_TOKIxAY1 | v33 (una sola pestaña; auto agarrar a todo el ancho; sin scooter/hitbox/death)
--- - Título e imagen de fondo cambiados; orden: ACTIVAR/MÚLTIPLE, Cercano/Lista, AUTO AGARRAR, TP/ABRAZO.
+-- 📋 AA_TOKIxAY1 | v34 (automatizado y estable: bucles ligeros, limpieza de conexiones, auto agarrar al iniciar)
+-- - Anti-crash móvil: abrazo serializado sin conexiones por frame, prompts con caché, TP con espera 0.2s y pcall.
 -- ==================================================
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local CoreGui = game:GetService("CoreGui")
 local LocalPlayer = Players.LocalPlayer
@@ -401,6 +400,8 @@ local lastPosition = nil
 
 local autoMode = false
 local targetSaved = nil
+local abrazoNoclipOn = false
+local abrazoObjs = {}
 
 local entradasLista = {}
 
@@ -664,12 +665,14 @@ local function teleportarJugadorSeleccionado()
 	if not char or not char:FindFirstChild("HumanoidRootPart") then return end
 	local myHRP = char.HumanoidRootPart
 	iterarObjetivos(function(target)
-		if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
-			local tHRP = target.Character.HumanoidRootPart
-			if not originalPositions[target] then originalPositions[target] = tHRP.CFrame end
-			local nuevaPosicion = myHRP.CFrame * CFrame.new(0, 0, -3)
-			tHRP.CFrame = CFrame.lookAt(nuevaPosicion.Position, myHRP.Position) * CFrame.Angles(0, math.rad(180), 0)
-		end
+		pcall(function()
+			if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+				local tHRP = target.Character.HumanoidRootPart
+				if not originalPositions[target] then originalPositions[target] = tHRP.CFrame end
+				local nuevaPosicion = myHRP.CFrame * CFrame.new(0, 0, -3)
+				tHRP.CFrame = CFrame.lookAt(nuevaPosicion.Position, myHRP.Position) * CFrame.Angles(0, math.rad(180), 0)
+			end
+		end)
 	end)
 end
 
@@ -722,12 +725,23 @@ end
 
 btnTPGuardar.MouseButton1Click:Connect(guardarYTeletransportar)
 
+local function aplicarNoclipPartes(character)
+	if not character then return end
+	pcall(function()
+		for _, p in ipairs(character:GetDescendants()) do
+			if p:IsA("BasePart") then p.CanCollide = false end
+		end
+	end)
+end
+
 local function onCharacterAdded(character)
-	character:WaitForChild("Humanoid").Died:Connect(function()
+	if abrazoNoclipOn then aplicarNoclipPartes(character) end
+	local hum = character:WaitForChild("Humanoid")
+	hum.Died:Connect(function()
 		task.wait(0.5)
 		if lastPosition then
 			local hrp = character:WaitForChild("HumanoidRootPart", 10)
-			if hrp then character:PivotTo(CFrame.new(lastPosition)) end
+			if hrp then pcall(function() character:PivotTo(CFrame.new(lastPosition)) end) end
 		end
 	end)
 end
@@ -735,51 +749,53 @@ LocalPlayer.CharacterAdded:Connect(onCharacterAdded)
 if LocalPlayer.Character then onCharacterAdded(LocalPlayer.Character) end
 
 -- ==================================================
--- 🎯 ABRAZO BUG
+-- 🎯 ABRAZO BUG (estabilizado: sin solapamiento, sin conexión por frame, limpieza al parar)
 -- ==================================================
+local function limpiarAbrazo()
+	for _, obj in ipairs(abrazoObjs) do
+		pcall(function() obj:Destroy() end)
+	end
+	abrazoObjs = {}
+end
+
 local function KillTarget(target)
 	if not target or not target.Character then return end
 	local tchar = target.Character
 	local troot = tchar:FindFirstChild("HumanoidRootPart")
 	local thum = tchar:FindFirstChildOfClass("Humanoid")
-	local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+	local char = LocalPlayer.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart")
 	if not troot or not thum or not root then return end
 
-	thum.Health = 0
-	thum:TakeDamage(999999)
-	thum:BreakJoints()
-	thum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+	pcall(function() thum.Health = 0 end)
+	pcall(function() thum:TakeDamage(999999) end)
+	pcall(function() thum:BreakJoints() end)
+	pcall(function() thum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None end)
 
-	local noclip = RunService.Stepped:Connect(function()
-		local c = LocalPlayer.Character
-		if c then
-			for _, p in pairs(c:GetDescendants()) do
-				if p:IsA("BasePart") then p.CanCollide = false end
-			end
-		end
-	end)
+	aplicarNoclipPartes(char)
 
 	local bv = Instance.new("BodyVelocity")
 	bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-	bv.Velocity = Vector3.new(0, -25000, 0)
-	bv.Parent = root
+	bv.Velocity = Vector3.new(0, -8000, 0)
+	pcall(function() bv.Parent = root end)
 
 	local ba = Instance.new("BodyAngularVelocity")
 	ba.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
-	ba.AngularVelocity = Vector3.new(15000, 15000, 15000)
-	ba.Parent = root
+	ba.AngularVelocity = Vector3.new(3000, 3000, 3000)
+	pcall(function() ba.Parent = root end)
 
 	local dur = 1.5
 	local ini = tick()
 	while autoMode and tick() - ini < dur and troot.Parent do
-		root.CFrame = troot.CFrame * CFrame.new(0, -2, 0)
-		root.AssemblyLinearVelocity = Vector3.new(0, -30000, 0)
-		task.wait()
+		pcall(function()
+			root.CFrame = troot.CFrame * CFrame.new(0, -2, 0)
+			root.AssemblyLinearVelocity = Vector3.new(0, -12000, 0)
+		end)
+		task.wait(0.05)
 	end
 
 	pcall(function() bv:Destroy() end)
 	pcall(function() ba:Destroy() end)
-	pcall(function() noclip:Disconnect() end)
 end
 
 btnAbrazo.MouseButton1Click:Connect(function()
@@ -792,20 +808,24 @@ btnAbrazo.MouseButton1Click:Connect(function()
 		end
 
 		autoMode = true
+		abrazoNoclipOn = true
 		targetSaved = target
 		statusLabel.Text = "Fijado: " .. target.Name
 		btnAbrazo.Text = "🛑 DETENER"
 		bordeActivo(btnAbrazo, true)
 
 		task.spawn(function()
-			while autoMode and task.wait(0.7) do
+			while autoMode do
 				if targetSaved and targetSaved.Character then
-					KillTarget(targetSaved)
+					local ok = pcall(KillTarget, targetSaved)
+					if not ok then break end
 				else
-					autoMode = false
 					break
 				end
+				task.wait(0.35)
 			end
+			limpiarAbrazo()
+			abrazoNoclipOn = false
 			autoMode = false
 			targetSaved = nil
 			btnAbrazo.Text = "🎯 ABRAZO BUG"
@@ -814,7 +834,9 @@ btnAbrazo.MouseButton1Click:Connect(function()
 		end)
 	else
 		autoMode = false
+		abrazoNoclipOn = false
 		targetSaved = nil
+		limpiarAbrazo()
 		btnAbrazo.Text = "🎯 ABRAZO BUG"
 		bordeActivo(btnAbrazo, false)
 		statusLabel.Text = "Status: Listo"
@@ -827,6 +849,8 @@ end)
 local autoGrab = false
 local cachedGrabButton = nil
 local lastButtonScan = 0
+local cachedPrompts = {}
+local lastPromptScan = 0
 
 local function getGrabButtonCached()
 	local now = os.clock()
@@ -898,13 +922,30 @@ local function softFireButton(btn)
 	return false
 end
 
+local function refrescarPromptsCercanos()
+	cachedPrompts = {}
+	pcall(function()
+		for _, obj in ipairs(workspace:GetDescendants()) do
+			if obj:IsA("ProximityPrompt") then
+				table.insert(cachedPrompts, obj)
+			end
+		end
+	end)
+end
+
 local function softWorldPrompt()
 	local char = LocalPlayer.Character
 	local root = char and char:FindFirstChild("HumanoidRootPart")
 	if not root then return end
 
-	for _, obj in ipairs(workspace:GetDescendants()) do
-		if obj:IsA("ProximityPrompt") and obj.Enabled then
+	local ahora = os.clock()
+	if ahora - lastPromptScan > 1.5 then
+		lastPromptScan = ahora
+		refrescarPromptsCercanos()
+	end
+
+	for _, obj in ipairs(cachedPrompts) do
+		if obj and obj.Parent and obj.Enabled then
 			local part = obj.Parent and (obj.Parent:IsA("BasePart") and obj.Parent or obj.Parent:FindFirstChildWhichIsA("BasePart", true))
 			if part and (part.Position - root.Position).Magnitude <= math.min(obj.MaxActivationDistance, 12) then
 				pcall(function()
@@ -918,32 +959,40 @@ local function softWorldPrompt()
 	end
 end
 
-btnAutoAgarrar.MouseButton1Click:Connect(function()
-	autoGrab = not autoGrab
-	if autoGrab then
+local function mostrarAutoGrab(activo)
+	if activo then
 		btnAutoAgarrar.Text = "🤝 AUTO AGARRAR: ON"
 		bordeActivo(btnAutoAgarrar, true)
 	else
 		btnAutoAgarrar.Text = "🤝 AUTO AGARRAR: OFF"
 		bordeActivo(btnAutoAgarrar, false)
 	end
+end
+
+btnAutoAgarrar.MouseButton1Click:Connect(function()
+	autoGrab = not autoGrab
+	mostrarAutoGrab(autoGrab)
 end)
 
 task.spawn(function()
 	while true do
 		if autoGrab then
-			local grabBtn = getGrabButtonCached()
-			if grabBtn then
+			local ok, grabBtn = pcall(getGrabButtonCached)
+			if ok and grabBtn then
 				pcall(softFireButton, grabBtn)
 			else
 				pcall(softWorldPrompt)
 			end
-			task.wait(math.random(28, 52) / 100)
+			task.wait(math.random(60, 110) / 100)
 		else
-			task.wait(0.2)
+			task.wait(0.3)
 		end
 	end
 end)
+
+-- Automatización: auto agarrar encendido al cargar el panel (se apaga con el botón)
+autoGrab = true
+mostrarAutoGrab(true)
 
 -- ==================================================
 -- 🖱️ LISTA
@@ -1007,12 +1056,14 @@ end)
 
 task.spawn(function()
 	while true do
-		if teleportEnabled and hayObjetivosActivos() then teleportarJugadorSeleccionado() end
-		task.wait(0.1)
+		if teleportEnabled and hayObjetivosActivos() then
+			pcall(teleportarJugadorSeleccionado)
+		end
+		task.wait(0.2)
 	end
 end)
 
 task.wait(0.3)
 actualizarListaJugadores()
 
-print("✅ AA_TOKIxAY1 v33 (una pestaña; auto agarrar a todo el ancho; sin scooter/hitbox/death) cargado correctamente")
+print("✅ AA_TOKIxAY1 v34 (automatizado y estable; auto agarrar ON al iniciar; sin scooter/hitbox/death) cargado correctamente")
