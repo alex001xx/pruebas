@@ -1,6 +1,6 @@
 -- ==================================================
--- 📋 AA.toki | v31 (botones en filas de 2 + auto agarrar; sin death/autopisar/hitbox)
--- - Hitbox eliminado; botones en filas de 2; auto agarrar incluye botón de UI + prompt cercano.
+-- 📋 AA.toki | v32 (una sola pestaña; sin scooter/hitbox/death; auto agarrar en Principal)
+-- - Segunda pestaña y auto scooter eliminados; botones en filas de 2; auto agarrar con botón de UI + prompt cercano.
 -- ==================================================
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -33,7 +33,7 @@ local ALTO_BASE = 195
 local MIN_ANCHO = 110
 local MIN_ALTO_FRAME = 55
 local ALTO_TITULO = 17
-local ALTO_TABS = 15
+local ALTO_TABS = 0 -- barra de pestañas eliminada: ahora hay una sola pestaña (Principal)
 local ALTO_SUPERIOR = ALTO_TITULO + ALTO_TABS
 local ALTO_ENTRADA_LISTA = 20
 local ALTO_LISTA_ABIERTA = 140
@@ -106,72 +106,9 @@ btnMin.ZIndex = 11
 btnMin.Parent = barra
 
 -- ==================================================
--- ➕ BARRA DE PESTAÑAS (FIX: forward declarations correctas)
+-- 📋 CONTENIDO PRINCIPAL (una sola pestaña; pestaña Adicionales y scooter eliminados)
 -- ==================================================
-local content, contentAdicionales
-local tabActiva = "principal"
-
-local barraTabs = Instance.new("Frame")
-barraTabs.Size = UDim2.new(1, 0, 0, ALTO_TABS)
-barraTabs.Position = UDim2.new(0, 0, 0, ALTO_TITULO)
-barraTabs.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-barraTabs.BackgroundTransparency = 0.4
-barraTabs.BorderSizePixel = 0
-barraTabs.ZIndex = 10
-barraTabs.Parent = framePrincipal
-
-local function crearBotonTab(texto, escalaX)
-	local b = Instance.new("TextButton")
-	b.Size = UDim2.new(0.5, -3, 1, -3)
-	b.Position = UDim2.new(escalaX, 1, 0, 1)
-	b.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-	b.BackgroundTransparency = 0.25
-	b.Text = texto
-	b.TextColor3 = COLOR_TEXTO
-	b.Font = Enum.Font.GothamBold
-	b.TextSize = 7
-	b.ZIndex = 11
-	b.Parent = barraTabs
-	Instance.new("UICorner", b).CornerRadius = UDim.new(0, RADIO_ESQUINA)
-	return b
-end
-
-local btnTabPrincipal = crearBotonTab("📋 Principal", 0)
-local btnTabAdicionales = crearBotonTab("➕ Adicionales", 0.5)
-
-local function resaltarTab(nombre)
-	if nombre == "principal" then
-		btnTabPrincipal.BackgroundColor3 = BTN_AQUA_ACTIVA
-		btnTabPrincipal.BackgroundTransparency = 0
-		btnTabPrincipal.TextColor3 = Color3.fromRGB(15, 15, 15)
-		btnTabAdicionales.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-		btnTabAdicionales.BackgroundTransparency = 0.25
-		btnTabAdicionales.TextColor3 = COLOR_TEXTO
-	else
-		btnTabAdicionales.BackgroundColor3 = BTN_AQUA_ACTIVA
-		btnTabAdicionales.BackgroundTransparency = 0
-		btnTabAdicionales.TextColor3 = Color3.fromRGB(15, 15, 15)
-		btnTabPrincipal.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-		btnTabPrincipal.BackgroundTransparency = 0.25
-		btnTabPrincipal.TextColor3 = COLOR_TEXTO
-	end
-end
-
-btnTabPrincipal.MouseButton1Click:Connect(function()
-	tabActiva = "principal"
-	content.Visible = true
-	contentAdicionales.Visible = false
-	resaltarTab("principal")
-end)
-
-btnTabAdicionales.MouseButton1Click:Connect(function()
-	tabActiva = "adicionales"
-	content.Visible = false
-	contentAdicionales.Visible = true
-	resaltarTab("adicionales")
-end)
-
-resaltarTab("principal")
+local content
 
 -- FIX: SIN "local" (asigna a la variable forward-declarada arriba)
 content = Instance.new("ScrollingFrame")
@@ -252,17 +189,20 @@ local function filaDosBotones(orden, alto, txtA, txtB, tamTexto, padre)
 	bA.Parent = fila
 	estilizarBoton(bA)
 
-	local bB = Instance.new("TextButton")
-	bB.Size = UDim2.new(0.5, -3, 1, 0)
-	bB.Position = UDim2.new(0.5, 3, 0, 0)
-	bB.Text = txtB
-	bB.Font = Enum.Font.GothamBold
-	bB.TextSize = tamTexto
-	bB.ZIndex = 3
-	bB.Parent = fila
-	estilizarBoton(bB)
+	if txtB then
+		local bB = Instance.new("TextButton")
+		bB.Size = UDim2.new(0.5, -3, 1, 0)
+		bB.Position = UDim2.new(0.5, 3, 0, 0)
+		bB.Text = txtB
+		bB.Font = Enum.Font.GothamBold
+		bB.TextSize = tamTexto
+		bB.ZIndex = 3
+		bB.Parent = fila
+		estilizarBoton(bB)
+		return bA, bB
+	end
 
-	return bA, bB
+	return bA
 end
 
 local function separador(orden, texto)
@@ -325,9 +265,11 @@ local btnSeleccionarCercano, btnToggleLista = filaDosBotones(3, 18, "🔍 Cercan
 
 local btnToggle, btnSeleccionMultiple = filaDosBotones(4, 20, "✅ ACTIVAR", "☑️ MÚLTIPLE: OFF", 7)
 
--- (hitbox eliminado; botones en filas de 2)
+-- (hitbox eliminado; sin pestaña 2 ni scooter; botones en filas de 2)
 
 local btnTPGuardar, btnAbrazo = filaDosBotones(5, 20, "💾 TP -500", "🎯 ABRAZO BUG", 7)
+
+local btnAutoAgarrar = filaDosBotones(6, 20, "🤝 AUTO AGARRAR: OFF", nil, 7)
 
 local areaLista = Instance.new("Frame")
 areaLista.Name = "AreaLista"
@@ -354,119 +296,7 @@ uiListLayout.SortOrder = Enum.SortOrder.Name
 uiListLayout.Padding = UDim.new(0, 2)
 uiListLayout.Parent = scrollingFrame
 
--- ==================================================
--- ➕ PESTAÑA 2: ADICIONALES
--- ==================================================
-contentAdicionales = Instance.new("ScrollingFrame")
-contentAdicionales.Name = "Adicionales"
-contentAdicionales.BackgroundTransparency = 1
-contentAdicionales.Position = UDim2.new(0, 0, 0, ALTO_SUPERIOR)
-contentAdicionales.Size = UDim2.new(1, 0, 1, -ALTO_SUPERIOR)
-contentAdicionales.ClipsDescendants = true
-contentAdicionales.BorderSizePixel = 0
-contentAdicionales.ScrollBarThickness = 0
-contentAdicionales.ScrollBarImageTransparency = 1
-contentAdicionales.ScrollingDirection = Enum.ScrollingDirection.Y
-contentAdicionales.AutomaticCanvasSize = Enum.AutomaticSize.Y
-contentAdicionales.CanvasSize = UDim2.new(0, 0, 0, 0)
-contentAdicionales.ZIndex = 2
-contentAdicionales.Visible = false
-contentAdicionales.Parent = framePrincipal
-
-local pad2 = Instance.new("UIPadding")
-pad2.PaddingTop = UDim.new(0, 3)
-pad2.PaddingBottom = UDim.new(0, 5)
-pad2.PaddingLeft = UDim.new(0, 3)
-pad2.PaddingRight = UDim.new(0, 3)
-pad2.Parent = contentAdicionales
-
-local layout2 = Instance.new("UIListLayout")
-layout2.FillDirection = Enum.FillDirection.Vertical
-layout2.HorizontalAlignment = Enum.HorizontalAlignment.Center
-layout2.SortOrder = Enum.SortOrder.LayoutOrder
-layout2.Padding = UDim.new(0, 2)
-layout2.Parent = contentAdicionales
-
-local sepScooter = Instance.new("TextLabel")
-sepScooter.BackgroundTransparency = 1
-sepScooter.Size = UDim2.new(1, 0, 0, 9)
-sepScooter.LayoutOrder = 1
-sepScooter.Text = "── 🛴 SCOOTER ──"
-sepScooter.TextColor3 = Color3.fromRGB(230, 230, 230)
-sepScooter.Font = Enum.Font.GothamBold
-sepScooter.TextSize = 6
-sepScooter.Parent = contentAdicionales
-
-local infoScooter = Instance.new("TextLabel")
-infoScooter.BackgroundTransparency = 1
-infoScooter.Size = UDim2.new(1, 0, 0, 26)
-infoScooter.LayoutOrder = 2
-infoScooter.Text = "Scooter automática + auto agarrar:\nbusca el botón de agarrar y activa\nlos prompts cercanos solo con ON"
-infoScooter.TextColor3 = COLOR_TEXTO
-infoScooter.Font = Enum.Font.Gotham
-infoScooter.TextSize = 6
-infoScooter.TextWrapped = true
-infoScooter.Parent = contentAdicionales
-
-local btnScooter, btnAutoAgarrar = filaDosBotones(3, 20, "🛴 SCOOTER: OFF", "🤝 AUTO AGARRAR: OFF", 7, contentAdicionales)
-
-local NOMBRES_SCOOTER = {
-	"scoot", "scooter", "scuter", "escooter",
-	"patin", "patineta", "monopatin", "hoverboard"
-}
-local scooterActivo = false
-local scooterThread = nil
-
-local function buscarScooter()
-	local mochila = LocalPlayer:FindFirstChildOfClass("Backpack")
-	if not mochila then return nil end
-	for _, obj in ipairs(mochila:GetDescendants()) do
-		if obj:IsA("Tool") then
-			local n = obj.Name:lower()
-			for _, clave in ipairs(NOMBRES_SCOOTER) do
-				if n:find(clave, 1, true) then return obj end
-			end
-		end
-	end
-	return nil
-end
-
-local function equiparScooter()
-	local char = LocalPlayer.Character
-	if not char then return end
-	local hum = char:FindFirstChildOfClass("Humanoid")
-	if not hum or hum.Health <= 0 then return end
-	for _, obj in ipairs(char:GetChildren()) do
-		if obj:IsA("Tool") then
-			local n = obj.Name:lower()
-			for _, clave in ipairs(NOMBRES_SCOOTER) do
-				if n:find(clave, 1, true) then return end
-			end
-		end
-	end
-	local tool = buscarScooter()
-	if tool then pcall(function() hum:EquipTool(tool) end) end
-end
-
-btnScooter.MouseButton1Click:Connect(function()
-	scooterActivo = not scooterActivo
-	if scooterActivo then
-		btnScooter.Text = "🛴 SCOOTER: ON"
-		bordeActivo(btnScooter, true)
-		scooterThread = task.spawn(function()
-			while scooterActivo do
-				equiparScooter()
-				task.wait(0.5)
-			end
-		end)
-	else
-		if scooterThread then task.cancel(scooterThread); scooterThread = nil end
-		btnScooter.Text = "🛴 SCOOTER: OFF"
-		bordeActivo(btnScooter, false)
-	end
-end)
-
-print("✅ Pestaña Adicionales cargada correctamente")
+-- (pestaña Adicionales y auto scooter eliminados a petición del usuario)
 
 local letraA = Instance.new("TextLabel")
 letraA.Size = UDim2.new(1, -18, 0, 10)
@@ -534,21 +364,12 @@ btnMin.MouseButton1Click:Connect(function()
 	local alto = framePrincipal:GetAttribute("AltoOriginal")
 	if minimizado then
 		content.Visible = false
-		contentAdicionales.Visible = false
-		barraTabs.Visible = false
 		gripResize.Visible = false
 		letraA.Visible = false
 		framePrincipal.Size = UDim2.new(0, ancho, 0, ALTO_TITULO)
 		btnMin.Text = "+"
 	else
-		barraTabs.Visible = true
-		if tabActiva == "principal" then
-			content.Visible = true
-			contentAdicionales.Visible = false
-		else
-			content.Visible = false
-			contentAdicionales.Visible = true
-		end
+		content.Visible = true
 		gripResize.Visible = true
 		letraA.Visible = true
 		framePrincipal.Size = UDim2.new(0, ancho, 0, alto + ALTO_TITULO)
@@ -1181,4 +1002,4 @@ end)
 task.wait(0.3)
 actualizarListaJugadores()
 
-print("✅ AA.toki v31 (filas de 2 + auto agarrar, sin death/autopisar/hitbox) cargado correctamente")
+print("✅ AA.toki v32 (una pestaña, sin scooter/hitbox/death; auto agarrar en Principal) cargado correctamente")
