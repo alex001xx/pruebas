@@ -1,6 +1,6 @@
 -- ==================================================
 -- 📋 AA.toki | v31 (botones en filas de 2 + auto agarrar; sin death/autopisar/hitbox)
--- - Hitbox eliminado; botones reorganizados en filas de dos; agregado auto agarrar suave.
+-- - Hitbox eliminado; botones en filas de 2; auto agarrar incluye botón de UI + prompt cercano.
 -- ==================================================
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -233,13 +233,14 @@ local function bordeActivo(btn, activo)
 	end
 end
 
-local function filaDosBotones(orden, alto, txtA, txtB, tamTexto)
+local function filaDosBotones(orden, alto, txtA, txtB, tamTexto, padre)
 	tamTexto = tamTexto or 8
+	padre = padre or content
 	local fila = Instance.new("Frame")
 	fila.BackgroundTransparency = 1
 	fila.Size = UDim2.new(1, 0, 0, alto)
 	fila.LayoutOrder = orden
-	fila.Parent = content
+	fila.Parent = padre
 
 	local bA = Instance.new("TextButton")
 	bA.Size = UDim2.new(0.5, -3, 1, 0)
@@ -398,24 +399,16 @@ sepScooter.Parent = contentAdicionales
 
 local infoScooter = Instance.new("TextLabel")
 infoScooter.BackgroundTransparency = 1
-infoScooter.Size = UDim2.new(1, 0, 0, 18)
+infoScooter.Size = UDim2.new(1, 0, 0, 26)
 infoScooter.LayoutOrder = 2
-infoScooter.Text = "Equipa sola la scooter\nde tu mochila automáticamente"
+infoScooter.Text = "Scooter automática + auto agarrar:\nbusca el botón de agarrar y activa\nlos prompts cercanos solo con ON"
 infoScooter.TextColor3 = COLOR_TEXTO
 infoScooter.Font = Enum.Font.Gotham
 infoScooter.TextSize = 6
 infoScooter.TextWrapped = true
 infoScooter.Parent = contentAdicionales
 
-local btnScooter = Instance.new("TextButton")
-btnScooter.Size = UDim2.new(1, 0, 0, 20)
-btnScooter.LayoutOrder = 3
-btnScooter.Text = "🛴 SCOOTER: OFF"
-btnScooter.Font = Enum.Font.GothamBold
-btnScooter.TextSize = 8
-btnScooter.ZIndex = 3
-btnScooter.Parent = contentAdicionales
-estilizarBoton(btnScooter)
+local btnScooter, btnAutoAgarrar = filaDosBotones(3, 20, "🛴 SCOOTER: OFF", "🤝 AUTO AGARRAR: OFF", 7, contentAdicionales)
 
 local NOMBRES_SCOOTER = {
 	"scoot", "scooter", "scuter", "escooter",
@@ -998,7 +991,6 @@ end)
 -- 🤝 AUTO AGARRAR (suave) — botones de UI + proximity prompts
 -- ==================================================
 local autoGrab = false
-local autoPrompt = false
 local cachedGrabButton = nil
 local lastButtonScan = 0
 
@@ -1092,8 +1084,6 @@ local function softWorldPrompt()
 	end
 end
 
-local btnAutoAgarrar, btnAutoPrompt = filaDosBotones(6, 20, "🤝 AUTO AGARRAR: OFF", "🧲 PROMPT: OFF", 7)
-
 btnAutoAgarrar.MouseButton1Click:Connect(function()
 	autoGrab = not autoGrab
 	if autoGrab then
@@ -1102,17 +1092,6 @@ btnAutoAgarrar.MouseButton1Click:Connect(function()
 	else
 		btnAutoAgarrar.Text = "🤝 AUTO AGARRAR: OFF"
 		bordeActivo(btnAutoAgarrar, false)
-	end
-end)
-
-btnAutoPrompt.MouseButton1Click:Connect(function()
-	autoPrompt = not autoPrompt
-	if autoPrompt then
-		btnAutoPrompt.Text = "🧲 PROMPT: ON"
-		bordeActivo(btnAutoPrompt, true)
-	else
-		btnAutoPrompt.Text = "🧲 PROMPT: OFF"
-		bordeActivo(btnAutoPrompt, false)
 	end
 end)
 
@@ -1126,9 +1105,6 @@ task.spawn(function()
 				pcall(softWorldPrompt)
 			end
 			task.wait(math.random(28, 52) / 100)
-		elseif autoPrompt then
-			pcall(softWorldPrompt)
-			task.wait(0.25)
 		else
 			task.wait(0.2)
 		end
