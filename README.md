@@ -1,11 +1,11 @@
 -- ==================================================
--- 📋 AA.toki | v30.4 (botones pequeños + FIX pestañas; sin death/autopisar/agarre)
--- - Death mode, autopisar y autoagarre eliminados a petición del usuario.
+-- 📋 AA.toki | v31 (botones en filas de 2 + auto agarrar; sin death/autopisar/hitbox)
+-- - Hitbox eliminado; botones reorganizados en filas de dos; agregado auto agarrar suave.
 -- ==================================================
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local CoreGui = game:GetService("CoreGui")
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
@@ -23,7 +23,6 @@ local COLOR_ENTRY = Color3.fromRGB(40, 40, 40)
 local COLOR_TU = Color3.fromRGB(50, 80, 100)
 local COLOR_MULTI = Color3.fromRGB(30, 100, 85)
 
-local TAMANO_HITBOX = 100000
 local DISTANCIA_TP_GUARDADO = -500
 
 -- ==================================================
@@ -323,57 +322,11 @@ estilizarBoton(btnManualOK)
 
 local btnSeleccionarCercano, btnToggleLista = filaDosBotones(3, 18, "🔍 Cercano", "📋 Lista", 7)
 
-local btnToggle = Instance.new("TextButton")
-btnToggle.Size = UDim2.new(1, 0, 0, 20)
-btnToggle.LayoutOrder = 4
-btnToggle.Text = "✅ ACTIVAR"
-btnToggle.Font = Enum.Font.GothamBold
-btnToggle.TextSize = 8
-btnToggle.ZIndex = 3
-btnToggle.Parent = content
-estilizarBoton(btnToggle)
+local btnToggle, btnSeleccionMultiple = filaDosBotones(4, 20, "✅ ACTIVAR", "☑️ MÚLTIPLE: OFF", 7)
 
-separador(5, "── 🖤 HITBOX EXPANDER (100K) ──")
+-- (hitbox eliminado; botones en filas de 2)
 
-local hitboxToggle = Instance.new("TextButton")
-hitboxToggle.Size = UDim2.new(1, 0, 0, 20)
-hitboxToggle.LayoutOrder = 6
-hitboxToggle.Text = "HITBOX: OFF"
-hitboxToggle.Font = Enum.Font.GothamBold
-hitboxToggle.TextSize = 8
-hitboxToggle.ZIndex = 3
-hitboxToggle.Parent = content
-estilizarBoton(hitboxToggle)
-
-local btnSeleccionMultiple = Instance.new("TextButton")
-btnSeleccionMultiple.Size = UDim2.new(1, 0, 0, 20)
-btnSeleccionMultiple.LayoutOrder = 7
-btnSeleccionMultiple.Text = "☑️ SELECCIÓN MÚLTIPLE: OFF"
-btnSeleccionMultiple.Font = Enum.Font.GothamBold
-btnSeleccionMultiple.TextSize = 7
-btnSeleccionMultiple.ZIndex = 3
-btnSeleccionMultiple.Parent = content
-estilizarBoton(btnSeleccionMultiple)
-
-local btnTPGuardar = Instance.new("TextButton")
-btnTPGuardar.Size = UDim2.new(1, 0, 0, 20)
-btnTPGuardar.LayoutOrder = 9
-btnTPGuardar.Text = "💾 TP -500"
-btnTPGuardar.Font = Enum.Font.GothamBold
-btnTPGuardar.TextSize = 8
-btnTPGuardar.ZIndex = 3
-btnTPGuardar.Parent = content
-estilizarBoton(btnTPGuardar)
-
-local btnAbrazo = Instance.new("TextButton")
-btnAbrazo.Size = UDim2.new(1, 0, 0, 20)
-btnAbrazo.LayoutOrder = 10
-btnAbrazo.Text = "🎯 ABRAZO BUG"
-btnAbrazo.Font = Enum.Font.GothamBold
-btnAbrazo.TextSize = 7
-btnAbrazo.ZIndex = 3
-btnAbrazo.Parent = content
-estilizarBoton(btnAbrazo)
+local btnTPGuardar, btnAbrazo = filaDosBotones(5, 20, "💾 TP -500", "🎯 ABRAZO BUG", 7)
 
 local areaLista = Instance.new("Frame")
 areaLista.Name = "AreaLista"
@@ -615,9 +568,7 @@ local teleportEnabled = false
 local listaAbierta = false
 local originalPositions = {}
 
-local hitboxActivo = false
-local hitboxConexion = nil
-local hitboxOriginalSize = {}
+-- (estado de hitbox eliminado)
 
 local lastPosition = nil
 
@@ -671,20 +622,6 @@ local function actualizarBotonToggle()
 	end
 end
 
-local function actualizarBotonHitbox()
-	if hitboxActivo then
-		bordeActivo(hitboxToggle, true)
-		if seleccionMultipleActiva then
-			hitboxToggle.Text = "HITBOX ON x" .. contarSeleccionados()
-		else
-			hitboxToggle.Text = jugadorSeleccionado and ("HITBOX ON: " .. jugadorSeleccionado.Name:sub(1, 10)) or "HITBOX ON: sin objetivo"
-		end
-	else
-		bordeActivo(hitboxToggle, false)
-		hitboxToggle.Text = "HITBOX: OFF"
-	end
-end
-
 local function actualizarBotonSeleccionMultiple()
 	if seleccionMultipleActiva then
 		bordeActivo(btnSeleccionMultiple, true)
@@ -727,14 +664,7 @@ local function establecerObjetivo(plr)
 	local anterior = jugadorSeleccionado
 	jugadorSeleccionado = plr
 	pendingSingleName = nil
-	if hitboxActivo and anterior and anterior ~= plr and hitboxOriginalSize[anterior] then
-		if anterior.Character and anterior.Character:FindFirstChild("HumanoidRootPart") then
-			anterior.Character.HumanoidRootPart.Size = hitboxOriginalSize[anterior]
-		end
-		hitboxOriginalSize[anterior] = nil
-	end
 	refrescarColoresLista()
-	actualizarBotonHitbox()
 	if plr then
 		statusLabel.Text = "Objetivo: " .. plr.Name
 		statusLabel.TextColor3 = Color3.fromRGB(180, 255, 230)
@@ -748,18 +678,11 @@ local function alternarSeleccionMultiple(plr)
 	if plr == LocalPlayer then return end
 	if seleccionados[plr] then
 		seleccionados[plr] = nil
-		if hitboxActivo and hitboxOriginalSize[plr] then
-			if plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
-				plr.Character.HumanoidRootPart.Size = hitboxOriginalSize[plr]
-			end
-			hitboxOriginalSize[plr] = nil
-		end
 	else
 		seleccionados[plr] = true
 	end
 	refrescarColoresLista()
 	actualizarBotonSeleccionMultiple()
-	actualizarBotonHitbox()
 end
 
 function actualizarListaJugadores()
@@ -833,7 +756,6 @@ Players.PlayerAdded:Connect(function(plr)
 		if plr ~= LocalPlayer then
 			seleccionados[plr] = true
 			actualizarBotonSeleccionMultiple()
-			actualizarBotonHitbox()
 			refrescarColoresLista()
 			statusLabel.Text = "🔄 Re-añadido: " .. plr.Name .. " (total " .. contarSeleccionados() .. ")"
 			statusLabel.TextColor3 = Color3.fromRGB(180, 255, 230)
@@ -842,7 +764,6 @@ Players.PlayerAdded:Connect(function(plr)
 end)
 
 Players.PlayerRemoving:Connect(function(plr)
-	hitboxOriginalSize[plr] = nil
 	entradasLista[plr] = nil
 	originalPositions[plr] = nil
 	if plr == jugadorSeleccionado then
@@ -850,7 +771,6 @@ Players.PlayerRemoving:Connect(function(plr)
 		jugadorSeleccionado = nil
 		actualizarListaJugadores()
 		refrescarColoresLista()
-		actualizarBotonHitbox()
 		actualizarBotonSeleccionMultiple()
 		statusLabel.Text = "⏳ " .. plr.Name .. " salió — esperando reconexión..."
 		statusLabel.TextColor3 = Color3.fromRGB(255, 220, 120)
@@ -859,7 +779,6 @@ Players.PlayerRemoving:Connect(function(plr)
 			reconexionPendienteMulti[plr.Name] = true
 			seleccionados[plr] = nil
 			actualizarBotonSeleccionMultiple()
-			actualizarBotonHitbox()
 		end
 		actualizarListaJugadores()
 	end
@@ -936,53 +855,7 @@ local function restaurarPosicionOriginal()
 	originalPositions = {}
 end
 
--- ==================================================
--- 🖤 HITBOX
--- ==================================================
-local function expandirHitbox()
-	iterarObjetivos(function(objetivo)
-		if objetivo and objetivo.Character and objetivo.Character:FindFirstChild("HumanoidRootPart") then
-			local hrp = objetivo.Character.HumanoidRootPart
-			if not hitboxOriginalSize[objetivo] then hitboxOriginalSize[objetivo] = hrp.Size end
-			hrp.Size = Vector3.new(TAMANO_HITBOX, TAMANO_HITBOX, TAMANO_HITBOX)
-			hrp.Transparency = 1
-			hrp.CanCollide = false
-		end
-	end)
-end
-
-local function restaurarHitbox(plr)
-	if plr and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
-		local hrp = plr.Character.HumanoidRootPart
-		hrp.Size = hitboxOriginalSize[plr] or Vector3.new(2, 2, 1)
-		hrp.Transparency = 1
-		hrp.CanCollide = false
-	end
-end
-
-local function restaurarTodosHitbox()
-	for plr, _ in pairs(hitboxOriginalSize) do restaurarHitbox(plr) end
-	hitboxOriginalSize = {}
-end
-
-hitboxToggle.MouseButton1Click:Connect(function()
-	hitboxActivo = not hitboxActivo
-	if hitboxActivo then
-		if not hayObjetivosActivos() then
-			hitboxActivo = false
-			hitboxToggle.Text = seleccionMultipleActiva and "SELECCIONA ALGUIEN" or "AVATAR NO ENCONTRADO"
-			task.wait(1.2)
-			actualizarBotonHitbox()
-			return
-		end
-		actualizarBotonHitbox()
-		hitboxConexion = RunService.RenderStepped:Connect(expandirHitbox)
-	else
-		actualizarBotonHitbox()
-		if hitboxConexion then hitboxConexion:Disconnect(); hitboxConexion = nil end
-		restaurarTodosHitbox()
-	end
-end)
+-- (sección HITBOX eliminada a petición del usuario)
 
 btnSeleccionMultiple.MouseButton1Click:Connect(function()
 	seleccionMultipleActiva = not seleccionMultipleActiva
@@ -994,12 +867,6 @@ btnSeleccionMultiple.MouseButton1Click:Connect(function()
 		statusLabel.Text = "☑️ Modo múltiple ON — toca jugadores en la lista"
 		statusLabel.TextColor3 = Color3.fromRGB(180, 255, 230)
 	else
-		for plr, _ in pairs(seleccionados) do
-			if hitboxActivo and hitboxOriginalSize[plr] then
-				restaurarHitbox(plr)
-				hitboxOriginalSize[plr] = nil
-			end
-		end
 		seleccionados = {}
 		reconexionPendienteMulti = {}
 		bordeActivo(btnSeleccionMultiple, false)
@@ -1007,7 +874,6 @@ btnSeleccionMultiple.MouseButton1Click:Connect(function()
 		statusLabel.TextColor3 = COLOR_TEXTO
 	end
 	actualizarBotonSeleccionMultiple()
-	actualizarBotonHitbox()
 	refrescarColoresLista()
 end)
 
@@ -1129,6 +995,147 @@ btnAbrazo.MouseButton1Click:Connect(function()
 end)
 
 -- ==================================================
+-- 🤝 AUTO AGARRAR (suave) — botones de UI + proximity prompts
+-- ==================================================
+local autoGrab = false
+local autoPrompt = false
+local cachedGrabButton = nil
+local lastButtonScan = 0
+
+local function getGrabButtonCached()
+	local now = os.clock()
+	if cachedGrabButton and cachedGrabButton.Parent and cachedGrabButton.Visible and (now - lastButtonScan) < 4 then
+		return cachedGrabButton
+	end
+	lastButtonScan = now
+	cachedGrabButton = nil
+
+	local roots = { PlayerGui, CoreGui }
+	for _, root in ipairs(roots) do
+		if root then
+			local ok, found = pcall(function()
+				for _, obj in ipairs(root:GetDescendants()) do
+					if obj:IsA("GuiButton") and obj.Visible then
+						local nameLower = string.lower(obj.Name)
+						if string.find(nameLower, "agarr", 1, true) or string.find(nameLower, "grab", 1, true) then
+							return obj
+						end
+						if obj:IsA("TextButton") then
+							local textLower = string.lower(obj.Text)
+							if string.find(textLower, "agarr", 1, true) or string.find(textLower, "grab", 1, true) then
+								return obj
+							end
+						end
+						for _, child in ipairs(obj:GetDescendants()) do
+							if child:IsA("TextLabel") then
+								local tLower = string.lower(child.Text)
+								if string.find(tLower, "agarr", 1, true) or string.find(tLower, "grab", 1, true) then
+									return obj
+								end
+							end
+						end
+					end
+				end
+				return nil
+			end)
+			if ok and found then
+				cachedGrabButton = found
+				return found
+			end
+		end
+	end
+	return nil
+end
+
+local function softFireButton(btn)
+	if not btn or not btn:IsA("GuiButton") or not btn.Visible then
+		return false
+	end
+
+	if typeof(getconnections) == "function" then
+		for _, sigName in ipairs({ "Activated", "MouseButton1Click" }) do
+			local ok, conns = pcall(getconnections, btn[sigName])
+			if ok and type(conns) == "table" and #conns > 0 then
+				for _, conn in ipairs(conns) do
+					pcall(function()
+						if conn.Fire then
+							conn:Fire()
+						elseif conn.Function then
+							conn.Function()
+						end
+					end)
+				end
+				return true
+			end
+		end
+	end
+	return false
+end
+
+local function softWorldPrompt()
+	local char = LocalPlayer.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	if not root then return end
+
+	for _, obj in ipairs(workspace:GetDescendants()) do
+		if obj:IsA("ProximityPrompt") and obj.Enabled then
+			local part = obj.Parent and (obj.Parent:IsA("BasePart") and obj.Parent or obj.Parent:FindFirstChildWhichIsA("BasePart", true))
+			if part and (part.Position - root.Position).Magnitude <= math.min(obj.MaxActivationDistance, 12) then
+				pcall(function()
+					if typeof(fireproximityprompt) == "function" then
+						fireproximityprompt(obj)
+					end
+				end)
+				break
+			end
+		end
+	end
+end
+
+local btnAutoAgarrar, btnAutoPrompt = filaDosBotones(6, 20, "🤝 AUTO AGARRAR: OFF", "🧲 PROMPT: OFF", 7)
+
+btnAutoAgarrar.MouseButton1Click:Connect(function()
+	autoGrab = not autoGrab
+	if autoGrab then
+		btnAutoAgarrar.Text = "🤝 AUTO AGARRAR: ON"
+		bordeActivo(btnAutoAgarrar, true)
+	else
+		btnAutoAgarrar.Text = "🤝 AUTO AGARRAR: OFF"
+		bordeActivo(btnAutoAgarrar, false)
+	end
+end)
+
+btnAutoPrompt.MouseButton1Click:Connect(function()
+	autoPrompt = not autoPrompt
+	if autoPrompt then
+		btnAutoPrompt.Text = "🧲 PROMPT: ON"
+		bordeActivo(btnAutoPrompt, true)
+	else
+		btnAutoPrompt.Text = "🧲 PROMPT: OFF"
+		bordeActivo(btnAutoPrompt, false)
+	end
+end)
+
+task.spawn(function()
+	while true do
+		if autoGrab then
+			local grabBtn = getGrabButtonCached()
+			if grabBtn then
+				pcall(softFireButton, grabBtn)
+			else
+				pcall(softWorldPrompt)
+			end
+			task.wait(math.random(28, 52) / 100)
+		elseif autoPrompt then
+			pcall(softWorldPrompt)
+			task.wait(0.25)
+		else
+			task.wait(0.2)
+		end
+	end
+end)
+
+-- ==================================================
 -- 🖱️ LISTA
 -- ==================================================
 btnToggleLista.MouseButton1Click:Connect(function()
@@ -1198,4 +1205,4 @@ end)
 task.wait(0.3)
 actualizarListaJugadores()
 
-print("✅ AA.toki v30.4 (botones pequeños + FIX pestañas, sin death/autopisar/agarre) cargado correctamente")
+print("✅ AA.toki v31 (filas de 2 + auto agarrar, sin death/autopisar/hitbox) cargado correctamente")
