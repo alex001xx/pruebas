@@ -1,6 +1,6 @@
 -- ==================================================
--- 📋 AA.toki | v32 (una sola pestaña; sin scooter/hitbox/death; auto agarrar en Principal)
--- - Segunda pestaña y auto scooter eliminados; botones en filas de 2; auto agarrar con botón de UI + prompt cercano.
+-- 📋 AA_TOKIxAY1 | v33 (una sola pestaña; auto agarrar a todo el ancho; sin scooter/hitbox/death)
+-- - Título e imagen de fondo cambiados; orden: ACTIVAR/MÚLTIPLE, Cercano/Lista, AUTO AGARRAR, TP/ABRAZO.
 -- ==================================================
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -39,10 +39,10 @@ local ALTO_ENTRADA_LISTA = 20
 local ALTO_LISTA_ABIERTA = 140
 local RADIO_ESQUINA = 3
 
-local ID_FONDO = "rbxassetid://79902517665758"
+local ID_FONDO = "rbxassetid://72385020553406"
 
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "AA.toki"
+screenGui.Name = "AA_TOKIxAY1"
 screenGui.Parent = PlayerGui
 screenGui.ResetOnSpawn = false
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
@@ -85,7 +85,7 @@ local tituloBarra = Instance.new("TextLabel")
 tituloBarra.Size = UDim2.new(1, -(ALTO_TITULO + 8), 1, 0)
 tituloBarra.Position = UDim2.new(0, 4, 0, 0)
 tituloBarra.BackgroundTransparency = 1
-tituloBarra.Text = "AA.toki"
+tituloBarra.Text = "AA_TOKIxAY1"
 tituloBarra.TextColor3 = COLOR_TEXTO
 tituloBarra.Font = Enum.Font.GothamBold
 tituloBarra.TextSize = 7
@@ -261,15 +261,28 @@ btnManualOK.ZIndex = 3
 btnManualOK.Parent = filaManual
 estilizarBoton(btnManualOK)
 
-local btnSeleccionarCercano, btnToggleLista = filaDosBotones(3, 18, "🔍 Cercano", "📋 Lista", 7)
+local btnToggle, btnSeleccionMultiple = filaDosBotones(3, 20, "✅ ACTIVAR", "☑️ MÚLTIPLE: OFF", 7)
 
-local btnToggle, btnSeleccionMultiple = filaDosBotones(4, 20, "✅ ACTIVAR", "☑️ MÚLTIPLE: OFF", 7)
+local btnSeleccionarCercano, btnToggleLista = filaDosBotones(4, 18, "🔍 Cercano", "📋 Lista", 7)
 
--- (hitbox eliminado; sin pestaña 2 ni scooter; botones en filas de 2)
+-- (hitbox eliminado; sin pestaña 2 ni scooter; auto agarrar a todo el ancho, sin fila de 2)
+local filaAutoAgarrar = Instance.new("Frame")
+filaAutoAgarrar.BackgroundTransparency = 1
+filaAutoAgarrar.Size = UDim2.new(1, 0, 0, 20)
+filaAutoAgarrar.LayoutOrder = 5
+filaAutoAgarrar.Parent = content
 
-local btnTPGuardar, btnAbrazo = filaDosBotones(5, 20, "💾 TP -500", "🎯 ABRAZO BUG", 7)
+local btnAutoAgarrar = Instance.new("TextButton")
+btnAutoAgarrar.Size = UDim2.new(1, 0, 1, 0)
+btnAutoAgarrar.Position = UDim2.new(0, 0, 0, 0)
+btnAutoAgarrar.Text = "🤝 AUTO AGARRAR: OFF"
+btnAutoAgarrar.Font = Enum.Font.GothamBold
+btnAutoAgarrar.TextSize = 7
+btnAutoAgarrar.ZIndex = 3
+btnAutoAgarrar.Parent = filaAutoAgarrar
+estilizarBoton(btnAutoAgarrar)
 
-local btnAutoAgarrar = filaDosBotones(6, 20, "🤝 AUTO AGARRAR: OFF", nil, 7)
+local btnTPGuardar, btnAbrazo = filaDosBotones(6, 20, "💾 TP -500", "🎯 ABRAZO BUG", 7)
 
 local areaLista = Instance.new("Frame")
 areaLista.Name = "AreaLista"
@@ -1002,4 +1015,4 @@ end)
 task.wait(0.3)
 actualizarListaJugadores()
 
-print("✅ AA.toki v32 (una pestaña, sin scooter/hitbox/death; auto agarrar en Principal) cargado correctamente")
+print("✅ AA_TOKIxAY1 v33 (una pestaña; auto agarrar a todo el ancho; sin scooter/hitbox/death) cargado correctamente")
