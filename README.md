@@ -23,23 +23,38 @@ local LocalPlayer = Players.LocalPlayer
 local PlayerName, DisplayName, UserId = LocalPlayer.Name, LocalPlayer.DisplayName, LocalPlayer.UserId
 
 -- =========================================================
--- ACCESO: UNA SOLA ID AUTORIZADA
--- Cambia el numero por TU UserId. Cualquier otro usuario
--- que ejecute el script sera EXPULSADO automaticamente.
+-- ACCESO: LISTA DE IDs AUTORIZADOS
+-- Agrega aqui los UserIds con permiso. Cualquier otro
+-- usuario que ejecute el script sera EXPULSADO automaticamente.
 -- =========================================================
-local ID_AUTORIZADO = 8936772939   -- <-- pon aqui TU UserId
+local IDs_Autorizados = {
+    9880807686,    -- ID original (NO LO BORRES)
+    12031981918,   -- ID agregado
+    4531142359,    -- ID agregado
+    10206280234,   -- ID agregado
+    11069933246,   -- ID agregado
+}
 
-if LocalPlayer.UserId ~= ID_AUTORIZADO then
+local function TieneAcceso(id)
+    for _, idPermitido in ipairs(IDs_Autorizados) do
+        if id == idPermitido then
+            return true
+        end
+    end
+    return false
+end
+
+if not TieneAcceso(LocalPlayer.UserId) then
     pcall(function()
         WindUI:Notify({
             Title = "TAKEMICHI",
-            Content = "⛔ Acceso denegado.\nTu ID: " .. tostring(LocalPlayer.UserId),
+            Content = "tomalapt.\nTu ID: " .. tostring(LocalPlayer.UserId),
             Duration = 5
         })
     end)
-    task.wait(1.5) -- deja ver el mensaje antes de expulsar
+    task.wait(5.5) -- deja ver el mensaje antes de expulsar
     pcall(function()
-        LocalPlayer:Kick("⛔ No estás autorizado para usar este script.")
+        LocalPlayer:Kick("ve a pedir script a otra parte 🤢.")
     end)
     error("Acceso denegado — UserId: " .. tostring(LocalPlayer.UserId), 0)
 end
@@ -1031,9 +1046,9 @@ local function AplicarColor(c)
 end
 
 local Window = WindUI:CreateWindow({
-    Title="TOKI ☁", Icon="sword", Author="NANI 🌥", Folder="DENJI•ALEX", Size=UDim2.fromOffset(600,540), MinSize=Vector2.new(520,420), MaxSize=Vector2.new(850,680), Transparent=true, Theme="Dark", Resizable=true, SideBarWidth=160,
-    Background = "rbxassetid://90366846639456", BackgroundImageTransparency = 0.30, HideSearchBar = true, Accent=Color3.fromRGB(70,160,255),
-    OpenButton={Title="NANI 🌥", Icon="sword", Enabled=true, Draggable=true, OnlyMobile=false, CornerRadius=UDim.new(1,0), StrokeThickness=2, StrokeColor=Color3.fromRGB(255,255,255), Scale=1},
+    Title="YEILAN🍄", Icon="sword", Author="TOKI ☁︎", Folder="DENJI•ALEX", Size=UDim2.fromOffset(600,540), MinSize=Vector2.new(520,420), MaxSize=Vector2.new(850,680), Transparent=true, Theme="Dark", Resizable=true, SideBarWidth=160,
+    Background = "rbxassetid://129004423597147", BackgroundImageTransparency = 0.30, HideSearchBar = true, Accent=Color3.fromRGB(70,160,255),
+    OpenButton={Title="YEILAN 🍄", Icon="sword", Enabled=true, Draggable=true, OnlyMobile=false, CornerRadius=UDim.new(1,0), StrokeThickness=2, StrokeColor=Color3.fromRGB(255,255,255), Scale=1},
 })
 
 local WindConfig = nil
@@ -1439,7 +1454,7 @@ EscudosTab:Section({Title="Proteccion y Defensas (reales)", TextSize=20}); Escud
 EscudosTab:Paragraph({Title="Nota", Desc="Anti-Kick solo bloquea kicks de scripts locales. Un kick del servidor no se puede bloquear del lado del cliente.", Image="info", ImageSize=14})
 EscudosTab:Space({Size=8})
 
--- FIX: flags unicos (antes todos eran tog_24/tog_25 y se pisaban)
+-- FIX: flags unicos
 local _shieldFlag = 43
 local function shieldPair(t1, cb1, d1, t2, cb2, d2)
     local f1, f2 = "tog_"..tostring(_shieldFlag), "tog_"..tostring(_shieldFlag+1)
@@ -1743,4 +1758,4 @@ pcall(function()
     end
 end)
 
-WindUI:Notify({Title="NANI 🌥 ", Content="v2.1 (ALAN PRO 🌥 )", Duration=4})
+WindUI:Notify({Title="YEILAN 🍄", Content="v2.1 (ALAN PRO 🌥 )", Duration=4})
