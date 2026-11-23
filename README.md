@@ -1,6 +1,6 @@
 -- ==================================================
--- 📋 AA_TOKIxAY1 | v34 (automatizado y estable: bucles ligeros, limpieza de conexiones, auto agarrar al iniciar)
--- - Anti-crash móvil: abrazo serializado sin conexiones por frame, prompts con caché, TP con espera 0.2s y pcall.
+-- 📋 AA_TOKIxAY1 | v35 (auto agarre suave: sin spam; arranque en OFF; cooldown por botón/prompt)
+-- - Anti-kick/crash del auto agarre: cooldown 1.2 s por objetivo, solo conn:Fire(), escaneos poco frecuentes.
 -- ==================================================
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -849,12 +849,18 @@ end)
 local autoGrab = false
 local cachedGrabButton = nil
 local lastButtonScan = 0
+local lastFireButton = nil
+local lastFireButtonAt = 0
 local cachedPrompts = {}
 local lastPromptScan = 0
+local lastFiredPrompt = nil
+local lastFiredPromptAt = 0
+local COOLDOWN_BOTON = 1.2
+local COOLDOWN_PROMPT = 1.2
 
 local function getGrabButtonCached()
 	local now = os.clock()
-	if cachedGrabButton and cachedGrabButton.Parent and cachedGrabButton.Visible and (now - lastButtonScan) < 4 then
+	if cachedGrabButton and cachedGrabButton.Parent and cachedGrabButton.Visible and (now - lastButtonScan) < 6 then
 		return cachedGrabButton
 	end
 	lastButtonScan = now
@@ -902,24 +908,32 @@ local function softFireButton(btn)
 		return false
 	end
 
-	if typeof(getconnections) == "function" then
-		for _, sigName in ipairs({ "Activated", "MouseButton1Click" }) do
-			local ok, conns = pcall(getconnections, btn[sigName])
-			if ok and type(conns) == "table" and #conns > 0 then
-				for _, conn in ipairs(conns) do
-					pcall(function()
-						if conn.Fire then
-							conn:Fire()
-						elseif conn.Function then
-							conn.Function()
-						end
-					end)
-				end
-				return true
+	if btn == lastFireButton and (os.clock() - lastFireButtonAt) < COOLDOWN_BOTON then
+		return false
+	end
+
+	if typeof(getconnections) ~= "function" then return false end
+
+	local disparado = false
+	for _, sigName in ipairs({ "Activated", "MouseButton1Click" }) do
+		local ok, conns = pcall(getconnections, btn[sigName])
+		if ok and type(conns) == "table" and #conns > 0 then
+			for _, conn in ipairs(conns) do
+				pcall(function()
+					if conn.Fire then
+						conn:Fire()
+					end
+				end)
 			end
+			disparado = true
 		end
 	end
-	return false
+
+	if disparado then
+		lastFireButton = btn
+		lastFireButtonAt = os.clock()
+	end
+	return disparado
 end
 
 local function refrescarPromptsCercanos()
@@ -936,10 +950,10 @@ end
 local function softWorldPrompt()
 	local char = LocalPlayer.Character
 	local root = char and char:FindFirstChild("HumanoidRootPart")
-	if not root then return end
+	if not root then return false end
 
 	local ahora = os.clock()
-	if ahora - lastPromptScan > 1.5 then
+	if ahora - lastPromptScan > 2.5 then
 		lastPromptScan = ahora
 		refrescarPromptsCercanos()
 	end
@@ -948,15 +962,23 @@ local function softWorldPrompt()
 		if obj and obj.Parent and obj.Enabled then
 			local part = obj.Parent and (obj.Parent:IsA("BasePart") and obj.Parent or obj.Parent:FindFirstChildWhichIsA("BasePart", true))
 			if part and (part.Position - root.Position).Magnitude <= math.min(obj.MaxActivationDistance, 12) then
-				pcall(function()
+				if obj == lastFiredPrompt and (ahora - lastFiredPromptAt) < COOLDOWN_PROMPT then
+					return false
+				end
+				local ok = pcall(function()
 					if typeof(fireproximityprompt) == "function" then
 						fireproximityprompt(obj)
 					end
 				end)
-				break
+				if ok then
+					lastFiredPrompt = obj
+					lastFiredPromptAt = ahora
+				end
+				return ok
 			end
 		end
 	end
+	return false
 end
 
 local function mostrarAutoGrab(activo)
@@ -977,22 +999,23 @@ end)
 task.spawn(function()
 	while true do
 		if autoGrab then
+			local accion = false
 			local ok, grabBtn = pcall(getGrabButtonCached)
 			if ok and grabBtn then
-				pcall(softFireButton, grabBtn)
+				accion = softFireButton(grabBtn)
 			else
-				pcall(softWorldPrompt)
+				accion = softWorldPrompt()
 			end
-			task.wait(math.random(60, 110) / 100)
+			if accion then
+				task.wait(math.random(80, 140) / 100)
+			else
+				task.wait(0.4)
+			end
 		else
-			task.wait(0.3)
+			task.wait(0.35)
 		end
 	end
 end)
-
--- Automatización: auto agarrar encendido al cargar el panel (se apaga con el botón)
-autoGrab = true
-mostrarAutoGrab(true)
 
 -- ==================================================
 -- 🖱️ LISTA
@@ -1066,4 +1089,4 @@ end)
 task.wait(0.3)
 actualizarListaJugadores()
 
-print("✅ AA_TOKIxAY1 v34 (automatizado y estable; auto agarrar ON al iniciar; sin scooter/hitbox/death) cargado correctamente")
+print("✅ AA_TOKIxAY1 v35 (auto agarre suave con cooldown; arranque OFF; sin scooter/hitbox/death) cargado correctamente")
