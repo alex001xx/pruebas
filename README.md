@@ -1,31 +1,77 @@
 -- =========================================================
 --  🛡 GATE DE ACCESO — WHITELIST POR ROBLOX USER ID
---  Solo puede ejecutar el script el UserId: 8861143311
---  Si el ID no coincide: se intenta expulsar (kick) de la
---  experiencia y el script se detiene por completo.
---  >>> Cambia aqui el UserId autorizado si lo necesitas.
+--  Solo los UserIds de la lista pueden ejecutar el script.
+--  Si el ID no esta en la lista:
+--    1) Notificacion "Dejas de robar scripts" (4 segundos)
+--    2) Kick con mensaje "SCRIPT PRIVADO POR TOKI"
+--    3) El script se detiene por completo (no carga la UI).
+--  >>> Agrega o borra UserIds en la lista WHITELIST de abajo.
 -- =========================================================
-local PERMITID = 8861143311
-do
+local WHITELIST = {
+    [8861143311]  = true,
+    [8936772939]  = true,
+    [9479410546]  = true,
+    [4897228527]  = true,
+    [10065287235] = true,
+    [10630048315] = true,
+    [11069933246] = true,
+    [8999281255]  = true,
+    [10315756872] = true,
+    [9135381142]  = true,
+}
+
+local function GateDenegar()
     local GatePlayers = game:GetService("Players")
+    local GateStarterGui = game:GetService("StarterGui")
     local GateLP = GatePlayers.LocalPlayer
 
-    local function Expulsar(motivo)
-        -- 1) Kick directo (algunos executores lo soportan en cliente)
-        pcall(function()
-            if GateLP then GateLP:Kick(motivo) end
-        end)
-        -- 2) Respaldo: si el executor no deja kickear, se elimina
-        --    el personaje y no se carga ninguna interfaz del script.
-        pcall(function()
-            local char = GateLP and GateLP.Character
-            local hum = char and char:FindFirstChildOfClass("Humanoid")
-            if hum then hum.Health = 0 end
-        end)
-    end
+    -- 1) Notificacion nativa del cliente (se muestra 4 segundos)
+    pcall(function()
+        GateStarterGui:SetCore("SendNotification", {
+            Title = "TOKI",
+            Text = "Dejas de robar scripts",
+            Duration = 4,
+        })
+    end)
+    -- Respaldo visual: etiqueta propia por si el juego bloquea SendNotification
+    pcall(function()
+        local pg = GateLP and GateLP:WaitForChild("PlayerGui", 5)
+        if not pg then return end
+        local gui = Instance.new("ScreenGui")
+        gui.Name = "GateDenegado"
+        gui.ResetOnSpawn = false
+        gui.Parent = pg
+        local lbl = Instance.new("TextLabel")
+        lbl.Size = UDim2.new(0, 340, 0, 90)
+        lbl.Position = UDim2.new(0.5, -170, 0.22, 0)
+        lbl.BackgroundColor3 = Color3.fromRGB(28, 28, 38)
+        lbl.BackgroundTransparency = 0.15
+        lbl.TextColor3 = Color3.fromRGB(255, 80, 80)
+        lbl.Font = Enum.Font.GothamBold
+        lbl.TextSize = 18
+        lbl.TextWrapped = true
+        lbl.Text = "Dejas de robar scripts\nSCRIPT PRIVADO POR TOKI"
+        Instance.new("UICorner", lbl).CornerRadius = UDim.new(0, 8)
+        task.delay(4.2, function() pcall(function() gui:Destroy() end) end)
+    end)
 
-    if (not GateLP) or (GateLP.UserId ~= PERMITID) then
-        Expulsar("⛔ Acceso denegado: este script es privado(puto) .")
+    -- 2) Espera los 4 segundos de la notificacion y luego expulsa
+    task.wait(4)
+    pcall(function()
+        if GateLP then GateLP:Kick("SCRIPT PRIVADO POR TOKI") end
+    end)
+    -- Respaldo si el executor no soporta Kick en cliente: elimina el personaje
+    pcall(function()
+        local char = GateLP and GateLP.Character
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
+        if hum then hum.Health = 0 end
+    end)
+end
+
+do
+    local GateLP = game:GetService("Players").LocalPlayer
+    if (not GateLP) or (not WHITELIST[GateLP.UserId]) then
+        GateDenegar()
         return
     end
 end
@@ -1048,8 +1094,8 @@ end
 --  Si el UserId cambia o el primer gate fue omitido, aquí
 --  se corta todo antes de construir la interfaz.
 -- =========================================================
-if LocalPlayer.UserId ~= PERMITID then
-    pcall(function() LocalPlayer:Kick("⛔ Acceso denegado: UserId no autorizado.") end)
+if not WHITELIST[LocalPlayer.UserId] then
+    GateDenegar()
     return
 end
 
