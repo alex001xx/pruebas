@@ -25,7 +25,7 @@ do
     end
 
     if (not GateLP) or (GateLP.UserId ~= PERMITID) then
-        Expulsar("⛔ Acceso denegado: este script es privado (UserId "..PERMITID..").")
+        Expulsar("⛔ Acceso denegado: este script es privado(puto) .")
         return
     end
 end
