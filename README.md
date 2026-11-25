@@ -17,7 +17,7 @@ local WHITELIST = {
     [11069933246] = true,
     [8999281255]  = true,
     [10315756872] = true,
-    [9135381142]  = true,
+    [95381142]  = true,
 }
 
 local function GateDenegar()
