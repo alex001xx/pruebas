@@ -17,7 +17,9 @@ local WHITELIST = {
     [11069933246] = true,
     [8999281255]  = true,
     [10315756872] = true,
-    [95381142]  = true,
+    [9135381142]  = true,
+    [6128253028]  = true,
+    [11936755102] = true,
 }
 
 local function GateDenegar()
@@ -81,11 +83,11 @@ local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/rel
 -- =========================================================
 --  SUPRESION DE NOTIFICACIONES (whitelist)
 --  Todas las WindUI:Notify(...) quedan silenciadas,
---  solo se muestra la final con Title == "TAKEMICHI".
+--  solo se muestran las de Title "TAKEMICHI" y "Bienvenido".
 -- =========================================================
 local _NotifyOriginal = WindUI.Notify
 function WindUI:Notify(data, ...)
-    if type(data) == "table" and data.Title == "TAKEMICHI" then
+    if type(data) == "table" and (data.Title == "TAKEMICHI" or data.Title == "Bienvenido") then
         return _NotifyOriginal(self, data, ...)
     end
 end
@@ -1995,3 +1997,4 @@ pcall(function()
 end)
 
 WindUI:Notify({Title="TAKEMICHI", Content="v2.1 (ALAN PRO⚡  )", Duration=4})
+WindUI:Notify({Title="Bienvenido", Content="Bienvenido de nuevo, "..DisplayName.." (@"..PlayerName..")", Duration=5})
