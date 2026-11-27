@@ -28,7 +28,7 @@ local PlayerName, DisplayName, UserId = LocalPlayer.Name, LocalPlayer.DisplayNam
 -- usuario que ejecute el script sera EXPULSADO automaticamente.
 -- =========================================================
 local IDs_Autorizados = {
-    4897228527,    -- unico ID autorizado
+    9479410546,    -- unico ID autorizado
 }
 
 local function TieneAcceso(id)
