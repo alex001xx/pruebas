@@ -1,4 +1,4 @@
-local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
+135615337114560local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
 
 -- =========================================================
 -- SUPRESION DE NOTIFICACIONES (whitelist)
@@ -1043,7 +1043,7 @@ end
 
 local Window = WindUI:CreateWindow({
     Title="FRESITA 🍓", Icon="sword", Author="TOKI ☁︎", Folder="DENJI•ALEX", Size=UDim2.fromOffset(600,540), MinSize=Vector2.new(520,420), MaxSize=Vector2.new(850,680), Transparent=true, Theme="Dark", Resizable=true, SideBarWidth=160,
-    Background = "rbxassetid://129004423597147", BackgroundImageTransparency = 0.30, HideSearchBar = true, Accent=Color3.fromRGB(70,160,255),
+    Background = "rbxassetid://135615337114560", BackgroundImageTransparency = 0.30, HideSearchBar = true, Accent=Color3.fromRGB(70,160,255),
     OpenButton={Title="FRESITA 🍓", Icon="sword", Enabled=true, Draggable=true, OnlyMobile=false, CornerRadius=UDim.new(1,0), StrokeThickness=2, StrokeColor=Color3.fromRGB(255,255,255), Scale=1},
 })
 
@@ -1077,14 +1077,14 @@ local MainTab = Window:Tab({Title="Main", Icon="home"})
 MainTab:Section({Title="Funciones Principales", TextSize=20}); MainTab:Space({Size=6})
 MainTab:Section({Title="Ataque Rapido", TextSize=18}); MainTab:Space({Size=6})
 local FlashRow = MainTab:Group({})
-FlashRow:Toggle({Flag="tog_1", Title="Activar Ataque Rapido", Def=false, Callback=SetFlashAttack})
+FlashRow:Toggle({Flag="tog_1", Title="PEGARAUTOMATICO", Def=false, Callback=SetFlashAttack})
 FlashRow:Space({Size=8})
-FlashRow:Slider({Flag="sli_1", Title="Multiplicador", Step=1, Value={Min=1,Max=30,Default=5}, Callback=function(v) FlashMultiplier = v end})
+FlashRow:Slider({Flag="sli_1", Title="SILDER DATAQUE", Step=1, Value={Min=1,Max=30,Default=5}, Callback=function(v) FlashMultiplier = v end})
 MainTab:Space({Size=12})
 local MainRow1 = MainTab:Group({})
-MainRow1:Toggle({Flag="tog_2", Title="TPWalk (Bypass)", Def=false, Callback=SetTPWalk})
+MainRow1:Toggle({Flag="tog_2", Title="TPWALK", Def=false, Callback=SetTPWalk})
 MainTab:Space({Size=8})
-MainTab:Slider({Flag="sli_2", Title="Velocidad TPWalk", Step=0.05, Value={Min=0.01, Max=20, Default=0.30}, Callback=function(v) TPWalkSpeed = v; getgenv().TPWalkSpeed = v end})
+MainTab:Slider({Flag="sli_2", Title="SILDERdeTPWalk", Step=0.05, Value={Min=0.01, Max=20, Default=0.30}, Callback=function(v) TPWalkSpeed = v; getgenv().TPWalkSpeed = v end})
 MainTab:Space({Size=8})
 MainTab:Toggle({Flag="tog_3", Title="Pisar Automático", Desc="Pisar automático (🍁)", Def=false, Callback=alternarSpam})
 MainTab:Space({Size=8})
@@ -1094,7 +1094,7 @@ MainRow2:Space({Size=8})
 MainRow2:Toggle({Flag="tog_5", Title="Salto Infinito", Def=false, Callback=function(s) SetInfJump(s) end})
 MainTab:Space({Size=8})
 local MainRow4 = MainTab:Group({})
-MainRow4:Toggle({Flag="tog_9", Title="Invisible Ultra (Oculta Posicion) [G]", Def=false, Callback=SetHidePos})
+MainRow4:Toggle({Flag="tog_9", Title="INVISIBLE", Def=false, Callback=SetHidePos})
 MainTab:Space({Size=12})
 MainTab:Section({Title="Botones Flotantes (toca para prender/apagar)", TextSize=18}); MainTab:Space({Size=6})
 local FlotSec = MainTab:Section({Title="", Box=true, BoxBorder=true, Opened=true})
