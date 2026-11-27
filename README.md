@@ -1474,7 +1474,7 @@ local Cr = Window:Tab({Title="Creditos", Icon="award"})
 Cr:Section({Title="Agradecimientos", TextSize=20}); Cr:Space({Size=6})
 local CG=Cr:Group({})
 CG:Paragraph({Title="Creador", Desc="Takemichi_01x\n(c) 2026", Image="code", ImageSize=16}); CG:Space({Size=10})
-CG:Paragraph({Title="UI Library", Desc="WindUI v1.6.65\nFootagesus", Image="book", ImageSize=16})
+CG:Paragraph({Title="UI Library", Desc=" sencillo", Image="book", ImageSize=16})
 Cr:Space({Size=8})
 local CfgBtns = Cr:Group({})
 CfgBtns:Button({Title="Guardar Config", Icon="save", Justify="Center", Callback=function() pcall(function() if WindConfig then WindConfig:Save() end end) pcall(function() WindUI:Notify({Title="Config", Content="Ajustes guardados", Duration=2}) end) end})
@@ -1647,7 +1647,7 @@ pcall(function()
     end
     local OpenGui = nil
     pcall(function()
-        local tituloBoton = "NANI 🌥"
+        local tituloBoton = "Ani 🪬"
         local function buscarOpen(contenedor)
             if not contenedor then return end
             for _, sg in ipairs(contenedor:GetChildren()) do
@@ -1671,4 +1671,4 @@ pcall(function()
     end
 end)
 
-WindUI:Notify({Title="FRESITA 🍓", Content="v2.1 (ALAN PRO 🌥 )", Duration=4})
+WindUI:Notify({Title="Ani 🪬", Content="v2.1 (TOKI )", Duration=4})
