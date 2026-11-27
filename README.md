@@ -74,7 +74,6 @@ HidePosEnabled, HidePosConn, HideParts = false, nil, {}
 AutoClickerEnabled, AutoClickerCPS = false, 10
 NoFallDamageEnabled, NoFallConn = false, nil
 AntiAFKConn = nil
-AutoPisarEnabled = false
 
 local Lighting = game:GetService("Lighting")
 local OriginalLight = {ClockTime=Lighting.ClockTime, Brightness=Lighting.Brightness, Ambient=Lighting.Ambient, OutdoorAmbient=Lighting.OutdoorAmbient, FogEnd=Lighting.FogEnd, GlobalShadows=Lighting.GlobalShadows, ExposureCompensation=Lighting.ExposureCompensation}
@@ -268,70 +267,6 @@ local function SetTPWalk(s)
         end)
     end
 end
-
--- =================================================================
--- REMOTE SPAM — SIN PvP · SIN RULETAS (sistema limpio)
--- =================================================================
-local spamMode = false
-local spamThread = nil
-local safeRemotes = {}
-local palabrasProhibidas = {
-    "reset", "die", "death", "respawn", "kill",
-    "pvp", "combat", "attack", "hit", "damage", "fight", "strike", "shoot", "weapon", "melee", "health", "hp", "defense", "shield", "skill", "ability", "dodge", "block", "knock", "stun",
-    "ruleta", "spin", "wheel", "girar", "giro", "suerte", "lottery", "roulette", "reward", "premio"
-}
-
-local function cargarRemotesSeguros()
-    safeRemotes = {}
-    pcall(function()
-        for _, desc in ipairs(ReplicatedStorage:GetDescendants()) do
-            if desc:IsA("RemoteEvent") then
-                local rName = desc.Name:lower()
-                local esProhibido = false
-                for _, prohibido in ipairs(palabrasProhibidas) do
-                    if rName:find(prohibido) then esProhibido = true; break end
-                end
-                if not esProhibido and #safeRemotes < 15 then table.insert(safeRemotes, desc) end
-            end
-        end
-    end)
-    print("[SHIELD CARGADO]: Remotes seguros cargados: " .. #safeRemotes)
-    print("✅ PvP, Combate y Ruletas PROTEGIDOS — el script NO los tocará")
-end
-
-local function encenderSpam()
-    if spamMode then return end
-    if #safeRemotes == 0 then cargarRemotesSeguros() end
-    spamMode = true
-    print("🟢 SPAM ACTIVADO")
-    spamThread = task.spawn(function()
-        while spamMode do
-            for _, remote in ipairs(safeRemotes) do
-                if not spamMode then break end
-                pcall(function() remote:FireServer(true) end)
-            end
-            task.wait(0.3)
-        end
-    end)
-end
-
-local function apagarSpam()
-    if not spamMode then return end
-    spamMode = false
-    if spamThread then pcall(function() task.cancel(spamThread) end) spamThread = nil end
-    print("🔴 SPAM DESACTIVADO")
-end
-
-local function alternarSpam(s)
-    if s then
-        encenderSpam()
-        pcall(function() WindUI:Notify({Title="Pisar Automático", Content="Shield activado ("..#safeRemotes.." remotes)", Duration=3}) end)
-    else
-        apagarSpam()
-    end
-end
-cargarRemotesSeguros()
--- =================================================================
 
 local function SetFlashAttack(s)
     FlashAttackEnabled = s
@@ -738,13 +673,13 @@ local function CrearFlotante(id, texto, colorOn, getEstado, alternar)
     end)
     if not puesto then pcall(function() gui.Parent = LocalPlayer:WaitForChild("PlayerGui") end) end
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0, 54, 0, 54)
-    btn.Position = UDim2.new(0.5, -100 + ((FlotCount-1)*64), 0.88, 0)
+    btn.Size = UDim2.new(0, 38, 0, 38)
+    btn.Position = UDim2.new(0.5, -69 + ((FlotCount-1)*46), 0.90, 0)
     btn.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
     btn.Text = texto
     btn.Font = Enum.Font.GothamBold
     btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.TextSize = 13
+    btn.TextSize = 10
     btn.BorderSizePixel = 0
     btn.Active = true
     btn.Draggable = true
@@ -752,7 +687,7 @@ local function CrearFlotante(id, texto, colorOn, getEstado, alternar)
     btn.Parent = gui
     Instance.new("UICorner", btn).CornerRadius = UDim.new(1, 0)
     local stroke = Instance.new("UIStroke")
-    stroke.Thickness = 2.5
+    stroke.Thickness = 1.5
     stroke.Parent = btn
     local function Actualizar()
         local on = getEstado()
@@ -1086,8 +1021,6 @@ MainRow1:Toggle({Flag="tog_2", Title="TPWALK", Def=false, Callback=SetTPWalk})
 MainTab:Space({Size=8})
 MainTab:Slider({Flag="sli_2", Title="SILDERdeTPWalk", Step=0.05, Value={Min=0.01, Max=20, Default=0.30}, Callback=function(v) TPWalkSpeed = v; getgenv().TPWalkSpeed = v end})
 MainTab:Space({Size=8})
-MainTab:Toggle({Flag="tog_3", Title="Pisar Automático", Desc="Pisar automático (🍁)", Def=false, Callback=alternarSpam})
-MainTab:Space({Size=8})
 local MainRow2 = MainTab:Group({})
 MainRow2:Toggle({Flag="tog_4", Title="Salto Alto", Def=false, Callback=function(s) if Humanoid then Humanoid.JumpPower=s and 120 or 50 end end})
 MainRow2:Space({Size=8})
@@ -1126,6 +1059,8 @@ MainTab:Space({Size=12})
 MainTab:Section({Title="Scripts Externos", TextSize=18}); MainTab:Space({Size=6})
 local ExtScripts = MainTab:Section({Title="", Box=true, BoxBorder=true, Opened=true})
 ExtScripts:Button({Title="BRING FRESITA", Desc="Ejecutar script", Icon="play", Justify="Left", Callback=function() pcall(function() loadstring(game:HttpGet("https://raw.githubusercontent.com/alex001xx/Loop/refs/heads/main/Toki"))() WindUI:Notify({Title="BRING FRESITA", Content="Script ejecutado", Duration=3}) end) end})
+ExtScripts:Space({Size=6})
+ExtScripts:Button({Title="script de buguear", Desc="Ejecutar script", Icon="play", Justify="Left", Callback=function() pcall(function() loadstring(game:HttpGet("https://pastebin.com/raw/3VY4HWTq"))() WindUI:Notify({Title="script de buguear", Content="Script ejecutado", Duration=3}) end) end})
 
 -- 3. TARGET
 local TargetTab = Window:Tab({Title="Target", Icon="crosshair"})
@@ -1255,7 +1190,7 @@ local function AbrirListaServidores()
     Main.Draggable = true
     Main.ClipsDescendants = true
     Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 10)
-    local Stroke = Instance.new("UIStroke", Main)
+    local Stroke = Instance.new("UIStroke")
     Stroke.Color = Color3.fromRGB(235, 160, 100)
     Stroke.Thickness = 1.5
     Stroke.Transparency = 0.2
