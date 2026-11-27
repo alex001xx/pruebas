@@ -977,9 +977,9 @@ local function AplicarColor(c)
 end
 
 local Window = WindUI:CreateWindow({
-    Title="FRESITA 🍓", Icon="sword", Author="TOKI ☁︎", Folder="DENJI•ALEX", Size=UDim2.fromOffset(600,540), MinSize=Vector2.new(520,420), MaxSize=Vector2.new(850,680), Transparent=true, Theme="Dark", Resizable=true, SideBarWidth=160,
-    Background = "rbxassetid://135615337114560", BackgroundImageTransparency = 0.30, HideSearchBar = true, Accent=Color3.fromRGB(70,160,255),
-    OpenButton={Title="FRESITA 🍓", Icon="sword", Enabled=true, Draggable=true, OnlyMobile=false, CornerRadius=UDim.new(1,0), StrokeThickness=2, StrokeColor=Color3.fromRGB(255,255,255), Scale=1},
+    Title=Ani 🪬", Icon="sword", Author="TOKI ☁︎", Folder="DENJI•ALEX", Size=UDim2.fromOffset(600,540), MinSize=Vector2.new(520,420), MaxSize=Vector2.new(850,680), Transparent=true, Theme="Dark", Resizable=true, SideBarWidth=160,
+    Background = "rbxassetid://126442712106424", BackgroundImageTransparency = 0.30, HideSearchBar = true, Accent=Color3.fromRGB(70,160,255),
+    OpenButton={Title="Ani 🪬", Icon="sword", Enabled=true, Draggable=true, OnlyMobile=false, CornerRadius=UDim.new(1,0), StrokeThickness=2, StrokeColor=Color3.fromRGB(255,255,255), Scale=1},
 })
 
 local WindConfig = nil
@@ -1008,13 +1008,13 @@ task.spawn(function()
 end)
 
 -- 2. MAIN
-local MainTab = Window:Tab({Title="Main", Icon="home"})
+local MainTab = Window:Tab({Title="Combate", Icon="home"})
 MainTab:Section({Title="Funciones Principales", TextSize=20}); MainTab:Space({Size=6})
 MainTab:Section({Title="Ataque Rapido", TextSize=18}); MainTab:Space({Size=6})
 local FlashRow = MainTab:Group({})
-FlashRow:Toggle({Flag="tog_1", Title="PEGARAUTOMATICO", Def=false, Callback=SetFlashAttack})
+FlashRow:Toggle({Flag="tog_1", Title="AUTOPEGAR", Def=false, Callback=SetFlashAttack})
 FlashRow:Space({Size=8})
-FlashRow:Slider({Flag="sli_1", Title="SILDER DATAQUE", Step=1, Value={Min=1,Max=30,Default=5}, Callback=function(v) FlashMultiplier = v end})
+FlashRow:Slider({Flag="sli_1", Title="Pegar", Step=1, Value={Min=1,Max=30,Default=5}, Callback=function(v) FlashMultiplier = v end})
 MainTab:Space({Size=12})
 local MainRow1 = MainTab:Group({})
 MainRow1:Toggle({Flag="tog_2", Title="TPWALK", Def=false, Callback=SetTPWalk})
@@ -1058,7 +1058,7 @@ MainA3:Button({Title="Reiniciar Personaje", Icon="refresh-cw", Justify="Center",
 MainTab:Space({Size=12})
 MainTab:Section({Title="Scripts Externos", TextSize=18}); MainTab:Space({Size=6})
 local ExtScripts = MainTab:Section({Title="", Box=true, BoxBorder=true, Opened=true})
-ExtScripts:Button({Title="BRING FRESITA", Desc="Ejecutar script", Icon="play", Justify="Left", Callback=function() pcall(function() loadstring(game:HttpGet("https://raw.githubusercontent.com/alex001xx/Loop/refs/heads/main/Toki"))() WindUI:Notify({Title="BRING FRESITA", Content="Script ejecutado", Duration=3}) end) end})
+ExtScripts:Button({Title="BRING Ani🪬", Desc="Ejecutar script", Icon="play", Justify="Left", Callback=function() pcall(function() loadstring(game:HttpGet("https://raw.githubusercontent.com/alex001xx/Loop/refs/heads/main/Toki"))() WindUI:Notify({Title="BRING FRESITA", Content="Script ejecutado", Duration=3}) end) end})
 ExtScripts:Space({Size=6})
 ExtScripts:Button({Title="script de buguear", Desc="Ejecutar script", Icon="play", Justify="Left", Callback=function() pcall(function() loadstring(game:HttpGet("https://pastebin.com/raw/3VY4HWTq"))() WindUI:Notify({Title="script de buguear", Content="Script ejecutado", Duration=3}) end) end})
 
